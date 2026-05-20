@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FILEHUB — Redirigiendo…</title>
+  <link rel="canonical" href="https://arditifilehub.com/">
+  <meta http-equiv="refresh" content="0; url=https://arditifilehub.com/">
+  <meta name="robots" content="noindex">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);
+      color:#fff;
+      text-align:center;
+      padding:20px;
+    }
+    .card{
+      max-width:480px;
+      background:rgba(255,255,255,0.08);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:24px;
+      padding:40px 32px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.3);
+    }
+    .logo{
+      width:64px;
+      height:64px;
+      background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+      border-radius:18px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:32px;
+      margin:0 auto 20px;
+    }
+    h1{
+      font-size:24px;
+      font-weight:800;
+      margin-bottom:8px;
+      letter-spacing:-0.5px;
+    }
+    p{
+      font-size:14px;
+      opacity:0.75;
+      margin-bottom:24px;
+      line-height:1.5;
+    }
+    a{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:#fff;
+      color:#312e81;
+      padding:12px 24px;
+      border-radius:12px;
+      font-weight:700;
+      text-decoration:none;
+      font-size:14px;
+      transition:transform 0.15s;
+    }
+    a:hover{transform:scale(1.03)}
+    .pulse{
+      display:inline-block;
+      width:8px;
+      height:8px;
+      background:#10b981;
+      border-radius:50%;
+      animation:pulse 1.5s ease-in-out infinite;
+      margin-right:6px;
+    }
+    @keyframes pulse{
+      0%,100%{opacity:1;transform:scale(1)}
+      50%{opacity:0.5;transform:scale(1.3)}
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">📂</div>
+    <h1>FILEHUB</h1>
+    <p><span class="pulse"></span>Redirigiendo a <strong>arditifilehub.com</strong>…</p>
+    <a href="https://arditifilehub.com/">Abrir ahora →</a>
+  </div>
+  <script>
+    // Conserva el path/query si alguien entra a una URL profunda
+    var path = location.pathname + location.search + location.hash;
+    if (path && path !== '/' && path !== '/index.html') {
+      location.replace('https://arditifilehub.com' + path);
+    } else {
+      location.replace('https://arditifilehub.com/');
+    }
+  </script>
+</body>
+</html>
