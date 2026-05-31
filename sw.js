@@ -8,7 +8,7 @@
  * automáticamente desde el scope del SW.
  */
 
-const CACHE_VERSION = 'filehub-v64';
+const CACHE_VERSION = 'filehub-v65';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 // Deriva la base del scope del SW. Ej:
@@ -17,7 +17,13 @@ const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const SW_BASE = new URL(self.registration?.scope || self.location.href).pathname;
 const OFFLINE_PAGE = SW_BASE + 'index.html';
 
-const PRECACHE_URLS = [SW_BASE, SW_BASE + 'index.html', SW_BASE + 'manifest.json'];
+const PRECACHE_URLS = [
+  SW_BASE,
+  SW_BASE + 'index.html',
+  SW_BASE + 'manifest.json',
+  SW_BASE + 'icon.svg',
+  SW_BASE + 'icon-maskable.svg',
+];
 
 const NO_CACHE = [
   'supabase.co','api.anthropic.com','api.deepseek.com','api.groq.com',
