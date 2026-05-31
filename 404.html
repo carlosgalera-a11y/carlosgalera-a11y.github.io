@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="FileHub">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="FileHub">
-  <link rel="manifest" href="/assets/manifest-BFoihYgG.json">
+  <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
@@ -238,7 +238,7 @@
     updateOnlineStatus();
 
     // Service Worker — Force update for iOS PWA
-    const SW_EXPECTED_VERSION = 'filehub-v66';
+    const SW_EXPECTED_VERSION = 'filehub-v67';
     if ('serviceWorker' in navigator) {
       // Nuke old SWs on iOS standalone
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
