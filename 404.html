@@ -15,15 +15,17 @@
   <meta name="apple-mobile-web-app-title" content="FileHub">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="FileHub">
-  <link rel="manifest" href="/assets/manifest-DVbPwfzo.json">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="apple-touch-icon" sizes="180x180" href="icon.svg">
-  <link rel="apple-touch-icon" sizes="167x167" href="icon.svg">
-  <link rel="apple-touch-icon" sizes="152x152" href="icon.svg">
+  <link rel="manifest" href="/assets/manifest-BFoihYgG.json">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <link rel="icon" type="image/svg+xml" sizes="any" href="icon.svg">
   <link rel="mask-icon" href="icon.svg" color="#8083ff">
   <meta name="msapplication-TileColor" content="#8083ff">
-  <meta name="msapplication-TileImage" content="icon.svg">
+  <meta name="msapplication-TileImage" content="icon-512.png">
 
   <!-- Fonts -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -236,7 +238,7 @@
     updateOnlineStatus();
 
     // Service Worker — Force update for iOS PWA
-    const SW_EXPECTED_VERSION = 'filehub-v65';
+    const SW_EXPECTED_VERSION = 'filehub-v66';
     if ('serviceWorker' in navigator) {
       // Nuke old SWs on iOS standalone
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;

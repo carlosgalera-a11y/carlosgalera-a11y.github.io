@@ -8,7 +8,7 @@
  * automáticamente desde el scope del SW.
  */
 
-const CACHE_VERSION = 'filehub-v65';
+const CACHE_VERSION = 'filehub-v66';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 // Deriva la base del scope del SW. Ej:
@@ -23,6 +23,10 @@ const PRECACHE_URLS = [
   SW_BASE + 'manifest.json',
   SW_BASE + 'icon.svg',
   SW_BASE + 'icon-maskable.svg',
+  SW_BASE + 'apple-touch-icon.png',
+  SW_BASE + 'icon-192.png',
+  SW_BASE + 'icon-512.png',
+  SW_BASE + 'icon-maskable-512.png',
 ];
 
 const NO_CACHE = [

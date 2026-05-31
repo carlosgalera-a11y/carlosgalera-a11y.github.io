@@ -4,16 +4,28 @@
   "description": "Tu centro de control personal con IA. Funciona offline.",
   "icons": [
     {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
       "src": "icon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
-    },
-    {
-      "src": "icon-maskable.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
-      "purpose": "maskable"
     }
   ],
   "start_url": "./",
@@ -34,19 +46,19 @@
       "name": "Dashboard",
       "short_name": "Dash",
       "url": "./?view=dashboard",
-      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Roadmap",
       "short_name": "Roadmap",
       "url": "./?view=roadmap",
-      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Agenda",
       "short_name": "Agenda",
       "url": "./?view=agenda",
-      "icons": [{ "src": "icon.svg", "sizes": "any" }]
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
