@@ -8,7 +8,7 @@
  * automáticamente desde el scope del SW.
  */
 
-const CACHE_VERSION = 'filehub-v115';
+const CACHE_VERSION = 'filehub-v116';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 // Deriva la base del scope del SW. Ej:
