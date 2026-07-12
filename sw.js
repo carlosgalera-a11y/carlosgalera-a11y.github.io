@@ -8,7 +8,7 @@
  * automáticamente desde el scope del SW.
  */
 
-const CACHE_VERSION = 'filehub-v204';
+const CACHE_VERSION = 'filehub-v205';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 // Deriva la base del scope del SW. Ej:
@@ -96,6 +96,11 @@ self.addEventListener('push', event => {
   }
 
   const { title, body, url, tag, icon, badge, data, ...rest } = payload;
+  // Una notificación de LLAMADA (tag "call-…") se trata distinto: se queda FIJA
+  // en pantalla (requireInteraction), vibra en patrón de timbre y se re-anuncia
+  // si vuelve a llegar. Es lo máximo que iOS deja hacer a una PWA (no hay
+  // pantalla de llamada tipo teléfono para web).
+  const isCall = typeof tag === 'string' && tag.startsWith('call-');
   event.waitUntil(
     self.registration.showNotification(title || 'FileHub', {
       body: body || '',
@@ -103,6 +108,9 @@ self.addEventListener('push', event => {
       badge: badge || 'https://img.icons8.com/ios-filled/512/4f46e5/lightning-bolt.png',
       tag: tag || 'filehub-notif',
       data: { url: url || '/', ...(data || {}) },
+      requireInteraction: isCall,
+      renotify: isCall,
+      vibrate: isCall ? [300, 150, 300, 150, 300] : undefined,
       ...rest,
     })
   );
