@@ -8,7 +8,7 @@
  * automáticamente desde el scope del SW.
  */
 
-const CACHE_VERSION = 'filehub-v211';
+const CACHE_VERSION = 'filehub-v218';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 // Deriva la base del scope del SW. Ej:
@@ -36,7 +36,9 @@ const NO_CACHE = [
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
+  // Sin skipWaiting() automático: el SW nuevo espera a que el usuario toque
+  // el banner «versión nueva» (mensaje SKIP_WAITING) — así nunca recargamos
+  // la app en mitad de una grabación o un formulario.
   event.waitUntil(
     caches.open(STATIC_CACHE).then(c => c.addAll(PRECACHE_URLS).catch(() => {}))
   );
