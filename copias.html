@@ -109,8 +109,24 @@
     <p class="error" id="errAcceso" hidden></p>
   </section>
 
+  <section class="caja" id="cajaNas">
+    <h2>NAS por Tailscale</h2>
+    <label for="knas">Clave del Funnel del NAS (el <code>?k=</code> de nas-media)</label>
+    <input type="password" id="knas" placeholder="clave del gate" autocomplete="off" spellcheck="false">
+    <div class="fila">
+      <button class="secundario" id="btnNas">Ver las copias del NAS</button>
+    </div>
+    <p class="aviso">
+      Lee <code>nas-media.tail3a7cac.ts.net</code> directamente. Es la misma copia
+      cifrada que hay en GitHub, pero en disco propio. La clave se guarda en este
+      navegador; nunca viaja al repositorio ni está escrita en esta página.
+    </p>
+    <p class="error" id="errNas" hidden></p>
+  </section>
+
   <div id="resumen" class="resumen" hidden></div>
   <div id="lista"></div>
+  <div id="listaNas"></div>
 
   <section class="caja" id="ayuda" hidden>
     <h2>Restaurar desde el terminal</h2>
@@ -177,6 +193,38 @@ git clone x/cambios.bundle repo-restaurado</code></pre>
 
   let tokenActual = '';
   const sessionOToken = () => tokenActual;
+
+  /* ── El NAS, por el Funnel de Tailscale ───────────────────────────────────
+     Caddy sirve /volume1/peliculas como /movies/ y su listado devuelve JSON
+     cuando se pide con Accept: application/json. Trae CORS abierto, así que
+     esta página lo lee directamente sin intermediario. La clave del gate la
+     escribe Carlos: no está en el código, que es público. */
+  const NAS_BASE = 'https://nas-media.tail3a7cac.ts.net/movies/_copias-codigo/';
+  const LLAVE_NAS = 'copias.nas';
+  let claveNas = '';
+
+  const urlNas = f => NAS_BASE + (f ? encodeURIComponent(f) : '') + '?k=' + encodeURIComponent(claveNas);
+
+  async function listarNas() {
+    const r = await fetch(urlNas(''), { headers: { Accept: 'application/json' } });
+    if (r.status === 403) throw new Error('La clave del Funnel no es correcta.');
+    if (r.status === 404) throw new Error('La carpeta _copias-codigo no existe todavía en el NAS.');
+    if (!r.ok) throw new Error('El NAS respondió ' + r.status + '.');
+    const bruto = await r.json();
+    return (Array.isArray(bruto) ? bruto : [])
+      .filter(x => !x.is_dir && x.name.endsWith('.enc'))
+      .map(x => ({
+        proyecto: x.name.replace(/-\d{4}-\d{2}-\d{2}T\d+\.tar\.gz\.enc$/, ''),
+        fichero: x.name, bytes: x.size, fecha: x.mod_time, tipo: 'en el NAS'
+      }))
+      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+  }
+
+  async function bajarDelNas(fichero) {
+    const r = await fetch(urlNas(fichero));
+    if (!r.ok) throw new Error('El NAS respondió ' + r.status + ' al descargar.');
+    return r.arrayBuffer();
+  }
 
   /* ── Descifrado compatible con `openssl enc -aes-256-cbc -pbkdf2` ──────────
      Cabecera "Salted__" + 8 bytes de sal. La clave y el IV salen de
@@ -272,7 +320,9 @@ git clone x/cambios.bundle repo-restaurado</code></pre>
     });
   }
 
-  function tarjeta(c) {
+  /* `bajar` decide de dónde sale el fichero: del repo privado o del NAS. */
+  function tarjeta(c, bajar) {
+    bajar = bajar || (x => api(RUTA + '/' + x, true));
     const el = document.createElement('article');
     el.className = 'copia';
 
@@ -294,6 +344,10 @@ git clone x/cambios.bundle repo-restaurado</code></pre>
     if (c.sin_commitear) partes.push(c.sin_commitear + ' sin commitear');
     if (c.rama) partes.push('rama ' + c.rama);
     if (c.head) partes.push(String(c.head).slice(0, 8));
+    if (c.destinos) partes.push(c.destinos);
+    // Las del NAS se leen del listado de Caddy y no traen ficha: ahí el dato
+    // útil es el nombre del fichero, que ya lleva proyecto y sello de tiempo.
+    if (!partes.length && c.fichero) partes.push(c.fichero);
     meta.append(document.createTextNode(partes.join(' · ')));
 
     const acc = document.createElement('div');
@@ -309,7 +363,7 @@ git clone x/cambios.bundle repo-restaurado</code></pre>
     bDesc.onclick = async () => {
       bDesc.disabled = true; texto(bDesc, 'Descargando…');
       try {
-        const buf = await api(RUTA + '/' + c.fichero, true);
+        const buf = await bajar(c.fichero);
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([buf]));
         a.download = c.fichero;
@@ -330,7 +384,7 @@ git clone x/cambios.bundle repo-restaurado</code></pre>
       bVer.disabled = true; texto(bVer, 'Verificando…');
       salida.className = ''; texto(salida, '');
       try {
-        const cifrado = await api(RUTA + '/' + c.fichero, true);
+        const cifrado = await bajar(c.fichero);
         const claro = await descifrar(cifrado, clave);
         const tar = await descomprimir(claro);
         const dentro = leerTar(tar);
@@ -372,6 +426,42 @@ git clone x/cambios.bundle repo-restaurado</code></pre>
     }
   }
 
+  async function entrarNas(clave) {
+    const err = $('#errNas');
+    err.hidden = true;
+    claveNas = clave;
+    try {
+      const copias = await listarNas();
+      localStorage.setItem(LLAVE_NAS, clave);
+      $('#cajaNas').hidden = true;
+      const cont = $('#listaNas');
+      cont.innerHTML = '';
+      const g = document.createElement('section');
+      g.className = 'grupo';
+      const h = document.createElement('h3');
+      texto(h, 'En el NAS (por Tailscale)');
+      const n = document.createElement('span');
+      n.className = 'cuenta';
+      texto(n, copias.length ? copias.length + (copias.length === 1 ? ' copia' : ' copias')
+                             : 'todavía ninguna');
+      h.append(n);
+      g.append(h);
+      copias.forEach(c => g.append(tarjeta(c, bajarDelNas)));
+      cont.append(g);
+      $('#ayuda').hidden = false;
+    } catch (e) {
+      claveNas = '';
+      texto(err, e.message);
+      err.hidden = false;
+    }
+  }
+
+  $('#btnNas').onclick = () => {
+    const k = $('#knas').value.trim();
+    if (k) entrarNas(k);
+  };
+  $('#knas').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnNas').click(); });
+
   $('#btnEntrar').onclick = () => {
     const t = $('#tok').value.trim();
     if (t) entrar(t);
@@ -379,15 +469,20 @@ git clone x/cambios.bundle repo-restaurado</code></pre>
   $('#tok').addEventListener('keydown', e => { if (e.key === 'Enter') $('#btnEntrar').click(); });
   $('#btnOlvidar').onclick = () => {
     localStorage.removeItem(LLAVE);
-    tokenActual = '';
-    $('#tok').value = '';
-    $('#lista').innerHTML = '';
+    localStorage.removeItem(LLAVE_NAS);
+    tokenActual = ''; claveNas = '';
+    $('#tok').value = ''; $('#knas').value = '';
+    $('#lista').innerHTML = ''; $('#listaNas').innerHTML = '';
     $('#resumen').hidden = true;
     $('#ayuda').hidden = true;
+    $('#cajaAcceso').hidden = false;
+    $('#cajaNas').hidden = false;
   };
 
   const guardado = localStorage.getItem(LLAVE);
   if (guardado) entrar(guardado);
+  const guardadoNas = localStorage.getItem(LLAVE_NAS);
+  if (guardadoNas) entrarNas(guardadoNas);
 })();
 </script>
 </body>
