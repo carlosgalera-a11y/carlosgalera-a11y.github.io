@@ -166,6 +166,17 @@
   #agIA { font-size: 13px; white-space: pre-wrap; color: var(--ink); }
   #agIA.pensando { color: var(--muted); font-style: italic; }
 
+  /* ── Últimas 10 tareas y revisión semanal ── */
+  .panelcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-top: 16px; }
+  .panelcard h2 { font-size: 14px; margin-bottom: 8px; }
+  .ult-fecha { font-size: 11px; color: var(--soft); font-variant-numeric: tabular-nums; flex: none; }
+  #avisoRevision { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-size: 13px; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #avisoRevision.on { display: flex; }
+  #avisoRevision .btn { padding: 5px 11px; font-size: 12.5px; }
+  .rev-row { display: flex; align-items: center; gap: 9px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .rev-row .t { flex: 1; }
+  .rev-row .btn { padding: 4px 9px; font-size: 12px; flex: none; }
+
   #login { max-width: 380px; margin: 34px auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: none; box-shadow: var(--shadow); }
   #login h3 { font-size: 15px; margin-bottom: 12px; }
   #login input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 8px; font-family: inherit; }
@@ -217,6 +228,12 @@
 
   <div id="estado">Cargando…</div>
 
+  <div id="avisoRevision">
+    <span id="avisoTxt"></span>
+    <button id="revAbrir" class="btn primary">Revisar</button>
+    <button id="revLuego" class="btn">Más tarde</button>
+  </div>
+
   <div id="login">
     <h3>Entra con tu cuenta de FileHub</h3>
     <button id="gbtn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;font-size:14.5px;font-weight:600;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer">
@@ -237,6 +254,11 @@
     <div class="grid" id="cal" style="margin-top:6px"></div>
   </div>
   <div id="cols" style="display:none"></div>
+
+  <section class="panelcard" id="ultimasCard">
+    <h2>☑️ Últimas 10 tareas añadidas</h2>
+    <div id="ultimas"><div class="vacio">Inicia sesión para verlas.</div></div>
+  </section>
 
   <footer>Turnos: L urgencias tarde · M agenda mañana · X agenda tarde · J agenda mañana · V alterno. Eventos y tareas sincronizados con <a href="/">FileHub</a> (misma cuenta).</footer>
 </div>
@@ -296,6 +318,18 @@
     <div class="fila" style="margin-top:14px">
       <button id="agRefrescar" class="btn">Actualizar</button>
       <button id="agCerrar" class="btn primary">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panel revisión semanal -->
+<div id="revision" class="sheet">
+  <div class="caja">
+    <h3 style="text-transform:none">🔔 Revisión semanal</h3>
+    <div class="sub">Tareas que llevan más de 7 días pendientes: márcalas hechas o déjalas pendientes hasta el próximo ciclo.</div>
+    <div id="revLista"></div>
+    <div class="fila" style="margin-top:14px">
+      <button id="revCerrar" class="btn primary">Hecho</button>
     </div>
   </div>
 </div>
@@ -365,7 +399,7 @@ $('viernesBtn').onclick = () => {
 // ── Datos: eventos (calendar_events) y tareas (tasks) de FileHub ──────────
 // calendar_events: id(text), user_id, title, start_date(text), end_date, type.
 // tasks: id, user_id, title, completed, category, priority, due_date('YYYY-MM-DD').
-let uid = null, eventos = [], tareas = [], atrasadas = [], sinFecha = [];
+let uid = null, eventos = [], tareas = [], atrasadas = [], sinFecha = [], ultimas = [];
 
 const TIPO_EV = {
   personal: { bg: '#e0e7ff', fg: '#4338ca', dot: '#6366f1' },
@@ -379,9 +413,9 @@ const PRIO = { high: '#ef4444', medium: '#f59e0b', low: '#94a3b8' };
 const prioTxt = { high: 'alta', medium: 'media', low: 'baja' };
 
 async function cargarDatos(desde, hasta) {
-  if (!uid) { eventos = []; tareas = []; atrasadas = []; sinFecha = []; return; }
+  if (!uid) { eventos = []; tareas = []; atrasadas = []; sinFecha = []; ultimas = []; return; }
   const cols = 'id,title,completed,category,priority,due_date';
-  const [ev, ta, atr, sf] = await Promise.all([
+  const [ev, ta, atr, sf, ult] = await Promise.all([
     sb.from('calendar_events').select('id,title,start_date,end_date,type')
       .gte('start_date', desde).lt('start_date', hasta).order('start_date'),
     sb.from('tasks').select(cols).eq('user_id', uid)
@@ -390,13 +424,16 @@ async function cargarDatos(desde, hasta) {
       .eq('completed', false).lt('due_date', HOY_S).order('due_date').limit(20),
     sb.from('tasks').select(cols).eq('user_id', uid)
       .eq('completed', false).is('due_date', null).limit(8),
+    sb.from('tasks').select(cols + ',created_at').eq('user_id', uid)
+      .order('created_at', { ascending: false }).limit(10),
   ]);
-  const err = ev.error || ta.error || atr.error || sf.error;
+  const err = ev.error || ta.error || atr.error || sf.error || ult.error;
   if (err) { $('estado').textContent = 'Error cargando datos: ' + err.message; }
   eventos = ev.data || [];
   tareas = ta.data || [];
   atrasadas = atr.data || [];
   sinFecha = sf.data || [];
+  ultimas = ult.data || [];
 }
 const evDelDia = f => eventos.filter(e => (e.start_date || '').slice(0, 10) === f);
 const taDelDia = f => tareas.filter(t => (t.due_date || '').slice(0, 10) === f);
@@ -440,6 +477,7 @@ async function render() {
   await cargarDatos(ymd(start), ymd(end));
   if (modo === 'mes') { $('vistaMes').style.display = ''; $('cols').style.display = 'none'; renderMes(start); }
   else { $('vistaMes').style.display = 'none'; $('cols').style.display = 'grid'; renderCols(); }
+  pintaUltimas();
   $('estado').textContent = uid ? '' : 'Sin sesión: se ven los turnos, pero no tus eventos ni tareas de FileHub.';
   $('estado').style.display = $('estado').textContent ? 'block' : 'none';
 }
@@ -523,6 +561,19 @@ function filaTarea(ta, conFecha = false) {
     <span class="t">${esc(ta.title)}</span>
     ${conFecha && ta.due_date ? `<span class="fecha-atr">${ta.due_date.slice(8, 10)}/${ta.due_date.slice(5, 7)}</span>` : ''}
   </div>`;
+}
+
+// ── Últimas 10 tareas añadidas (por created_at, marcables de un toque) ────
+const fechaCorta = iso => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '';
+function pintaUltimas() {
+  const el = $('ultimas');
+  if (!uid) { el.innerHTML = '<div class="vacio">Inicia sesión para verlas.</div>'; return; }
+  el.innerHTML = ultimas.length ? ultimas.map(ta => `<div class="fila-ta${ta.completed ? ' hecha' : ''}">
+      <input type="checkbox" data-tid="${ta.id}" ${ta.completed ? 'checked' : ''}>
+      <span class="prio" style="background:${PRIO[ta.priority] || PRIO.low}" title="Prioridad ${prioTxt[ta.priority] || ''}"></span>
+      <span class="t">${esc(ta.title)}</span>
+      <span class="ult-fecha">añadida ${fechaCorta(ta.created_at)}${ta.due_date ? ' · para ' + fechaCorta(ta.due_date) : ''}</span>
+    </div>`).join('') : '<div class="vacio">Aún no hay tareas.</div>';
 }
 
 // ── Interacción global (eventos, tareas, panel) ───────────────────────────
@@ -743,6 +794,63 @@ $('agRefrescar').onclick = abreAsistente;
 $('agCerrar').onclick = () => $('agPanel').classList.remove('open');
 $('agPanel').addEventListener('click', e => { if (e.target === $('agPanel')) $('agPanel').classList.remove('open'); });
 
+// ── Revisión semanal: cada 7 días, repaso de tareas viejas pendientes ─────
+// Hito y aplazamiento en localStorage (por navegador): fh_cal_revision_ts /
+// fh_cal_revision_snooze. Si no hay tareas viejas, el ciclo se cumple sin banner.
+const DIA_MS = 86400000;
+let viejas = [], revComprobada = false;
+async function revisionSemanal() {
+  if (!uid || revComprobada) return;
+  revComprobada = true;
+  const ts = +localStorage.getItem('fh_cal_revision_ts') || 0;
+  const snooze = +localStorage.getItem('fh_cal_revision_snooze') || 0;
+  const ahora = Date.now();
+  if (ahora - ts < 7 * DIA_MS || ahora < snooze) return;
+  const corte = new Date(ahora - 7 * DIA_MS).toISOString();
+  const { data, error } = await sb.from('tasks')
+    .select('id,title,priority,created_at,due_date')
+    .eq('user_id', uid).eq('completed', false)
+    .lt('created_at', corte).order('created_at').limit(50);
+  if (error || !data) return;
+  if (!data.length) { localStorage.setItem('fh_cal_revision_ts', String(ahora)); return; }
+  viejas = data;
+  $('avisoTxt').textContent = viejas.length === 1
+    ? '🔔 Revisión semanal: 1 tarea lleva más de 7 días pendiente.'
+    : `🔔 Revisión semanal: ${viejas.length} tareas llevan más de 7 días pendientes.`;
+  $('avisoRevision').classList.add('on');
+}
+function pintaRevision() {
+  $('revLista').innerHTML = viejas.length ? viejas.map(t => `<div class="rev-row">
+      <span class="prio" style="background:${PRIO[t.priority] || PRIO.low}"></span>
+      <span class="t">${esc(t.title)} <span class="ult-fecha">(desde ${fechaCorta(t.created_at)})</span></span>
+      <button class="btn" data-rev-ok="${t.id}">✅ Hecha</button>
+      <button class="btn" data-rev-no="${t.id}">⏳ Pendiente</button>
+    </div>`).join('') : '<p style="font-size:13px;color:var(--muted)">Todo revisado. Ciclo cumplido: el próximo aviso, en 7 días.</p>';
+}
+function cierraRevision() {
+  localStorage.setItem('fh_cal_revision_ts', String(Date.now()));
+  localStorage.removeItem('fh_cal_revision_snooze');
+  $('avisoRevision').classList.remove('on');
+  $('revision').classList.remove('open');
+  render();
+}
+$('revAbrir').onclick = () => { pintaRevision(); $('revision').classList.add('open'); };
+$('revLuego').onclick = () => {
+  localStorage.setItem('fh_cal_revision_snooze', String(Date.now() + DIA_MS));
+  $('avisoRevision').classList.remove('on');
+};
+$('revCerrar').onclick = cierraRevision;
+$('revision').addEventListener('click', async e => {
+  if (e.target === $('revision')) { cierraRevision(); return; }
+  const ok = e.target.closest('[data-rev-ok]');
+  const no = e.target.closest('[data-rev-no]');
+  if (!ok && !no) return;
+  const id = ok ? ok.dataset.revOk : no.dataset.revNo;
+  if (ok && !(await marcaTarea(id, true))) return;
+  viejas = viejas.filter(t => String(t.id) !== String(id));
+  pintaRevision();
+});
+
 // ── Sesión ────────────────────────────────────────────────────────────────
 // Google OAuth: mismo flujo que la webapp (AuthView) — redirige a Google y
 // vuelve AQUÍ mismo; supabase-js procesa el #access_token del retorno solo
@@ -768,6 +876,7 @@ function aplicaSesion(session) {
   uid = nuevo;
   $('login').style.display = uid ? 'none' : 'block';
   render();
+  revisionSemanal();
 }
 // Al volver de Google, SIGNED_IN llega en cuanto el SDK procesa el hash.
 sb.auth.onAuthStateChange((_ev, session) => {
@@ -780,6 +889,7 @@ sb.auth.onAuthStateChange((_ev, session) => {
   $('login').style.display = uid ? 'none' : 'block';
   pintaViernesBtn();
   await render();
+  revisionSemanal();
 })();
 </script>
 </body>
