@@ -184,12 +184,41 @@
   footer { margin-top: 18px; text-align: center; font-size: 11px; color: var(--soft); }
   footer a { color: var(--indigo); }
 
+  /* ── Compartidas (círculo Carlos + Montse) ── */
+  .quien {
+    width: 15px; height: 15px; border-radius: 50%; flex: none; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 9px; font-weight: 800;
+    background: var(--indigo); color: #fff; letter-spacing: 0;
+  }
+  .quien.m { background: #db2777; }
+  .ev .quien { width: 12px; height: 12px; font-size: 8px; }
+  .seg.mini { padding: 2px; border-radius: 999px; }
+  .seg.mini button { padding: 4px 10px; font-size: 12px; border-radius: 999px; }
+  #filaShared { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 2px 0 10px; cursor: pointer; }
+  #filaShared input { width: 17px; height: 17px; accent-color: var(--indigo); margin: 0; flex: none; }
+
   @media (max-width: 760px) {
     body { padding: 12px 10px 22px; }
     #cols.tres { grid-template-columns: 1fr; }
     .controls { width: 100%; justify-content: space-between; }
     #rangoTitulo { min-width: 0; flex: 1; }
     .dia { min-height: 84px; }
+    /* Toque cómodo y sin zoom automático de iOS al enfocar campos */
+    .btn { padding: 9px 14px; }
+    .seg button { padding: 8px 13px; }
+    .sheet input, .sheet select, #login input { font-size: 16px; }
+    .sheet .caja { padding: 16px; max-height: 92vh; }
+  }
+  @media (max-width: 480px) {
+    .grid { gap: 3px; }
+    .dia { min-height: 68px; padding: 4px; border-radius: 9px; gap: 2px; }
+    .num { font-size: 11px; }
+    .turno { font-size: 8px; padding: 2px 4px; }
+    .ev { font-size: 9.5px; padding: 1.5px 4px; }
+    .tareasmini { font-size: 9px; padding: 1.5px 4px; }
+    .chip { padding: 3px 8px; font-size: 11px; }
+    .leyenda { gap: 5px; margin-bottom: 10px; }
+    .brand p { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -218,9 +247,14 @@
   </header>
 
   <div class="leyenda">
-    <span class="chip"><span class="dot" style="background:var(--red)"></span> Urgencias tarde 13–20</span>
-    <span class="chip"><span class="dot" style="background:var(--green)"></span> Agenda mañana 8–15</span>
-    <span class="chip"><span class="dot" style="background:var(--blue)"></span> Agenda tarde 13–20</span>
+    <div class="seg mini" id="segFiltro" title="Filtra eventos y tareas: todas, solo tuyas o solo las compartidas">
+      <button data-f="todas">Todas</button>
+      <button data-f="mias">Mías</button>
+      <button data-f="comunes">👥 Comunes</button>
+    </div>
+    <span class="chip chip-turno"><span class="dot" style="background:var(--red)"></span> Urgencias tarde 13–20</span>
+    <span class="chip chip-turno"><span class="dot" style="background:var(--green)"></span> Agenda mañana 8–15</span>
+    <span class="chip chip-turno"><span class="dot" style="background:var(--blue)"></span> Agenda tarde 13–20</span>
     <span class="chip"><span class="dot" style="background:var(--indigo)"></span> Eventos</span>
     <span class="chip"><span class="dot" style="background:#0ea5e9"></span> Tareas</span>
     <button id="viernesBtn" class="btn" title="Los viernes alternan mañana/tarde cada semana. Toca para corregir el turno de ESTA semana.">🔄 Viernes…</button>
@@ -297,6 +331,7 @@
         <option value="other">Otro</option>
       </select>
     </div>
+    <label id="filaShared"><input type="checkbox" id="fShared"> 👥 Compartida — la veis Carlos y Montse</label>
     <div class="fila">
       <button id="fVerDia" class="btn">Ver este día</button>
       <button id="fGuardar" class="btn primary">Guardar</button>
@@ -342,6 +377,15 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Mismo proyecto y storage por defecto que la webapp → en el MISMO dominio la sesión se comparte sola.
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Círculo compartido: eventos/tareas con shared=true los ven (y marcan) ambos.
+// Las RLS del proyecto (fh_circulo + fh_mismo_circulo) hacen cumplir esto en el servidor.
+const UID_CARLOS = '69428dff-f2b6-46ae-8120-0052e9bbed51';
+const UID_MONTSE = '94c1791d-3a28-4452-a166-233cb9783749';
+const NOMBRES = { [UID_CARLOS]: 'Carlos', [UID_MONTSE]: 'Montse' };
+const badgeQuien = x => x.shared
+  ? `<span class="quien${x.user_id === UID_MONTSE ? ' m' : ''}" title="Compartida · de ${NOMBRES[x.user_id] || '—'}">${(NOMBRES[x.user_id] || '?')[0]}</span>`
+  : '';
+
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -367,7 +411,9 @@ function isoWeek(d) {
 }
 // 'M' = en semanas ISO PARES el viernes es de mañana; 'T' = de tarde.
 let vierPar = localStorage.getItem('fh_cal_viernes_even') || 'M';
-function turnoDe(d) {
+// Los turnos del centro son de Carlos: con sesión de otra persona no se pintan.
+function turnoDe(d) { return (uid && uid !== UID_CARLOS) ? null : turnoDeCarlos(d); }
+function turnoDeCarlos(d) {
   const dow = d.getDay(); // 0=D 1=L...
   if (dow === 1) return T.URG_T;
   if (dow === 2) return T.AG_M;
@@ -387,6 +433,10 @@ function proximoViernes() {
   return d;
 }
 function pintaViernesBtn() {
+  const conTurnos = !uid || uid === UID_CARLOS;
+  document.querySelectorAll('.chip-turno').forEach(c => c.style.display = conTurnos ? '' : 'none');
+  $('viernesBtn').style.display = conTurnos ? '' : 'none';
+  if (!conTurnos) return;
   const t = turnoDe(proximoViernes());
   $('viernesBtn').textContent = `🔄 Este viernes: ${t === T.AG_M ? 'mañana 8–15' : 'tarde 13–20'}`;
 }
@@ -414,17 +464,18 @@ const prioTxt = { high: 'alta', medium: 'media', low: 'baja' };
 
 async function cargarDatos(desde, hasta) {
   if (!uid) { eventos = []; tareas = []; atrasadas = []; sinFecha = []; ultimas = []; return; }
-  const cols = 'id,title,completed,category,priority,due_date';
+  const cols = 'id,title,completed,category,priority,due_date,user_id,shared';
+  const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
   const [ev, ta, atr, sf, ult] = await Promise.all([
-    sb.from('calendar_events').select('id,title,start_date,end_date,type')
+    sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared')
       .gte('start_date', desde).lt('start_date', hasta).order('start_date'),
-    sb.from('tasks').select(cols).eq('user_id', uid)
+    sb.from('tasks').select(cols).or(miasOComunes)
       .gte('due_date', desde).lt('due_date', hasta).order('due_date'),
     sb.from('tasks').select(cols).eq('user_id', uid)
       .eq('completed', false).lt('due_date', HOY_S).order('due_date').limit(20),
     sb.from('tasks').select(cols).eq('user_id', uid)
       .eq('completed', false).is('due_date', null).limit(8),
-    sb.from('tasks').select(cols + ',created_at').eq('user_id', uid)
+    sb.from('tasks').select(cols + ',created_at').or(miasOComunes)
       .order('created_at', { ascending: false }).limit(10),
   ]);
   const err = ev.error || ta.error || atr.error || sf.error || ult.error;
@@ -435,12 +486,28 @@ async function cargarDatos(desde, hasta) {
   sinFecha = sf.data || [];
   ultimas = ult.data || [];
 }
-const evDelDia = f => eventos.filter(e => (e.start_date || '').slice(0, 10) === f);
-const taDelDia = f => tareas.filter(t => (t.due_date || '').slice(0, 10) === f);
+// Filtro Todas / Mías / Comunes (persistido en este navegador)
+let filtro = localStorage.getItem('fh_cal_filtro') || 'todas';
+const pasaFiltro = x => filtro === 'mias' ? x.user_id === uid : filtro === 'comunes' ? !!x.shared : true;
+function pintaFiltro() {
+  document.querySelectorAll('#segFiltro button').forEach(b => b.classList.toggle('on', b.dataset.f === filtro));
+}
+$('segFiltro').addEventListener('click', e => {
+  const b = e.target.closest('button[data-f]');
+  if (!b) return;
+  filtro = b.dataset.f;
+  localStorage.setItem('fh_cal_filtro', filtro);
+  pintaFiltro(); render();
+});
+pintaFiltro();
+
+const evDelDia = f => eventos.filter(e => (e.start_date || '').slice(0, 10) === f && pasaFiltro(e));
+const taDelDia = f => tareas.filter(t => (t.due_date || '').slice(0, 10) === f && pasaFiltro(t));
 const horaDe = e => (e.start_date || '').length > 10 ? (e.start_date || '').slice(11, 16) : '';
 
 // ── Estado de vista ────────────────────────────────────────────────────────
-let modo = localStorage.getItem('fh_cal_modo') || 'mes'; // mes | tres | dia
+// En móvil, la primera visita abre en «3 días» (la rejilla mensual es densa en pantalla pequeña).
+let modo = localStorage.getItem('fh_cal_modo') || (matchMedia('(max-width: 760px)').matches ? 'tres' : 'mes'); // mes | tres | dia
 let cursor = new Date(HOY);
 const DOWS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 $('cab').innerHTML = DOWS.map(d => `<div class="dow">${d}</div>`).join('');
@@ -500,7 +567,7 @@ function renderMes(start) {
       ${turnoChip(t)}
       ${evs.slice(0, 3).map(e => {
         const s = estiloEv(e), h = horaDe(e);
-        return `<span class="ev" style="background:${s.bg};color:${s.fg}"><span class="dot" style="background:${s.dot}"></span><span class="t">${h ? h + ' ' : ''}${esc(e.title)}</span><b class="x" data-id="${e.id}" title="Eliminar">×</b></span>`;
+        return `<span class="ev" style="background:${s.bg};color:${s.fg}"><span class="dot" style="background:${s.dot}"></span>${badgeQuien(e)}<span class="t">${h ? h + ' ' : ''}${esc(e.title)}</span>${e.user_id === uid ? `<b class="x" data-id="${e.id}" title="Eliminar">×</b>` : ''}</span>`;
       }).join('')}
       ${evs.length > 3 ? `<span class="masmini">+${evs.length - 3} más</span>` : ''}
       ${pend ? `<span class="tareasmini">☑ ${pend} tarea${pend > 1 ? 's' : ''}</span>` : ''}
@@ -535,8 +602,8 @@ function renderCols() {
         ${evs.length ? evs.map(e => {
           const s = estiloEv(e), h = horaDe(e);
           return `<div class="fila-ev" style="background:${s.bg};color:${s.fg}">
-            <span class="hora">${h || '—'}</span><span class="t">${esc(e.title)}</span>
-            <button class="x" data-id="${e.id}" title="Eliminar">×</button></div>`;
+            <span class="hora">${h || '—'}</span>${badgeQuien(e)}<span class="t">${esc(e.title)}</span>
+            ${e.user_id === uid ? `<button class="x" data-id="${e.id}" title="Eliminar">×</button>` : ''}</div>`;
         }).join('') : '<div class="vacio">Sin eventos</div>'}
       </div>
       <div>
@@ -558,7 +625,7 @@ function filaTarea(ta, conFecha = false) {
   return `<div class="fila-ta${ta.completed ? ' hecha' : ''}${conFecha ? ' atrasada' : ''}">
     <input type="checkbox" data-tid="${ta.id}" ${ta.completed ? 'checked' : ''}>
     <span class="prio" style="background:${PRIO[ta.priority] || PRIO.low}" title="Prioridad ${prioTxt[ta.priority] || ''}"></span>
-    <span class="t">${esc(ta.title)}</span>
+    ${badgeQuien(ta)}<span class="t">${esc(ta.title)}</span>
     ${conFecha && ta.due_date ? `<span class="fecha-atr">${ta.due_date.slice(8, 10)}/${ta.due_date.slice(5, 7)}</span>` : ''}
   </div>`;
 }
@@ -568,10 +635,11 @@ const fechaCorta = iso => iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '';
 function pintaUltimas() {
   const el = $('ultimas');
   if (!uid) { el.innerHTML = '<div class="vacio">Inicia sesión para verlas.</div>'; return; }
-  el.innerHTML = ultimas.length ? ultimas.map(ta => `<div class="fila-ta${ta.completed ? ' hecha' : ''}">
+  const lista = ultimas.filter(pasaFiltro);
+  el.innerHTML = lista.length ? lista.map(ta => `<div class="fila-ta${ta.completed ? ' hecha' : ''}">
       <input type="checkbox" data-tid="${ta.id}" ${ta.completed ? 'checked' : ''}>
       <span class="prio" style="background:${PRIO[ta.priority] || PRIO.low}" title="Prioridad ${prioTxt[ta.priority] || ''}"></span>
-      <span class="t">${esc(ta.title)}</span>
+      ${badgeQuien(ta)}<span class="t">${esc(ta.title)}</span>
       <span class="ult-fecha">añadida ${fechaCorta(ta.created_at)}${ta.due_date ? ' · para ' + fechaCorta(ta.due_date) : ''}</span>
     </div>`).join('') : '<div class="vacio">Aún no hay tareas.</div>';
 }
@@ -589,11 +657,13 @@ function abrePanel(fecha) {
   $('evlist').innerHTML = [
     ...evs.map(ev => {
       const s = estiloEv(ev);
-      return `<div class="row"><span class="dot" style="background:${s.dot}"></span><span class="t">${horaDe(ev) ? horaDe(ev) + ' · ' : ''}${esc(ev.title)}</span><button class="del" data-id="${ev.id}">×</button></div>`;
+      return `<div class="row"><span class="dot" style="background:${s.dot}"></span>${badgeQuien(ev)}<span class="t">${horaDe(ev) ? horaDe(ev) + ' · ' : ''}${esc(ev.title)}</span>${ev.user_id === uid ? `<button class="del" data-id="${ev.id}">×</button>` : ''}</div>`;
     }),
-    ...tas.map(ta => `<div class="row"><span class="dot" style="background:${PRIO[ta.priority] || PRIO.low}"></span><span class="t"${ta.completed ? ' style="text-decoration:line-through;color:var(--soft)"' : ''}>☑ ${esc(ta.title)}</span><button class="del" data-tid="${ta.id}">×</button></div>`),
+    ...tas.map(ta => `<div class="row"><span class="dot" style="background:${PRIO[ta.priority] || PRIO.low}"></span>${badgeQuien(ta)}<span class="t"${ta.completed ? ' style="text-decoration:line-through;color:var(--soft)"' : ''}>☑ ${esc(ta.title)}</span>${ta.user_id === uid ? `<button class="del" data-tid="${ta.id}">×</button>` : ''}</div>`),
   ].join('') || '<p style="font-size:12px;color:var(--muted)">Nada apuntado este día.</p>';
   $('fTitulo').value = ''; $('fHora').value = '';
+  $('fShared').checked = false;
+  $('filaShared').style.display = NOMBRES[uid] ? 'flex' : 'none';
   $('panel').classList.add('open');
   $('fTitulo').focus();
 }
@@ -656,11 +726,13 @@ $('fGuardar').onclick = async () => {
     ({ error } = await sb.from('calendar_events').insert({
       id: `ev_cal_${Date.now()}`, user_id: uid, title: titulo,
       start_date: start, end_date: start, type: $('fTipo').value,
+      shared: $('fShared').checked,
     }));
   } else {
     ({ error } = await sb.from('tasks').insert({
       id: `task_cal_${Date.now()}`, user_id: uid, title: titulo, completed: false,
       category: $('fCat').value, priority: $('fPrio').value, due_date: diaPanel,
+      shared: $('fShared').checked,
     }));
   }
   if (error) { alert('No se pudo guardar: ' + error.message); return; }
@@ -875,6 +947,7 @@ function aplicaSesion(session) {
   if (nuevo === uid) return;
   uid = nuevo;
   $('login').style.display = uid ? 'none' : 'block';
+  pintaViernesBtn();
   render();
   revisionSemanal();
 }
