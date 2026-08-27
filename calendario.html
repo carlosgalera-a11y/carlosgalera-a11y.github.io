@@ -400,6 +400,11 @@ const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const HOY = new Date(); HOY.setHours(0, 0, 0, 0);
 const HOY_S = ymd(HOY);
+// Ventana de «atrasadas»: solo las vencidas en los últimos 75 días. Las tareas
+// fósiles muy antiguas (que además se re-sincronizan solas desde la app) no
+// tapan lo realmente pendiente. Ajusta ATRAS_DIAS si quieres ver más atrás.
+const ATRAS_DIAS = 75;
+const ATRAS_DESDE = ymd(new Date(HOY.getTime() - ATRAS_DIAS * 86400000));
 
 // ── Turnos del centro de salud ─────────────────────────────────────────────
 // L: urgencias tarde 13-20 · M: agenda mañana 8-15 · X: agenda tarde 13-20 ·
@@ -480,7 +485,8 @@ async function cargarDatos(desde, hasta) {
     sb.from('tasks').select(cols).or(miasOComunes)
       .gte('due_date', desde).lt('due_date', hasta).order('due_date'),
     sb.from('tasks').select(cols).eq('user_id', uid)
-      .eq('completed', false).lt('due_date', HOY_S).order('due_date').limit(20),
+      .eq('completed', false).gte('due_date', ATRAS_DESDE).lt('due_date', HOY_S)
+      .order('due_date', { ascending: false }).limit(20),
     sb.from('tasks').select(cols).eq('user_id', uid)
       .eq('completed', false).is('due_date', null).limit(8),
     sb.from('tasks').select(cols + ',created_at').or(miasOComunes)
@@ -676,21 +682,43 @@ function abrePanel(fecha) {
   $('fTitulo').focus();
 }
 
+// En Safari móvil una petición puede fallar con «TypeError: Load failed» por
+// un corte breve de red. Reintentamos las escrituras con backoff antes de
+// rendirnos; un error real (no de red) no se reintenta.
+const esRedFallo = m => /load failed|failed to fetch|networkerror|network request failed|timeout|the network connection was lost/i.test(m || '');
+async function conReintento(fn, intentos = 3) {
+  let err;
+  for (let i = 0; i < intentos; i++) {
+    try {
+      const res = await fn();
+      if (!res || !res.error) return res || {};
+      err = res.error;
+      if (!esRedFallo(err.message)) return res;
+    } catch (e) {
+      err = e;
+      if (!esRedFallo(e.message)) return { error: e };
+    }
+    await new Promise(r => setTimeout(r, 400 * (i + 1)));
+  }
+  return { error: err };
+}
+const msgFallo = error => esRedFallo(error?.message) ? 'sin conexión, inténtalo otra vez' : (error?.message || 'error');
+
 async function borraEvento(id) {
   if (!confirm('¿Eliminar este evento?')) return false;
-  const { error } = await sb.from('calendar_events').delete().eq('id', id);
-  if (error) { alert('No se pudo eliminar: ' + error.message); return false; }
+  const { error } = await conReintento(() => sb.from('calendar_events').delete().eq('id', id));
+  if (error) { alert('No se pudo eliminar: ' + msgFallo(error)); return false; }
   return true;
 }
 async function borraTarea(id) {
   if (!confirm('¿Eliminar esta tarea?')) return false;
-  const { error } = await sb.from('tasks').delete().eq('id', id);
-  if (error) { alert('No se pudo eliminar: ' + error.message); return false; }
+  const { error } = await conReintento(() => sb.from('tasks').delete().eq('id', id));
+  if (error) { alert('No se pudo eliminar: ' + msgFallo(error)); return false; }
   return true;
 }
 async function marcaTarea(id, done) {
-  const { error } = await sb.from('tasks').update({ completed: done }).eq('id', id);
-  if (error) { alert('No se pudo actualizar: ' + error.message); return false; }
+  const { error } = await conReintento(() => sb.from('tasks').update({ completed: done }).eq('id', id));
+  if (error) { alert('No se pudo actualizar: ' + msgFallo(error)); return false; }
   return true;
 }
 
@@ -734,19 +762,19 @@ $('fGuardar').onclick = async () => {
   if (tipoPanel === 'ev') {
     const hora = $('fHora').value;
     const start = hora ? `${diaPanel}T${hora}` : diaPanel;
-    ({ error } = await sb.from('calendar_events').insert({
+    ({ error } = await conReintento(() => sb.from('calendar_events').insert({
       id: `ev_cal_${Date.now()}`, user_id: uid, title: titulo,
       start_date: start, end_date: start, type: $('fTipo').value,
       shared: $('fShared').checked,
-    }));
+    })));
   } else {
-    ({ error } = await sb.from('tasks').insert({
+    ({ error } = await conReintento(() => sb.from('tasks').insert({
       id: `task_cal_${Date.now()}`, user_id: uid, title: titulo, completed: false,
       category: $('fCat').value, priority: $('fPrio').value, due_date: diaPanel,
       shared: $('fShared').checked,
-    }));
+    })));
   }
-  if (error) { alert('No se pudo guardar: ' + error.message); return; }
+  if (error) { alert('No se pudo guardar: ' + msgFallo(error)); return; }
   $('panel').classList.remove('open');
   render();
 };
@@ -893,7 +921,10 @@ async function revisionSemanal() {
   const { data, error } = await sb.from('tasks')
     .select('id,title,priority,created_at,due_date')
     .eq('user_id', uid).eq('completed', false)
-    .lt('created_at', corte).order('created_at').limit(50);
+    .lt('created_at', corte)
+    // Sin fecha o vencida hace poco: los fósiles muy antiguos no se repasan.
+    .or(`due_date.is.null,due_date.gte.${ATRAS_DESDE}`)
+    .order('created_at').limit(50);
   if (error || !data) return;
   if (!data.length) { localStorage.setItem('fh_cal_revision_ts', String(ahora)); return; }
   viejas = data;
