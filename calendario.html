@@ -200,6 +200,8 @@
   #filaShared { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 2px 0 10px; cursor: pointer; }
   #filaShared input { width: 17px; height: 17px; accent-color: var(--indigo); margin: 0; flex: none; }
 
+  .ver-atr { font-size: 11.5px; padding: 4px 10px; margin-top: 4px; align-self: flex-start; color: #b91c1c; border-color: #fecaca; }
+
   @media (max-width: 760px) {
     body { padding: 12px 10px 22px; }
     #cols.tres { grid-template-columns: 1fr; }
@@ -211,6 +213,9 @@
     .seg button { padding: 8px 13px; }
     .sheet input, .sheet select, #login input { font-size: 16px; }
     .sheet .caja { padding: 16px; max-height: 92vh; }
+    /* En móvil la leyenda informativa sobra: quedan el filtro y el botón del viernes */
+    .leyenda .chip { display: none; }
+    #avisoRevision { padding: 8px 12px; font-size: 12.5px; }
   }
   @media (max-width: 480px) {
     .grid { gap: 3px; }
@@ -615,8 +620,8 @@ function renderCols() {
       </div>
       ${esHoy && atrasadas.length ? `<div>
         <div class="sec-t atrasada">Atrasadas (${atrasadas.length})</div>
-        ${atrasadas.slice(0, 6).map(ta => filaTarea(ta, true)).join('')}
-        ${atrasadas.length > 6 ? `<div class="vacio">…y ${atrasadas.length - 6} más</div>` : ''}
+        ${atrasadas.slice(0, verAtrasadas ? atrasadas.length : 4).map(ta => filaTarea(ta, true)).join('')}
+        ${atrasadas.length > 4 ? `<button class="btn ver-atr" id="verAtrBtn">${verAtrasadas ? 'Ver menos' : `Ver las ${atrasadas.length}`}</button>` : ''}
       </div>` : ''}
       <button class="col-add" data-f="${fecha}">+ Añadir a este día</button>
     </div>`;
@@ -689,7 +694,10 @@ async function marcaTarea(id, done) {
   return true;
 }
 
+let verAtrasadas = false;
 document.body.addEventListener('click', async e => {
+  const vb = e.target.closest('#verAtrBtn');
+  if (vb) { verAtrasadas = !verAtrasadas; renderCols(); return; }
   const x = e.target.closest('.x, .del');
   if (x) {
     e.stopPropagation();
