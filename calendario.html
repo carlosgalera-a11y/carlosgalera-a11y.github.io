@@ -57,6 +57,9 @@
   .btn.primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
   .btn.primary:hover { background: #4338ca; }
   .btn.icono { padding: 7px 11px; font-size: 15px; line-height: 1; }
+  @keyframes fh-girar { to { transform: rotate(360deg); } }
+  .btn.girando { animation: fh-girar .7s linear infinite; opacity: .65; }
+  @media (prefers-reduced-motion: reduce) { .btn.girando { animation: none; } }
   #rangoTitulo { font-weight: 700; font-size: 15.5px; min-width: 170px; text-align: center; }
 
   /* ── Leyenda ── */
@@ -249,6 +252,7 @@
         <span id="rangoTitulo"></span>
         <button id="next" class="btn icono" title="Siguiente">›</button>
         <button id="hoyBtn" class="btn">Hoy</button>
+        <button id="recargarBtn" class="btn icono" title="Actualizar: vuelve a leer tus eventos y tareas (por ejemplo, los que acabas de apuntar por Telegram)" aria-label="Actualizar">⟳</button>
       </div>
       <button id="agBtn" class="btn primary">✦ Asistente</button>
     </div>
@@ -797,8 +801,41 @@ function mueve(dir) {
 $('prev').onclick = () => mueve(-1);
 $('next').onclick = () => mueve(1);
 $('hoyBtn').onclick = () => { cursor = new Date(HOY); render(); };
+
+// ── ACTUALIZAR ─────────────────────────────────────────────────────────────
+// `render()` ya vuelve a leer de Supabase, así que recargar es llamarlo. Lo
+// que faltaba era la puerta: si apuntas algo por Telegram con el calendario
+// abierto, no había forma de verlo sin recargar la página entera.
+let recargando = false;
+let ultimaCarga = Date.now();
+const marcaCarga = () => { ultimaCarga = Date.now(); };
+async function recargar() {
+  if (recargando) return;
+  recargando = true;
+  const b = $('recargarBtn');
+  b.classList.add('girando');
+  b.disabled = true;
+  try { await render(); } finally {
+    recargando = false;
+    b.disabled = false;
+    b.classList.remove('girando');
+    marcaCarga();
+  }
+}
+$('recargarBtn').onclick = recargar;
+
+// Y al volver a la pestaña, que es justo cuando vuelves de Telegram. Con
+// margen de 20 s para no repetir la consulta si solo cambias de app un
+// segundo.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - ultimaCarga > 20000) {
+    marcaCarga(); recargar();
+  }
+});
+
 document.addEventListener('keydown', e => {
   if (e.target.matches('input, select, textarea')) return;
+  if (e.key === 'r' && !e.metaKey && !e.ctrlKey && !e.altKey) recargar();
   if (e.key === 'ArrowLeft') mueve(-1);
   if (e.key === 'ArrowRight') mueve(1);
 });
