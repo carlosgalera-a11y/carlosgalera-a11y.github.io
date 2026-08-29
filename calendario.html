@@ -12,15 +12,72 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  // Tema: 'auto' (sistema) | 'light' | 'dark'. Se aplica antes de pintar para no
+  // ver un fogonazo blanco al abrir en oscuro.
+  (function () {
+    var pref = localStorage.getItem('fh_cal_tema') || 'auto';
+    var oscuro = pref === 'dark' || (pref === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
+    document.documentElement.dataset.temaPref = pref;
+  })();
+</script>
 <style>
   /* Tema claro fijo (house style de Carlos) — formal, sereno y legible */
   :root {
     --ink: #0f172a; --muted: #64748b; --soft: #94a3b8;
     --line: #e5e9f2; --bg: #f4f6fa; --card: #ffffff;
-    --indigo: #4f46e5; --indigo-soft: #eef2ff;
+    --indigo: #4f46e5; --indigo-hover: #4338ca; --indigo-soft: #eef2ff; --indigo-ring: #4f46e51a;
     --red: #ef4444; --green: #22c55e; --blue: #3b82f6; --amber: #f59e0b; --emerald: #10b981;
     --shadow: 0 1px 2px rgba(15,23,42,.05), 0 4px 14px rgba(15,23,42,.05);
     --radius: 14px;
+    /* Superficies y detalles que cambian con el tema */
+    --seg-bg: #e9edf5; --seg-on: #ffffff; --line-hover: #c7d0e0;
+    --input-bg: var(--bg); --input-focus-bg: #ffffff;
+    --on-accent: #ffffff;
+    --overlay: #0f172a59; --sheet-shadow: 0 -8px 30px #00000033;
+    --aviso-bg: #fffbeb; --aviso-line: #fde68a; --aviso-fg: #92400e;
+    --atr-fg: #b91c1c; --atr-fecha: #dc2626; --atr-line: #fecaca;
+    --tarea: #0ea5e9; --montse: #db2777;
+    /* Turnos */
+    --t-urg-bg: #fee2e2; --t-urg-fg: #b91c1c;
+    --t-agm-bg: #dcfce7; --t-agm-fg: #15803d;
+    --t-agt-bg: #dbeafe; --t-agt-fg: #1d4ed8;
+    /* Tipos de evento */
+    --ev-personal-bg: #e0e7ff; --ev-personal-fg: #4338ca; --ev-personal-dot: #6366f1;
+    --ev-work-bg: #fef3c7;     --ev-work-fg: #b45309;     --ev-work-dot: #f59e0b;
+    --ev-fitness-bg: #d1fae5;  --ev-fitness-fg: #047857;  --ev-fitness-dot: #10b981;
+    --ev-trip-bg: #cffafe;     --ev-trip-fg: #0e7490;     --ev-trip-dot: #06b6d4;
+    --ev-guardia-bg: #fee2e2;  --ev-guardia-fg: #b91c1c;  --ev-guardia-dot: #ef4444;
+    /* Prioridades */
+    --prio-high: #ef4444; --prio-medium: #f59e0b; --prio-low: #94a3b8;
+    color-scheme: light;
+  }
+
+  /* ── Modo oscuro (tokens fh-* de FileHub) ── */
+  html[data-tema="dark"] {
+    --ink: #f8fafc; --muted: #94a3b8; --soft: #64748b;
+    --line: #283449; --bg: #0b1326; --card: #131b2e;
+    --indigo: #8083ff; --indigo-hover: #9a9dff; --indigo-soft: #8083ff26; --indigo-ring: #8083ff2e;
+    --red: #f87171; --green: #4ade80; --blue: #60a5fa; --amber: #fbbf24; --emerald: #4edea3;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.30);
+    --seg-bg: #1b2438; --seg-on: #222a3d; --line-hover: #3b4761;
+    --input-bg: #0f1729; --input-focus-bg: #131b2e;
+    --on-accent: #0b1326;
+    --overlay: #020617b3; --sheet-shadow: 0 -8px 30px #00000066;
+    --aviso-bg: #3a2c0c; --aviso-line: #6b5312; --aviso-fg: #fcd34d;
+    --atr-fg: #fca5a5; --atr-fecha: #f87171; --atr-line: #7f1d1d;
+    --tarea: #38bdf8; --montse: #f472b6;
+    --t-urg-bg: #3a1c1f; --t-urg-fg: #fca5a5;
+    --t-agm-bg: #14321f; --t-agm-fg: #86efac;
+    --t-agt-bg: #17253f; --t-agt-fg: #93c5fd;
+    --ev-personal-bg: #232a4d; --ev-personal-fg: #c0c1ff; --ev-personal-dot: #8083ff;
+    --ev-work-bg: #3a2c12;     --ev-work-fg: #fcd34d;     --ev-work-dot: #f59e0b;
+    --ev-fitness-bg: #10322a;  --ev-fitness-fg: #6ee7b7;  --ev-fitness-dot: #4edea3;
+    --ev-trip-bg: #113240;     --ev-trip-fg: #67e8f9;     --ev-trip-dot: #22d3ee;
+    --ev-guardia-bg: #3a1c1f;  --ev-guardia-fg: #fca5a5;  --ev-guardia-dot: #f87171;
+    --prio-high: #f87171; --prio-medium: #fbbf24; --prio-low: #64748b;
+    color-scheme: dark;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -39,12 +96,12 @@
   .controls { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
 
   /* Selector de vista (segmented control) */
-  .seg { display: inline-flex; background: #e9edf5; border-radius: 11px; padding: 3px; gap: 2px; }
+  .seg { display: inline-flex; background: var(--seg-bg); border-radius: 11px; padding: 3px; gap: 2px; }
   .seg button {
     border: none; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px;
     padding: 6px 13px; border-radius: 9px; cursor: pointer; transition: color .15s, background .15s;
   }
-  .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+  .seg button.on { background: var(--seg-on); color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
 
   .nav { display: flex; align-items: center; gap: 6px; }
   button { font-family: inherit; }
@@ -53,9 +110,9 @@
     border-radius: 10px; padding: 7px 13px; font-size: 13.5px; font-weight: 600;
     box-shadow: 0 1px 2px rgba(15,23,42,.04); transition: border-color .15s, background .15s;
   }
-  .btn:hover { border-color: #c7d0e0; }
-  .btn.primary { background: var(--indigo); border-color: var(--indigo); color: #fff; }
-  .btn.primary:hover { background: #4338ca; }
+  .btn:hover { border-color: var(--line-hover); }
+  .btn.primary { background: var(--indigo); border-color: var(--indigo); color: var(--on-accent); }
+  .btn.primary:hover { background: var(--indigo-hover); }
   .btn.icono { padding: 7px 11px; font-size: 15px; line-height: 1; }
   @keyframes fh-girar { to { transform: rotate(360deg); } }
   .btn.girando { animation: fh-girar .7s linear infinite; opacity: .65; }
@@ -78,9 +135,9 @@
     padding: 6px; display: flex; flex-direction: column; gap: 3px; position: relative; cursor: pointer;
     transition: border-color .15s, box-shadow .15s;
   }
-  .dia:hover { border-color: #c7d0e0; box-shadow: var(--shadow); }
+  .dia:hover { border-color: var(--line-hover); box-shadow: var(--shadow); }
   .dia.fuera { opacity: .42; }
-  .dia.hoy { border: 1.5px solid var(--indigo); box-shadow: 0 0 0 3px #4f46e51a; }
+  .dia.hoy { border: 1.5px solid var(--indigo); box-shadow: 0 0 0 3px var(--indigo-ring); }
   .num { font-size: 12px; font-weight: 700; padding: 0 3px; color: var(--ink); }
   .dia.hoy .num { color: var(--indigo); }
   .turno { font-size: 9.5px; font-weight: 700; border-radius: 6px; padding: 2.5px 6px; line-height: 1.2; letter-spacing: .02em; }
@@ -108,7 +165,7 @@
     background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; min-height: 240px;
   }
-  .col.hoy { border-color: var(--indigo); box-shadow: 0 0 0 3px #4f46e514, var(--shadow); }
+  .col.hoy { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-ring), var(--shadow); }
   .col-head { display: flex; align-items: baseline; gap: 9px; border-bottom: 1px solid var(--line); padding-bottom: 9px; }
   .col-dow { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: capitalize; }
   .col-num { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
@@ -129,30 +186,30 @@
   .fila-ta .t { flex: 1; font-weight: 500; }
   .fila-ta.hecha .t { text-decoration: line-through; color: var(--soft); }
   .prio { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-  .atrasada { color: #b91c1c; }
-  .atrasada .fecha-atr { font-size: 11px; color: #dc2626; font-weight: 600; }
+  .atrasada { color: var(--atr-fg); }
+  .atrasada .fecha-atr { font-size: 11px; color: var(--atr-fecha); font-weight: 600; }
   .col-add { border: 1.5px dashed var(--line); background: transparent; color: var(--muted); border-radius: 10px; padding: 7px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: auto; }
   .col-add:hover { border-color: var(--indigo); color: var(--indigo); }
 
   /* ── Paneles (hoja inferior) ── */
-  .sheet { position: fixed; inset: 0; background: #0f172a59; display: none; align-items: flex-end; justify-content: center; z-index: 50; backdrop-filter: blur(2px); }
+  .sheet { position: fixed; inset: 0; background: var(--overlay); display: none; align-items: flex-end; justify-content: center; z-index: 50; backdrop-filter: blur(2px); }
   .sheet.open { display: flex; }
   .sheet .caja {
     background: var(--card); border-radius: 18px 18px 0 0; padding: 20px; width: 100%; max-width: 520px;
-    box-shadow: 0 -8px 30px #0003; max-height: 86vh; overflow-y: auto;
+    box-shadow: var(--sheet-shadow); max-height: 86vh; overflow-y: auto;
   }
   .sheet h3 { font-size: 16px; margin-bottom: 4px; text-transform: capitalize; }
   .sheet .sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
   .sheet input, .sheet select {
     width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px;
-    margin-bottom: 8px; background: var(--bg); color: var(--ink); outline: none; font-family: inherit;
+    margin-bottom: 8px; background: var(--input-bg); color: var(--ink); outline: none; font-family: inherit;
   }
-  .sheet input:focus, .sheet select:focus { border-color: var(--indigo); background: #fff; }
+  .sheet input:focus, .sheet select:focus { border-color: var(--indigo); background: var(--input-focus-bg); }
   .fila { display: flex; gap: 8px; }
   .fila > * { flex: 1; }
-  .tabs { display: flex; background: #e9edf5; border-radius: 10px; padding: 3px; gap: 2px; margin-bottom: 10px; }
+  .tabs { display: flex; background: var(--seg-bg); border-radius: 10px; padding: 3px; gap: 2px; margin-bottom: 10px; }
   .tabs button { flex: 1; border: none; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; padding: 6px; border-radius: 8px; cursor: pointer; }
-  .tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
+  .tabs button.on { background: var(--seg-on); color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
   .evlist { margin: 4px 0 12px; max-height: 200px; overflow-y: auto; }
   .evlist .row { display: flex; align-items: center; gap: 9px; padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 13px; }
   .evlist .row .t { flex: 1; }
@@ -176,7 +233,7 @@
   .panelcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-top: 16px; }
   .panelcard h2 { font-size: 14px; margin-bottom: 8px; }
   .ult-fecha { font-size: 11px; color: var(--soft); font-variant-numeric: tabular-nums; flex: none; }
-  #avisoRevision { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-size: 13px; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #avisoRevision { display: none; background: var(--aviso-bg); border: 1px solid var(--aviso-line); color: var(--aviso-fg); border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-size: 13px; align-items: center; gap: 10px; flex-wrap: wrap; }
   #avisoRevision.on { display: flex; }
   #avisoRevision .btn { padding: 5px 11px; font-size: 12.5px; }
   .rev-row { display: flex; align-items: center; gap: 9px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
@@ -185,6 +242,7 @@
 
   #login { max-width: 380px; margin: 34px auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: none; box-shadow: var(--shadow); }
   #login h3 { font-size: 15px; margin-bottom: 12px; }
+  #login input { background: var(--input-bg); color: var(--ink); }
   #login input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 8px; font-family: inherit; }
 
   footer { margin-top: 18px; text-align: center; font-size: 11px; color: var(--soft); }
@@ -194,16 +252,16 @@
   .quien {
     width: 15px; height: 15px; border-radius: 50%; flex: none; display: inline-flex;
     align-items: center; justify-content: center; font-size: 9px; font-weight: 800;
-    background: var(--indigo); color: #fff; letter-spacing: 0;
+    background: var(--indigo); color: var(--on-accent); letter-spacing: 0;
   }
-  .quien.m { background: #db2777; }
+  .quien.m { background: var(--montse); }
   .ev .quien { width: 12px; height: 12px; font-size: 8px; }
   .seg.mini { padding: 2px; border-radius: 999px; }
   .seg.mini button { padding: 4px 10px; font-size: 12px; border-radius: 999px; }
   #filaShared { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 2px 0 10px; cursor: pointer; }
   #filaShared input { width: 17px; height: 17px; accent-color: var(--indigo); margin: 0; flex: none; }
 
-  .ver-atr { font-size: 11.5px; padding: 4px 10px; margin-top: 4px; align-self: flex-start; color: #b91c1c; border-color: #fecaca; }
+  .ver-atr { font-size: 11.5px; padding: 4px 10px; margin-top: 4px; align-self: flex-start; color: var(--atr-fg); border-color: var(--atr-line); }
 
   @media (max-width: 760px) {
     body { padding: 12px 10px 22px; }
@@ -254,6 +312,7 @@
         <button id="hoyBtn" class="btn">Hoy</button>
         <button id="recargarBtn" class="btn icono" title="Actualizar: vuelve a leer tus eventos y tareas (por ejemplo, los que acabas de apuntar por Telegram)" aria-label="Actualizar">⟳</button>
       </div>
+      <button id="temaBtn" class="btn icono" title="Cambiar tema (auto / claro / oscuro)" aria-label="Cambiar tema">🌗</button>
       <button id="agBtn" class="btn primary">✦ Asistente</button>
     </div>
   </header>
@@ -268,7 +327,7 @@
     <span class="chip chip-turno"><span class="dot" style="background:var(--green)"></span> Agenda mañana 8–15</span>
     <span class="chip chip-turno"><span class="dot" style="background:var(--blue)"></span> Agenda tarde 13–20</span>
     <span class="chip"><span class="dot" style="background:var(--indigo)"></span> Eventos</span>
-    <span class="chip"><span class="dot" style="background:#0ea5e9"></span> Tareas</span>
+    <span class="chip"><span class="dot" style="background:var(--tarea)"></span> Tareas</span>
     <button id="viernesBtn" class="btn" title="Los viernes alternan mañana/tarde cada semana. Toca para corregir el turno de ESTA semana.">🔄 Viernes…</button>
   </div>
 
@@ -282,7 +341,7 @@
 
   <div id="login">
     <h3>Entra con tu cuenta de FileHub</h3>
-    <button id="gbtn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;font-size:14.5px;font-weight:600;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer">
+    <button id="gbtn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;font-size:14.5px;font-weight:600;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.2 5.2C36.9 40.4 44 35 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
       Continuar con Google
     </button>
@@ -415,9 +474,9 @@ const ATRAS_DESDE = ymd(new Date(HOY.getTime() - ATRAS_DIAS * 86400000));
 // J: agenda mañana 8-15 · V: ALTERNO mañana/tarde por semana (paridad ISO,
 // corregible con el botón «Viernes» — se guarda en este navegador).
 const T = {
-  URG_T: { label: 'URGENCIAS 13–20', bg: '#fee2e2', fg: '#b91c1c' },
-  AG_M:  { label: 'AGENDA 8–15',     bg: '#dcfce7', fg: '#15803d' },
-  AG_T:  { label: 'AGENDA 13–20',    bg: '#dbeafe', fg: '#1d4ed8' },
+  URG_T: { label: 'URGENCIAS 13–20', bg: 'var(--t-urg-bg)', fg: 'var(--t-urg-fg)' },
+  AG_M:  { label: 'AGENDA 8–15',     bg: 'var(--t-agm-bg)', fg: 'var(--t-agm-fg)' },
+  AG_T:  { label: 'AGENDA 13–20',    bg: 'var(--t-agt-bg)', fg: 'var(--t-agt-fg)' },
 };
 function isoWeek(d) {
   const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -469,14 +528,14 @@ $('viernesBtn').onclick = () => {
 let uid = null, eventos = [], tareas = [], atrasadas = [], sinFecha = [], ultimas = [];
 
 const TIPO_EV = {
-  personal: { bg: '#e0e7ff', fg: '#4338ca', dot: '#6366f1' },
-  work:     { bg: '#fef3c7', fg: '#b45309', dot: '#f59e0b' },
-  fitness:  { bg: '#d1fae5', fg: '#047857', dot: '#10b981' },
-  trip:     { bg: '#cffafe', fg: '#0e7490', dot: '#06b6d4' },
-  guardia:  { bg: '#fee2e2', fg: '#b91c1c', dot: '#ef4444' },
+  personal: { bg: 'var(--ev-personal-bg)', fg: 'var(--ev-personal-fg)', dot: 'var(--ev-personal-dot)' },
+  work:     { bg: 'var(--ev-work-bg)',     fg: 'var(--ev-work-fg)',     dot: 'var(--ev-work-dot)' },
+  fitness:  { bg: 'var(--ev-fitness-bg)',  fg: 'var(--ev-fitness-fg)',  dot: 'var(--ev-fitness-dot)' },
+  trip:     { bg: 'var(--ev-trip-bg)',     fg: 'var(--ev-trip-fg)',     dot: 'var(--ev-trip-dot)' },
+  guardia:  { bg: 'var(--ev-guardia-bg)',  fg: 'var(--ev-guardia-fg)',  dot: 'var(--ev-guardia-dot)' },
 };
 const estiloEv = ev => /guardia/i.test(ev.title || '') ? TIPO_EV.guardia : (TIPO_EV[ev.type] || TIPO_EV.personal);
-const PRIO = { high: '#ef4444', medium: '#f59e0b', low: '#94a3b8' };
+const PRIO = { high: 'var(--prio-high)', medium: 'var(--prio-medium)', low: 'var(--prio-low)' };
 const prioTxt = { high: 'alta', medium: 'media', low: 'baja' };
 
 async function cargarDatos(desde, hasta) {
@@ -871,7 +930,7 @@ function pintaBrief(dias) {
       : '<li style="color:var(--soft)">Sin tareas pendientes</li>';
     const atrHtml = x.esHoy && atrasadas.length
       ? `<div class="grupo atrasada">Atrasadas</div><ul>${atrasadas.slice(0, 6).map(t =>
-          `<li class="atrasada"><span class="prio" style="background:#ef4444;margin-top:4px"></span><span>${esc(t.title)} <span class="fecha-atr">(${(t.due_date || '').slice(8, 10)}/${(t.due_date || '').slice(5, 7)})</span></span></li>`).join('')}</ul>`
+          `<li class="atrasada"><span class="prio" style="background:var(--prio-high);margin-top:4px"></span><span>${esc(t.title)} <span class="fecha-atr">(${(t.due_date || '').slice(8, 10)}/${(t.due_date || '').slice(5, 7)})</span></span></li>`).join('')}</ul>`
       : '';
     return `<div class="ag-dia">
       <h4>${fmt(x.d, { weekday: 'long', day: 'numeric', month: 'long' })}${x.esHoy ? '<span class="badge-hoy">Hoy</span>' : ''}</h4>
@@ -937,6 +996,30 @@ async function abreAsistente() {
     ia.textContent = 'La IA no está disponible ahora mismo (' + err.message + '). El resumen de arriba ya recoge todo lo pendiente.';
   }
 }
+// ── Tema claro / oscuro ────────────────────────────────────────────────────
+const TEMAS = ['auto', 'light', 'dark'];
+const TEMA_ICONO = { auto: '🌗', light: '☀️', dark: '🌙' };
+const TEMA_TXT = { auto: 'automático (sigue al sistema)', light: 'claro', dark: 'oscuro' };
+const mqOscuro = matchMedia('(prefers-color-scheme: dark)');
+function aplicaTema() {
+  const pref = document.documentElement.dataset.temaPref || 'auto';
+  const oscuro = pref === 'dark' || (pref === 'auto' && mqOscuro.matches);
+  document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', oscuro ? '#0b1326' : '#f4f6fa');
+  const b = $('temaBtn');
+  if (b) { b.textContent = TEMA_ICONO[pref]; b.title = `Tema ${TEMA_TXT[pref]} — toca para cambiar`; }
+}
+$('temaBtn').onclick = () => {
+  const pref = document.documentElement.dataset.temaPref || 'auto';
+  const sig = TEMAS[(TEMAS.indexOf(pref) + 1) % TEMAS.length];
+  document.documentElement.dataset.temaPref = sig;
+  localStorage.setItem('fh_cal_tema', sig);
+  aplicaTema();
+};
+mqOscuro.addEventListener('change', aplicaTema);
+aplicaTema();
+
 $('agBtn').onclick = abreAsistente;
 $('agRefrescar').onclick = abreAsistente;
 $('agCerrar').onclick = () => $('agPanel').classList.remove('open');
