@@ -161,6 +161,12 @@
   #cols { display: grid; gap: 12px; }
   #cols.tres { grid-template-columns: repeat(3, 1fr); }
   #cols.uno { grid-template-columns: 1fr; max-width: 620px; margin: 0 auto; }
+  #cols.siete { grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  #cols.siete .col { padding: 9px; min-height: 200px; gap: 7px; }
+  #cols.siete .col-num { font-size: 19px; }
+  #cols.siete .col-dow { font-size: 10.5px; }
+  #cols.siete .col-head { gap: 6px; padding-bottom: 6px; flex-wrap: wrap; }
+  @media (max-width: 1150px) { #cols.siete { grid-template-columns: repeat(2, 1fr); } }
   .col {
     background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; min-height: 240px;
@@ -266,6 +272,7 @@
   @media (max-width: 760px) {
     body { padding: 12px 10px 22px; }
     #cols.tres { grid-template-columns: 1fr; }
+    #cols.siete { grid-template-columns: 1fr; }
     .controls { width: 100%; justify-content: space-between; }
     #rangoTitulo { min-width: 0; flex: 1; }
     .dia { min-height: 84px; }
@@ -302,6 +309,7 @@
     <div class="controls">
       <div class="seg" id="segVista">
         <button data-v="mes">Mes</button>
+        <button data-v="semana">Semana</button>
         <button data-v="tres">3 días</button>
         <button data-v="dia">Día</button>
       </div>
@@ -355,8 +363,9 @@
   </div>
 
   <div id="vistaMes">
-    <div class="grid" id="cab"></div>
-    <div class="grid" id="cal" style="margin-top:6px"></div>
+    <!-- Un ÚNICO grid: los días de la semana (L–D) son las 7 primeras celdas,
+         así la cabecera y los números comparten pistas y no pueden descuadrarse. -->
+    <div class="grid" id="cal"></div>
   </div>
   <div id="cols" style="display:none"></div>
 
@@ -587,7 +596,6 @@ const horaDe = e => (e.start_date || '').length > 10 ? (e.start_date || '').slic
 let modo = localStorage.getItem('fh_cal_modo') || (matchMedia('(max-width: 760px)').matches ? 'tres' : 'mes'); // mes | tres | dia
 let cursor = new Date(HOY);
 const DOWS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-$('cab').innerHTML = DOWS.map(d => `<div class="dow">${d}</div>`).join('');
 const fmt = (d, o) => d.toLocaleDateString('es-ES', o);
 
 function rango() {
@@ -596,6 +604,11 @@ function rango() {
     const start = new Date(first); start.setDate(first.getDate() - ((first.getDay() + 6) % 7));
     const end = new Date(start); end.setDate(start.getDate() + 42);
     return { start, end, dias: 42 };
+  }
+  if (modo === 'semana') {
+    const start = new Date(cursor); start.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7)); // lunes
+    const end = new Date(start); end.setDate(start.getDate() + 7);
+    return { start, end, dias: 7 };
   }
   const n = modo === 'tres' ? 3 : 1;
   const start = new Date(cursor);
@@ -606,6 +619,14 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 function tituloRango() {
   if (modo === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (modo === 'dia') return cap(fmt(cursor, { weekday: 'long', day: 'numeric', month: 'long' }));
+  if (modo === 'semana') {
+    const { start } = rango();
+    const fin = new Date(start); fin.setDate(start.getDate() + 6);
+    const m1 = fmt(start, { month: 'short' }), m2 = fmt(fin, { month: 'short' });
+    return start.getMonth() === fin.getMonth()
+      ? `Semana ${start.getDate()}–${fin.getDate()} ${m1} ${fin.getFullYear()}`
+      : `Semana ${start.getDate()} ${m1} – ${fin.getDate()} ${m2}`;
+  }
   const fin = new Date(cursor); fin.setDate(fin.getDate() + 2);
   const mismoMes = cursor.getMonth() === fin.getMonth();
   const m1 = fmt(cursor, { month: 'short' }), m2 = fmt(fin, { month: 'short' });
@@ -629,7 +650,8 @@ async function render() {
 // ── Vista MES ──────────────────────────────────────────────────────────────
 function renderMes(start) {
   const m = cursor.getMonth();
-  let html = '';
+  // Cabecera L–D dentro del MISMO grid que las celdas: alineada por construcción.
+  let html = DOWS.map(x => `<div class="dow">${x}</div>`).join('');
   const d = new Date(start);
   for (let i = 0; i < 42; i++) {
     const fecha = ymd(d);
@@ -655,12 +677,13 @@ function renderMes(start) {
   $('cal').innerHTML = html;
 }
 
-// ── Vista COLUMNAS (3 días / día) ─────────────────────────────────────────
+// ── Vista COLUMNAS (semana / 3 días / día) ────────────────────────────────
 function renderCols() {
-  const n = modo === 'tres' ? 3 : 1;
-  $('cols').className = n === 3 ? 'tres' : 'uno';
+  const n = modo === 'semana' ? 7 : modo === 'tres' ? 3 : 1;
+  $('cols').className = n === 7 ? 'siete' : n === 3 ? 'tres' : 'uno';
+  const { start } = rango(); // en semana arranca en lunes; en el resto, en el cursor
   let html = '';
-  const d = new Date(cursor);
+  const d = new Date(start);
   for (let i = 0; i < n; i++) {
     const fecha = ymd(d);
     const esHoy = d.getTime() === HOY.getTime();
@@ -854,7 +877,7 @@ $('segVista').addEventListener('click', e => {
 });
 function mueve(dir) {
   if (modo === 'mes') cursor = new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1);
-  else { cursor = new Date(cursor); cursor.setDate(cursor.getDate() + dir * (modo === 'tres' ? 3 : 1)); }
+  else { cursor = new Date(cursor); cursor.setDate(cursor.getDate() + dir * (modo === 'semana' ? 7 : modo === 'tres' ? 3 : 1)); }
   render();
 }
 $('prev').onclick = () => mueve(-1);
@@ -909,7 +932,8 @@ function diasAsistente() {
   if (modo === 'mes') {
     const mismoMes = cursor.getFullYear() === HOY.getFullYear() && cursor.getMonth() === HOY.getMonth();
     base = mismoMes ? new Date(HOY) : new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-  } else base = new Date(cursor);
+  } else if (modo === 'semana') base = rango().start;
+  else base = new Date(cursor);
   const n = modo === 'dia' ? 1 : modo === 'tres' ? 3 : 7;
   const d = new Date(base);
   for (let i = 0; i < n; i++) { dias.push(new Date(d)); d.setDate(d.getDate() + 1); }
