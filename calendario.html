@@ -436,6 +436,33 @@
       <div class="sec-t">Análisis del asistente</div>
       <div id="agIA" class="pensando">Preparando resumen…</div>
     </div>
+
+    <div class="sec-t" style="margin-top:16px">➕ Apuntar rápido</div>
+    <input id="qaTitulo" placeholder="Qué (ej: Cena juntos, Llamar al banco…)">
+    <div class="fila">
+      <input id="qaFecha" type="date">
+      <input id="qaHora" type="time">
+    </div>
+    <div class="fila" style="align-items:center">
+      <div class="tabs" style="flex:1;margin:0">
+        <button id="qaEv" class="on">Evento</button>
+        <button id="qaTa">Tarea</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer">
+        <input type="checkbox" id="qaShared" style="width:16px;height:16px;accent-color:var(--indigo);margin:0"> 👥 Común
+      </label>
+    </div>
+    <button id="qaGuardar" class="btn primary" style="width:100%">Guardar</button>
+    <div id="qaMsg" class="sub" style="margin:6px 0 0"></div>
+
+    <div class="sec-t" style="margin-top:18px">🔎 Posibles eventos</div>
+    <div class="sub">Pídeme que busque planes o cursos reales (busco en internet): «cursos de dolçaina en un centre cívic prop d'Horta», «centres cívics on facin català»…</div>
+    <div class="fila">
+      <input id="peQuery" placeholder="Qué busco…" style="flex:1">
+      <button id="peBuscar" class="btn">Buscar</button>
+    </div>
+    <div id="peRes"></div>
+
     <div class="fila" style="margin-top:14px">
       <button id="agRefrescar" class="btn">Actualizar</button>
       <button id="agCerrar" class="btn primary">Cerrar</button>
@@ -540,7 +567,13 @@ $('viernesBtn').onclick = () => {
 // ── Datos: eventos (calendar_events) y tareas (tasks) de FileHub ──────────
 // calendar_events: id(text), user_id, title, start_date(text), end_date, type.
 // tasks: id, user_id, title, completed, category, priority, due_date('YYYY-MM-DD').
-let uid = null, eventos = [], tareas = [], atrasadas = [], sinFecha = [], ultimas = [];
+let uid = null, emailSesion = '', eventos = [], tareas = [], atrasadas = [], sinFecha = [], ultimas = [];
+/** Nombre corto del perfil logueado, para que el asistente hable a quien toca. */
+function quienSoy() {
+  if (emailSesion.startsWith('montsemaymo')) return { nombre: 'Montse', desc: 'Montse' };
+  if (emailSesion.startsWith('carlosgalera2roman')) return { nombre: 'Carlos', desc: 'Carlos, médico de familia y urgencias en un centro de salud' };
+  return { nombre: emailSesion.split('@')[0] || 'quien usa la agenda', desc: emailSesion.split('@')[0] || 'la persona que usa la agenda' };
+}
 
 const TIPO_EV = {
   personal: { bg: 'var(--ev-personal-bg)', fg: 'var(--ev-personal-fg)', dot: 'var(--ev-personal-dot)' },
@@ -991,7 +1024,7 @@ function promptAsistente(dias) {
 async function llamaIA(userText) {
   const body = {
     messages: [{ role: 'user', content: userText }],
-    system: 'Eres el asistente de agenda de Carlos, médico de familia y urgencias en un centro de salud. Responde SIEMPRE en español, con tono claro, directo y ordenado. Estructura la respuesta día por día (empezando por hoy si aparece), en frases cortas o guiones. Para cada día: el turno de trabajo, los eventos con su hora y las tareas pendientes por prioridad. Avisa explícitamente de choques de horario entre turno y eventos, y recuerda las tareas atrasadas al principio si las hay. No inventes nada que no esté en los datos. Máximo unas 200 palabras.',
+    system: `Eres el asistente de agenda de ${quienSoy().desc}. Responde SIEMPRE en español, con tono claro, directo y ordenado. Estructura la respuesta día por día (empezando por hoy si aparece), en frases cortas o guiones. Para cada día: el turno de trabajo, los eventos con su hora y las tareas pendientes por prioridad. Avisa explícitamente de choques de horario entre turno y eventos, y recuerda las tareas atrasadas al principio si las hay. No inventes nada que no esté en los datos. Máximo unas 200 palabras.`,
     maxTokens: 700,
   };
   let { data, error } = await sb.functions.invoke('ai-proxy', { body });
@@ -1012,6 +1045,7 @@ async function abreAsistente() {
     ? fmt(d1, { weekday: 'long', day: 'numeric', month: 'long' })
     : `Del ${d1.getDate()} ${fmt(d1, { month: 'short' })} al ${d2.getDate()} ${fmt(d2, { month: 'short' })}`;
   pintaBrief(dias.map(datosDia));
+  if (!$('qaFecha').value) $('qaFecha').value = ymd(HOY);
   $('agPanel').classList.add('open');
   const ia = $('agIA');
   ia.className = 'pensando'; ia.textContent = 'Pensando…';
@@ -1054,6 +1088,71 @@ $('agBtn').onclick = abreAsistente;
 $('agRefrescar').onclick = abreAsistente;
 $('agCerrar').onclick = () => $('agPanel').classList.remove('open');
 $('agPanel').addEventListener('click', e => { if (e.target === $('agPanel')) $('agPanel').classList.remove('open'); });
+
+// ── Apuntar rápido desde el asistente (evento o tarea, propio o común) ─────
+let qaTipo = 'ev';
+$('qaEv').onclick = () => { qaTipo = 'ev'; $('qaEv').classList.add('on'); $('qaTa').classList.remove('on'); $('qaHora').style.display = ''; };
+$('qaTa').onclick = () => { qaTipo = 'ta'; $('qaTa').classList.add('on'); $('qaEv').classList.remove('on'); $('qaHora').style.display = 'none'; };
+$('qaGuardar').onclick = async () => {
+  const titulo = $('qaTitulo').value.trim();
+  const fecha = $('qaFecha').value || ymd(HOY);
+  if (!titulo) { $('qaTitulo').focus(); return; }
+  const compartida = $('qaShared').checked;
+  let error;
+  if (qaTipo === 'ev') {
+    const hora = $('qaHora').value;
+    const start = hora ? `${fecha}T${hora}` : fecha;
+    ({ error } = await conReintento(() => sb.from('calendar_events').insert({
+      id: `ev_cal_${Date.now()}`, user_id: uid, title: titulo,
+      start_date: start, end_date: start, type: 'personal', shared: compartida,
+    })));
+  } else {
+    ({ error } = await conReintento(() => sb.from('tasks').insert({
+      id: `task_cal_${Date.now()}`, user_id: uid, title: titulo, completed: false,
+      category: 'personal', priority: 'medium', due_date: fecha, shared: compartida,
+    })));
+  }
+  const m = $('qaMsg');
+  if (error) { m.textContent = '⚠️ No se pudo guardar: ' + msgFallo(error); return; }
+  m.textContent = `✓ ${qaTipo === 'ev' ? 'Evento guardado' : 'Tarea guardada'}: «${titulo}» (${fecha})${compartida ? ' · 👥 común' : ''}`;
+  $('qaTitulo').value = '';
+  render();
+};
+
+// ── Posibles eventos: búsqueda REAL en internet vía la edge function `agente`
+//    (el mismo cerebro del bot de Telegram; funciona con la sesión de
+//    cualquier perfil, Carlos o Montse). ────────────────────────────────────
+async function buscaPosibles() {
+  const q = $('peQuery').value.trim();
+  if (!q) { $('peQuery').focus(); return; }
+  const box = $('peRes');
+  box.innerHTML = '<div class="pensando" style="margin-top:8px">Buscando en internet… (puede tardar medio minuto)</div>';
+  const pide = () => sb.functions.invoke('agente', { body: { text: q, voz: true } });
+  try {
+    let { data, error } = await pide();
+    if (error && /401|unauthor/i.test(error.message || '')) {
+      try { await sb.auth.refreshSession(); } catch { /* sin sesión refrescable */ }
+      ({ data, error } = await pide());
+    }
+    if (error || data?.error) throw new Error(data?.error || error?.message || 'sin respuesta');
+    const fuentes = (data?.datos?.busqueda?.resultados || []).slice(0, 5);
+    box.innerHTML = `
+      <div id="peTxt" style="font-size:13px;line-height:1.55;white-space:pre-wrap;margin-top:8px"></div>
+      ${fuentes.length ? '<div class="sec-t" style="margin-top:10px">Fuentes</div>' + fuentes.map(f =>
+        `<div style="font-size:12.5px;margin-top:5px;overflow-wrap:break-word">🔗 <a href="${esc(f.url)}" target="_blank" rel="noopener" style="color:var(--indigo)">${esc(f.titulo || f.url)}</a></div>`).join('') : ''}
+      <button class="btn" id="peAlCal" style="margin-top:10px;width:100%">➕ Apuntarlo arriba (elige día y guarda)</button>`;
+    $('peTxt').textContent = data?.speech || 'Sin respuesta.';
+    $('peAlCal').onclick = () => {
+      if (!$('qaTitulo').value.trim()) $('qaTitulo').value = q.slice(0, 90);
+      $('qaTitulo').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      $('qaTitulo').focus();
+    };
+  } catch (err) {
+    box.innerHTML = `<div class="pensando" style="margin-top:8px">No he podido buscar: ${esc(err.message)}</div>`;
+  }
+}
+$('peBuscar').onclick = buscaPosibles;
+$('peQuery').addEventListener('keydown', e => { if (e.key === 'Enter') buscaPosibles(); });
 
 // ── Revisión semanal: cada 7 días, repaso de tareas viejas pendientes ─────
 // Hito y aplazamiento en localStorage (por navegador): fh_cal_revision_ts /
@@ -1138,6 +1237,7 @@ function aplicaSesion(session) {
   const nuevo = session?.user?.id || null;
   if (nuevo === uid) return;
   uid = nuevo;
+  emailSesion = (session?.user?.email || '').toLowerCase();
   $('login').style.display = uid ? 'none' : 'block';
   pintaViernesBtn();
   render();
@@ -1151,6 +1251,7 @@ sb.auth.onAuthStateChange((_ev, session) => {
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   uid = session?.user?.id || null;
+  emailSesion = (session?.user?.email || '').toLowerCase();
   $('login').style.display = uid ? 'none' : 'block';
   pintaViernesBtn();
   await render();
