@@ -306,6 +306,32 @@
     .brand p { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ── Botón flotante del asistente (v331) ── */
+  .fab {
+    position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 45; display: inline-flex; align-items: center; gap: 8px;
+    background: var(--indigo); color: var(--on-accent); border: none;
+    border-radius: 999px; padding: 13px 18px; font-weight: 800; font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.38); cursor: pointer;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .fab:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.42); }
+  .fab .spark { font-size: 16px; line-height: 1; }
+  /* Caja de mando en lenguaje natural, arriba del todo del panel */
+  #agCmdWrap { background: var(--seg-bg); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  #agCmd { margin: 0; }
+  .cmd-ej { font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  @media (max-width: 480px) {
+    .fab { padding: 14px; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+    .fab .lbl { display: none; }   /* en móvil, icono solo: sencillo y sin estorbar */
+    .fab .spark { font-size: 20px; }
+  }
+  /* En ORDENADOR el panel se centra como tarjeta modal (no pegado abajo) */
+  @media (min-width: 761px) {
+    .sheet { align-items: center; }
+    .sheet .caja { max-width: 520px; border-radius: 18px; max-height: 88vh; }
+  }
 </style>
 </head>
 <body>
@@ -330,7 +356,6 @@
         <button id="recargarBtn" class="btn icono" title="Actualizar: vuelve a leer tus eventos y tareas (por ejemplo, los que acabas de apuntar por Telegram)" aria-label="Actualizar">⟳</button>
       </div>
       <button id="temaBtn" class="btn icono" title="Cambiar tema (auto / claro / oscuro)" aria-label="Cambiar tema">🌗</button>
-      <button id="agBtn" class="btn primary">✦ Asistente</button>
     </div>
   </header>
 
@@ -429,11 +454,28 @@
   </div>
 </div>
 
+<!-- Botón flotante del asistente (siempre visible, móvil y escritorio) -->
+<button id="agFab" class="fab" title="Asistente" aria-label="Abrir asistente">
+  <span class="spark">✦</span><span class="lbl">Asistente</span>
+</button>
+
 <!-- Panel asistente -->
 <div id="agPanel" class="sheet">
   <div class="caja">
-    <h3 style="text-transform:none">✦ Tu pendiente, claro</h3>
+    <h3 style="text-transform:none">✦ Asistente</h3>
     <div class="sub" id="agSub"></div>
+
+    <!-- Mando en lenguaje natural: añadir, mover o quitar en una frase -->
+    <div id="agCmdWrap">
+      <div class="sec-t" style="margin:0 0 8px">💬 Dímelo en una frase</div>
+      <div class="fila">
+        <input id="agCmd" placeholder="«añade cena con Montse el viernes a las 21h»" style="flex:1">
+        <button id="agCmdBtn" class="btn primary">Enviar</button>
+      </div>
+      <div id="agCmdRes" class="sub" style="margin:8px 0 0"></div>
+      <div class="cmd-ej">Ejemplos: «apúntame llamar al banco mañana» · «qué tengo el jueves» · «mueve la reunión de medsys a las 11». Para <b>borrar</b> un evento concreto, tócalo en el calendario y pulsa la ×.</div>
+    </div>
+
     <div id="agBrief"></div>
     <div id="agIAWrap">
       <div class="sec-t">Análisis del asistente</div>
@@ -1098,8 +1140,34 @@ $('temaBtn').onclick = () => {
 mqOscuro.addEventListener('change', aplicaTema);
 aplicaTema();
 
-$('agBtn').onclick = abreAsistente;
 $('agRefrescar').onclick = abreAsistente;
+$('agFab').onclick = abreAsistente;
+
+// ── Mando en lenguaje natural → agente de FileHub (crea/ajusta y refresca) ──
+async function mandaComando() {
+  const txt = $('agCmd').value.trim();
+  if (!txt) { $('agCmd').focus(); return; }
+  if (!uid) { $('agCmdRes').textContent = 'Entra con tu cuenta para pedirme cosas.'; return; }
+  const res = $('agCmdRes');
+  res.textContent = '⏳ Pensando…';
+  const pide = () => sb.functions.invoke('agente', { body: { text: txt } });
+  try {
+    let { data, error } = await pide();
+    if (error && /401|unauthor/i.test(error.message || '')) {
+      try { await sb.auth.refreshSession(); } catch { /* sin sesión refrescable */ }
+      ({ data, error } = await pide());
+    }
+    if (error || data?.error) throw new Error(data?.error || error?.message || 'sin respuesta');
+    const acc = Array.isArray(data?.acciones) && data.acciones.length ? ' · ' + data.acciones.join(' ') : '';
+    res.textContent = (data?.speech || 'Hecho.') + acc;
+    $('agCmd').value = '';
+    await render();   // trae lo que el agente haya creado/cambiado
+  } catch (e) {
+    res.textContent = '⚠️ ' + e.message;
+  }
+}
+$('agCmdBtn').onclick = mandaComando;
+$('agCmd').addEventListener('keydown', e => { if (e.key === 'Enter') mandaComando(); });
 $('agCerrar').onclick = () => $('agPanel').classList.remove('open');
 $('agPanel').addEventListener('click', e => { if (e.target === $('agPanel')) $('agPanel').classList.remove('open'); });
 
@@ -1272,5 +1340,6 @@ sb.auth.onAuthStateChange((_ev, session) => {
   revisionSemanal();
 })();
 </script>
+
 </body>
 </html>
