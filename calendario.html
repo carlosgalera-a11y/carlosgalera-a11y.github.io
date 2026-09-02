@@ -255,6 +255,18 @@
   .rev-row .t { flex: 1; }
   .rev-row .btn { padding: 4px 9px; font-size: 12px; flex: none; }
 
+  /* ── Notas del calendario (anotaciones libres sobre eventos/tareas) ── */
+  #notaBody { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font-size: 13px; font-family: inherit; background: var(--input-bg); color: var(--ink); resize: vertical; }
+  .nota-ops { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .nota-ops input[type=date] { border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 12.5px; background: var(--input-bg); color: var(--ink); font-family: inherit; }
+  .nota-comp { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .fila-nota { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 10px; font-size: 13px; }
+  .fila-nota .cab { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .fila-nota .cuando { font-size: 11px; color: var(--soft); flex: 1; font-variant-numeric: tabular-nums; }
+  .fila-nota .dia-chip { font-size: 11px; font-weight: 700; color: var(--indigo); background: var(--ev-personal-bg); border-radius: 6px; padding: 1px 7px; flex: none; }
+  .fila-nota .x { border: none; background: transparent; color: var(--soft); cursor: pointer; font-size: 15px; line-height: 1; flex: none; }
+  .fila-nota .cuerpo { white-space: pre-wrap; color: var(--ink); }
+
   #login { max-width: 380px; margin: 34px auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: none; box-shadow: var(--shadow); }
   #login h3 { font-size: 15px; margin-bottom: 12px; }
   #login input { background: var(--input-bg); color: var(--ink); }
@@ -406,6 +418,17 @@
   <section class="panelcard" id="ultimasCard">
     <h2>☑️ Últimas 10 tareas añadidas</h2>
     <div id="ultimas"><div class="vacio">Inicia sesión para verlas.</div></div>
+  </section>
+
+  <section class="panelcard" id="notasCard">
+    <h2>📝 Notas</h2>
+    <textarea id="notaBody" rows="3" placeholder="Anotación libre sobre un evento o tarea: el guion de una reunión, qué llevar, qué contar al salir…"></textarea>
+    <div class="nota-ops">
+      <input type="date" id="notaFecha" title="Día al que se refiere (opcional)">
+      <label class="nota-comp"><input type="checkbox" id="notaShared"> compartida</label>
+      <button class="btn" id="notaAdd">Guardar nota</button>
+    </div>
+    <div id="notasLista"><div class="vacio">Inicia sesión para verlas.</div></div>
   </section>
 
   <footer>Turnos: L urgencias tarde · M agenda mañana · X agenda tarde · J agenda mañana · V alterno. Eventos y tareas sincronizados con <a href="/">FileHub</a> (misma cuenta).</footer>
@@ -620,7 +643,7 @@ $('viernesBtn').onclick = () => {
 // ── Datos: eventos (calendar_events) y tareas (tasks) de FileHub ──────────
 // calendar_events: id(text), user_id, title, start_date(text), end_date, type.
 // tasks: id, user_id, title, completed, category, priority, due_date('YYYY-MM-DD').
-let uid = null, emailSesion = '', eventos = [], tareas = [], atrasadas = [], sinFecha = [], ultimas = [];
+let uid = null, emailSesion = '', eventos = [], tareas = [], atrasadas = [], sinFecha = [], ultimas = [], notas = [];
 /** Nombre corto del perfil logueado, para que el asistente hable a quien toca. */
 function quienSoy() {
   if (emailSesion.startsWith('montsemaymo')) return { nombre: 'Montse', desc: 'Montse' };
@@ -640,10 +663,10 @@ const PRIO = { high: 'var(--prio-high)', medium: 'var(--prio-medium)', low: 'var
 const prioTxt = { high: 'alta', medium: 'media', low: 'baja' };
 
 async function cargarDatos(desde, hasta) {
-  if (!uid) { eventos = []; tareas = []; atrasadas = []; sinFecha = []; ultimas = []; return; }
+  if (!uid) { eventos = []; tareas = []; atrasadas = []; sinFecha = []; ultimas = []; notas = []; return; }
   const cols = 'id,title,completed,category,priority,due_date,user_id,shared';
   const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
-  const [ev, ta, atr, sf, ult] = await Promise.all([
+  const [ev, ta, atr, sf, ult, nts] = await Promise.all([
     sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared')
       .gte('start_date', desde).lt('start_date', hasta).order('start_date'),
     sb.from('tasks').select(cols).or(miasOComunes)
@@ -655,6 +678,8 @@ async function cargarDatos(desde, hasta) {
       .eq('completed', false).is('due_date', null).limit(8),
     sb.from('tasks').select(cols + ',created_at').or(miasOComunes)
       .order('created_at', { ascending: false }).limit(10),
+    sb.from('calendar_notas').select('id,body,fecha,user_id,shared,created_at').or(miasOComunes)
+      .order('created_at', { ascending: false }).limit(30),
   ]);
   const err = ev.error || ta.error || atr.error || sf.error || ult.error;
   if (err) { $('estado').textContent = 'Error cargando datos: ' + err.message; }
@@ -663,6 +688,7 @@ async function cargarDatos(desde, hasta) {
   atrasadas = atr.data || [];
   sinFecha = sf.data || [];
   ultimas = ult.data || [];
+  notas = nts.data || []; // si la tabla aún no existe en algún entorno, queda []
 }
 // Filtro Todas / Mías / Comunes (persistido en este navegador)
 let filtro = localStorage.getItem('fh_cal_filtro') || 'todas';
@@ -735,6 +761,7 @@ async function render() {
   if (modo === 'mes') { $('vistaMes').style.display = ''; $('cols').style.display = 'none'; renderMes(start); }
   else { $('vistaMes').style.display = 'none'; $('cols').style.display = 'grid'; renderCols(); }
   pintaUltimas();
+  pintaNotas();
   $('estado').textContent = uid ? '' : 'Sin sesión: se ven los turnos, pero no tus eventos ni tareas de FileHub.';
   $('estado').style.display = $('estado').textContent ? 'block' : 'none';
 }
@@ -838,6 +865,40 @@ function pintaUltimas() {
     </div>`).join('') : '<div class="vacio">Aún no hay tareas.</div>';
 }
 
+// ── Notas del calendario: anotaciones libres sobre eventos/tareas ─────────
+// (guion de una reunión, qué llevar, qué contar al salir…). Propias o del círculo.
+function pintaNotas() {
+  const el = $('notasLista');
+  if (!el) return;
+  if (!uid) { el.innerHTML = '<div class="vacio">Inicia sesión para verlas.</div>'; return; }
+  const lista = notas.filter(pasaFiltro);
+  el.innerHTML = lista.length ? lista.map(n => `<div class="fila-nota">
+      <div class="cab">${badgeQuien(n)}${n.fecha ? `<span class="dia-chip">📅 ${n.fecha.slice(8, 10)}/${n.fecha.slice(5, 7)}</span>` : ''}
+        <span class="cuando">apuntada ${fechaCorta(n.created_at)}</span>
+        ${n.user_id === uid ? `<button class="x" data-nid="${n.id}" title="Borrar nota">×</button>` : ''}</div>
+      <div class="cuerpo">${esc(n.body)}</div>
+    </div>`).join('') : '<div class="vacio">Sin notas. Apunta aquí el guion de una reunión, qué llevar a un evento…</div>';
+}
+$('notaAdd').addEventListener('click', async () => {
+  if (!uid) { alert('Inicia sesión para guardar notas.'); return; }
+  const body = $('notaBody').value.trim();
+  if (!body) { $('notaBody').focus(); return; }
+  const fila = { id: 'nota_' + Date.now(), user_id: uid, body, fecha: $('notaFecha').value || null, shared: $('notaShared').checked };
+  const { error } = await conReintento(() => sb.from('calendar_notas').insert(fila));
+  if (error) { alert('No se pudo guardar la nota: ' + error.message); return; }
+  $('notaBody').value = ''; $('notaFecha').value = '';
+  notas.unshift({ ...fila, created_at: new Date().toISOString() });
+  pintaNotas();
+});
+async function borraNota(id) {
+  if (!confirm('¿Borrar esta nota?')) return false;
+  const { error } = await conReintento(() => sb.from('calendar_notas').delete().eq('id', id));
+  if (error) { alert('No se pudo borrar la nota: ' + msgFallo(error)); return false; }
+  notas = notas.filter(n => n.id !== id);
+  pintaNotas();
+  return false; // ya repintado aquí; el manejador global no necesita render()
+}
+
 // ── Interacción global (eventos, tareas, panel) ───────────────────────────
 let diaPanel = null, tipoPanel = 'ev';
 function abrePanel(fecha) {
@@ -909,7 +970,7 @@ document.body.addEventListener('click', async e => {
   const x = e.target.closest('.x, .del');
   if (x) {
     e.stopPropagation();
-    const ok = x.dataset.id ? await borraEvento(x.dataset.id) : x.dataset.tid ? await borraTarea(x.dataset.tid) : false;
+    const ok = x.dataset.id ? await borraEvento(x.dataset.id) : x.dataset.tid ? await borraTarea(x.dataset.tid) : x.dataset.nid ? await borraNota(x.dataset.nid) : false;
     if (ok) { $('panel').classList.remove('open'); render(); }
     return;
   }
