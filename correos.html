@@ -136,6 +136,91 @@
       <summary>Búsquedas guardadas</summary>
       <div id="historial"></div>
     </details>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- OSINT TOOLS                                                        -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:12px">🔍 Herramientas OSINT</h2>
+    </div>
+
+    <!-- MailAccess: Investigate email -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">📧</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">MailAccess</div>
+          <div style="font-size:11px;color:var(--muted)">Investigar un email: breaches, redes sociales, 2500+ plataformas</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="email" id="maEmail" placeholder="email@ejemplo.com">
+        <button class="btn peri" id="maInvestigar">Investigar</button>
+      </div>
+      <div id="maEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="maResultado" style="display:none;margin-top:10px;background:var(--input-bg);border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:13px;white-space:pre-wrap;max-height:400px;overflow:auto"></div>
+      <details style="margin-top:8px">
+        <summary>Harvest emails de un dominio</summary>
+        <div class="domain-row" style="margin-top:8px">
+          <input type="text" id="maHarvest" placeholder="empresa.com">
+          <button class="btn" id="maHarvestBtn">Harvest</button>
+        </div>
+        <div id="maHarvestEstado" class="aviso" style="margin-top:6px"></div>
+        <div id="maHarvestRes" style="display:none;margin-top:8px;background:var(--input-bg);border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:13px;white-space:pre-wrap;max-height:300px;overflow:auto"></div>
+      </details>
+    </div>
+
+    <!-- Horus: Multi-OSINT -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">👁️</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Horus</div>
+          <div style="font-size:11px;color:var(--muted)">OSINT multitool: Shodan, teléfonos, geo-IP, crypto, VirusTotal, WiFi, EXIF</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <select id="horusMod" style="flex:1;min-width:140px;background:var(--input-bg);color:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font-size:13px;font-family:inherit">
+          <option value="numlook">📱 Teléfono (numlook)</option>
+          <option value="geolock">🌍 Geo-IP (geolock)</option>
+          <option value="shodan">🔎 Shodan</option>
+          <option value="vt">🦠 VirusTotal</option>
+          <option value="mactrace">📡 MAC trace</option>
+          <option value="cryptotrace">₿ Crypto trace</option>
+          <option value="wigle">📶 WiFi (Wigle)</option>
+          <option value="exif">📸 EXIF</option>
+        </select>
+      </div>
+      <div class="domain-row">
+        <input type="text" id="horusInput" placeholder="IP, teléfono, hash, MAC…">
+        <button class="btn" id="horusBtn" style="background:var(--peach);border-color:var(--peach);color:#000">Buscar</button>
+      </div>
+      <div id="horusEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="horusRes" style="display:none;margin-top:10px;background:var(--input-bg);border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:13px;white-space:pre-wrap;max-height:400px;overflow:auto"></div>
+    </div>
+
+    <!-- TorBot: Dark web -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">🧅</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">TorBot</div>
+          <div style="font-size:11px;color:var(--muted)">Crawler de dark web (.onion) — requiere Tor en el NucBox</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="text" id="torUrl" placeholder="http://ejemplo.onion o dominio a crawlear">
+        <button class="btn" id="torBtn" style="background:#7c3aed;border-color:#7c3aed;color:#fff">Crawl</button>
+      </div>
+      <div id="torEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="torRes" style="display:none;margin-top:10px;background:var(--input-bg);border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:13px;white-space:pre-wrap;max-height:400px;overflow:auto"></div>
+    </div>
+
+    <!-- OSINT status -->
+    <div class="card" id="osintStatus">
+      <div class="sec-t">Estado de las herramientas</div>
+      <div id="osintCheck" style="font-size:13px;color:var(--muted)">Comprobando conexión con NucBox…</div>
+    </div>
   </div>
 
   <footer><a href="/">← FileHub</a></footer>
@@ -415,6 +500,108 @@ $('historial').addEventListener('click', async e => {
     cargaHistorial();
   }
 });
+
+// ── OSINT Tools (NucBox API) ──────────────────────────────────────────────────
+const NUCBOX = localStorage.getItem('fh_nucbox_url') || 'https://nucboxg10.tail3a7cac.ts.net';
+const NUCBOX_KEY = localStorage.getItem('fh_ia_local_secret') || '';
+
+async function nucboxFetch(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (NUCBOX_KEY) headers['x-filehub-key'] = NUCBOX_KEY;
+  const res = await fetch(NUCBOX + path, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(120000) });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()).slice(0, 200));
+  return res.json();
+}
+
+// Check OSINT status
+async function checkOsint() {
+  try {
+    const res = await fetch(NUCBOX + '/osint/status', { headers: NUCBOX_KEY ? { 'x-filehub-key': NUCBOX_KEY } : {}, signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      const d = await res.json();
+      $('osintCheck').innerHTML = '<span class="ok">✅ NucBox conectado</span> — ' +
+        (d.mailaccess ? '📧 MailAccess' : '<span style="color:var(--soft)">⬜ MailAccess</span>') + ' · ' +
+        (d.horus ? '👁️ Horus' : '<span style="color:var(--soft)">⬜ Horus</span>') + ' · ' +
+        (d.torbot ? '🧅 TorBot' : '<span style="color:var(--soft)">⬜ TorBot</span>');
+    } else throw new Error();
+  } catch {
+    $('osintCheck').innerHTML = '<span style="color:var(--peach)">⚠️ NucBox no accesible</span> — las herramientas OSINT necesitan el NucBox encendido y con los servicios instalados. <a href="/" style="color:var(--peri)">Configura la URL en Settings → IA Local</a>';
+  }
+}
+checkOsint();
+
+// MailAccess: Investigate
+$('maInvestigar').onclick = async () => {
+  const email = $('maEmail').value.trim();
+  if (!email) { $('maEmail').focus(); return; }
+  $('maEstado').innerHTML = '<span class="spinner"></span> Investigando ' + esc(email) + '…';
+  $('maInvestigar').disabled = true;
+  $('maResultado').style.display = 'none';
+  try {
+    const data = await nucboxFetch('/osint/mailaccess/investigate', { email });
+    $('maResultado').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    $('maResultado').style.display = '';
+    $('maEstado').textContent = '✅ Investigación completada';
+  } catch (e) {
+    $('maEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('maInvestigar').disabled = false;
+};
+
+// MailAccess: Harvest
+$('maHarvestBtn').onclick = async () => {
+  const dom = $('maHarvest').value.trim();
+  if (!dom) { $('maHarvest').focus(); return; }
+  $('maHarvestEstado').innerHTML = '<span class="spinner"></span> Buscando emails en ' + esc(dom) + '…';
+  $('maHarvestBtn').disabled = true;
+  $('maHarvestRes').style.display = 'none';
+  try {
+    const data = await nucboxFetch('/osint/mailaccess/harvest', { domain: dom });
+    $('maHarvestRes').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    $('maHarvestRes').style.display = '';
+    $('maHarvestEstado').textContent = '✅ Harvest completado';
+  } catch (e) {
+    $('maHarvestEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('maHarvestBtn').disabled = false;
+};
+
+// Horus
+$('horusBtn').onclick = async () => {
+  const input = $('horusInput').value.trim();
+  const mod = $('horusMod').value;
+  if (!input) { $('horusInput').focus(); return; }
+  $('horusEstado').innerHTML = '<span class="spinner"></span> Ejecutando ' + mod + '…';
+  $('horusBtn').disabled = true;
+  $('horusRes').style.display = 'none';
+  try {
+    const data = await nucboxFetch('/osint/horus', { module: mod, query: input });
+    $('horusRes').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    $('horusRes').style.display = '';
+    $('horusEstado').textContent = '✅ ' + mod + ' completado';
+  } catch (e) {
+    $('horusEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('horusBtn').disabled = false;
+};
+
+// TorBot
+$('torBtn').onclick = async () => {
+  const url = $('torUrl').value.trim();
+  if (!url) { $('torUrl').focus(); return; }
+  $('torEstado').innerHTML = '<span class="spinner"></span> Crawling (puede tardar)…';
+  $('torBtn').disabled = true;
+  $('torRes').style.display = 'none';
+  try {
+    const data = await nucboxFetch('/osint/torbot', { url });
+    $('torRes').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    $('torRes').style.display = '';
+    $('torEstado').textContent = '✅ Crawl completado';
+  } catch (e) {
+    $('torEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('torBtn').disabled = false;
+};
 
 </script>
 </body>
