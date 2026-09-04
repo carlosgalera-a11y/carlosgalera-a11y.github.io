@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Correos · FileHub</title>
+<meta name="theme-color" content="#0b1326">
+<style>
+  :root {
+    --bg:#0b1326; --card:#131b2e; --card2:#171f33; --card3:#222a3d;
+    --line:#283449; --line2:#334155; --ink:#F8FAFC; --muted:#94A3B8; --soft:#64748b;
+    --peri:#8083ff; --mint:#4edea3; --mint2:#10b981; --peach:#ffb783; --rojo:#EF4444;
+    --input-bg:#0e1526; --radius:16px; --shadow:0 10px 26px rgba(0,0,0,.35);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--ink); font-family:Inter,system-ui,-apple-system,sans-serif; font-size:15px; line-height:1.5; padding-bottom:40px; }
+  .wrap { max-width:700px; margin:0 auto; padding:16px 14px calc(24px + env(safe-area-inset-bottom)); }
+  header.top { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .logo { width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,var(--peri),#c0c1ff); display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:var(--shadow); flex:none; }
+  h1 { font-size:20px; font-weight:800; letter-spacing:-.01em; }
+  .sub { font-size:12px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:15px; margin-bottom:12px; box-shadow:var(--shadow); }
+  .sec-t { font-size:10.5px; font-weight:700; color:var(--soft); text-transform:uppercase; letter-spacing:.09em; margin-bottom:8px; }
+  input[type=text],input[type=email],input[type=password] { width:100%; background:var(--input-bg); color:var(--ink); border:1px solid var(--line2); border-radius:10px; padding:10px 12px; font-size:14px; font-family:inherit; }
+  input:focus { outline:none; border-color:var(--peri); }
+  .btn { border:1px solid var(--line2); background:var(--card2); color:var(--ink); border-radius:12px; padding:10px 14px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; }
+  .btn.peri { background:var(--peri); border-color:var(--peri); color:#fff; }
+  .btn.mint { background:var(--mint2); border-color:var(--mint2); color:#fff; }
+  .btn[disabled] { opacity:.5; cursor:default; }
+  .aviso { font-size:12px; color:var(--muted); margin-top:8px; }
+  .ok { color:var(--mint); } .err { color:var(--rojo); }
+  #login { display:none; }
+  #login input { margin-bottom:8px; }
+
+  /* Upload zone */
+  .drop-zone { border:2px dashed var(--line2); border-radius:var(--radius); padding:30px 20px; text-align:center; color:var(--muted); cursor:pointer; transition:border-color .2s,background .2s; }
+  .drop-zone:hover,.drop-zone.over { border-color:var(--peri); background:rgba(128,131,255,.06); }
+  .drop-zone input { display:none; }
+  .drop-zone .icono { font-size:32px; margin-bottom:6px; }
+  .drop-zone .hint { font-size:13px; }
+
+  /* Domain input */
+  .domain-row { display:flex; gap:8px; margin-top:10px; align-items:center; }
+  .domain-row input { flex:1; }
+
+  /* Results table */
+  .res-table { width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; }
+  .res-table th { text-align:left; font-size:10.5px; font-weight:700; color:var(--soft); text-transform:uppercase; letter-spacing:.06em; padding:6px 8px; border-bottom:1px solid var(--line); }
+  .res-table td { padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .res-table tr:hover td { background:rgba(128,131,255,.04); }
+  .email-chip { display:inline-block; background:var(--card3); border:1px solid var(--line); border-radius:8px; padding:2px 8px; margin:2px 4px 2px 0; font-size:12px; font-family:'SF Mono',Menlo,monospace; cursor:pointer; transition:background .15s; }
+  .email-chip:hover { background:var(--peri); color:#fff; border-color:var(--peri); }
+  .tag-nombre { color:var(--peach); font-weight:600; }
+
+  /* Historial */
+  .fila-hist { border:1px solid var(--line); border-radius:12px; padding:11px 12px; margin-top:10px; }
+  .fila-hist .cab { display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--soft); margin-bottom:5px; }
+  .fila-hist .cab .fecha { flex:1; font-variant-numeric:tabular-nums; }
+  .fila-hist .cab button { border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:12.5px; font-weight:700; }
+  .spinner { display:inline-block; width:16px; height:16px; border:2px solid var(--line2); border-top-color:var(--peri); border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  footer { text-align:center; font-size:11px; color:var(--soft); margin-top:16px; }
+  footer a { color:var(--peri); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">📧</div>
+    <div>
+      <h1>Correos</h1>
+      <div class="sub" id="quien">Sube un PDF o DOCX con nombres y te busco los emails</div>
+    </div>
+  </header>
+
+  <div id="login" class="card">
+    <div class="sec-t">Inicia sesión (la misma de FileHub)</div>
+    <input id="lemail" type="email" placeholder="Email" autocomplete="username">
+    <input id="lpass" type="password" placeholder="Contraseña" autocomplete="current-password">
+    <button class="btn peri" id="lbtn">Entrar</button>
+    <div class="aviso" id="lerr"></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <!-- Upload -->
+    <div class="card">
+      <div class="sec-t">1 · Sube tu documento</div>
+      <div class="drop-zone" id="dropZone">
+        <div class="icono">📄</div>
+        <div class="hint">Arrastra un PDF o DOCX aquí, o haz clic para seleccionar</div>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt,.csv">
+      </div>
+      <div id="fileName" class="aviso" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Domain -->
+    <div class="card">
+      <div class="sec-t">2 · Dominio (opcional)</div>
+      <div class="domain-row">
+        <input type="text" id="dominio" placeholder="empresa.com (para generar patrones)">
+      </div>
+      <div class="aviso">Si pones un dominio, se generan emails como nombre.apellido@empresa.com</div>
+    </div>
+
+    <!-- Procesar -->
+    <div class="card">
+      <button class="btn peri" id="buscarBtn" disabled>📧 Extraer nombres y buscar correos</button>
+      <div id="estado" class="aviso" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="card" id="resCard" style="display:none">
+      <div class="sec-t">Resultados</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn" id="copiarTodo">📋 Copiar todos</button>
+        <button class="btn mint" id="guardarBtn">💾 Guardar búsqueda</button>
+        <button class="btn" id="exportCsv">📥 CSV</button>
+      </div>
+      <div id="resEstado" class="aviso"></div>
+      <table class="res-table">
+        <thead><tr><th>Nombre</th><th>Emails generados</th></tr></thead>
+        <tbody id="resBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Nombres manual -->
+    <div class="card">
+      <div class="sec-t">O escribe nombres directamente</div>
+      <textarea id="nombresManual" rows="3" placeholder="Un nombre por línea:&#10;Juan García López&#10;María Fernández" style="width:100%;background:var(--input-bg);color:var(--ink);border:1px solid var(--line2);border-radius:12px;padding:11px 12px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+      <button class="btn" id="manualBtn" style="margin-top:8px">Generar emails</button>
+    </div>
+
+    <!-- Historial -->
+    <details>
+      <summary>Búsquedas guardadas</summary>
+      <div id="historial"></div>
+    </details>
+  </div>
+
+  <footer><a href="/">← FileHub</a></footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const SUPABASE_URL = 'https://igvadjgjpyuvzailjqwg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlndmFkamdqcHl1dnphaWxqcXdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0NDI3MTAsImV4cCI6MjA4ODAxODcxMH0.eAqKCHDzrkvMTseaBP0I_JICP1owX60-cp3agYqRz4Q';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+let uid = null;
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { uid = session.user.id; muestraApp(); }
+  else { $('login').style.display = 'block'; }
+}
+function muestraApp() {
+  $('login').style.display = 'none';
+  $('app').style.display = 'block';
+  $('quien').textContent = 'Sube un documento con nombres';
+  cargaHistorial();
+}
+$('lbtn').onclick = async () => {
+  const { error } = await sb.auth.signInWithPassword({ email: $('lemail').value.trim(), password: $('lpass').value });
+  if (error) { $('lerr').textContent = '❌ ' + error.message; return; }
+  const { data: { session } } = await sb.auth.getSession();
+  uid = session?.user?.id; muestraApp();
+};
+init();
+
+// ── File upload ───────────────────────────────────────────────────────────────
+let archivoTexto = '';
+const dropZone = $('dropZone');
+const fileInput = $('fileInput');
+
+dropZone.onclick = () => fileInput.click();
+dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add('over'); };
+dropZone.ondragleave = () => dropZone.classList.remove('over');
+dropZone.ondrop = e => { e.preventDefault(); dropZone.classList.remove('over'); if (e.dataTransfer.files.length) procesaArchivo(e.dataTransfer.files[0]); };
+fileInput.onchange = () => { if (fileInput.files.length) procesaArchivo(fileInput.files[0]); };
+
+async function procesaArchivo(file) {
+  $('fileName').textContent = '⏳ Leyendo ' + file.name + '…';
+  $('buscarBtn').disabled = true;
+  archivoTexto = '';
+  try {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'pdf') {
+      archivoTexto = await extraerPDF(file);
+    } else if (ext === 'docx' || ext === 'doc') {
+      archivoTexto = await extraerDOCX(file);
+    } else if (ext === 'txt' || ext === 'csv') {
+      archivoTexto = await file.text();
+    } else {
+      $('fileName').innerHTML = '<span class="err">Formato no soportado. Usa PDF, DOCX, TXT o CSV.</span>';
+      return;
+    }
+    const lineas = archivoTexto.split('\n').filter(l => l.trim()).length;
+    $('fileName').textContent = '✅ ' + file.name + ' — ' + lineas + ' líneas extraídas';
+    $('buscarBtn').disabled = false;
+  } catch (e) {
+    $('fileName').innerHTML = '<span class="err">Error leyendo archivo: ' + e.message + '</span>';
+  }
+}
+
+async function extraerPDF(file) {
+  const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let texto = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    texto += content.items.map(it => it.str).join(' ') + '\n';
+  }
+  return texto;
+}
+
+async function extraerDOCX(file) {
+  const buf = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: buf });
+  return result.value;
+}
+
+// ── AI-powered name extraction ────────────────────────────────────────────────
+async function pideIA(system, user, maxTokens = 800) {
+  const pide = () => sb.functions.invoke('ai-proxy', {
+    body: { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], max_tokens: maxTokens }
+  });
+  let { data, error } = await pide();
+  const es401 = (e, d) => (!!e && /401|unauthorized|non-2xx/i.test(e.message || '')) || (d?.error && /unauthorized/i.test(d.error));
+  if (es401(error, data)) { try { await sb.auth.refreshSession(); } catch {} ({ data, error } = await pide()); }
+  if (!error && data?.content) return String(data.content).trim();
+  throw new Error(error?.message || data?.error || 'sin respuesta de la IA');
+}
+
+async function extraerNombresConIA(texto) {
+  const fragmento = texto.slice(0, 6000);
+  const resp = await pideIA(
+    `Eres un extractor de nombres de personas. Del texto que recibas, extrae TODOS los nombres completos de personas (nombre y al menos un apellido). Devuelve SOLO un JSON array de strings, sin comentarios ni explicaciones. Ejemplo: ["Juan García López","María Fernández Ruiz"]. Si no encuentras nombres, devuelve [].`,
+    fragmento, 1500
+  );
+  const match = resp.match(/\[[\s\S]*?\]/);
+  if (!match) return [];
+  try { return JSON.parse(match[0]).filter(n => typeof n === 'string' && n.trim().length > 2); } catch { return []; }
+}
+
+// ── Email pattern generation ──────────────────────────────────────────────────
+function normalizaNombre(nombre) {
+  return nombre.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+function generaPatrones(nombre, dominio) {
+  const partes = normalizaNombre(nombre).split(/\s+/).filter(Boolean);
+  if (partes.length < 2) return [partes[0] + '@' + dominio];
+  const first = partes[0];
+  const last = partes[partes.length - 1];
+  const last1 = partes.length > 2 ? partes[1] : last;
+  return [
+    first + '.' + last + '@' + dominio,
+    first + last + '@' + dominio,
+    first[0] + last + '@' + dominio,
+    first + '.' + last1 + '@' + dominio,
+    first + '@' + dominio,
+    last + '.' + first + '@' + dominio,
+    first + '_' + last + '@' + dominio,
+    first[0] + '.' + last + '@' + dominio,
+  ].filter((v, i, a) => a.indexOf(v) === i);
+}
+
+// ── Search logic ──────────────────────────────────────────────────────────────
+let resultados = [];
+
+$('buscarBtn').onclick = async () => {
+  if (!archivoTexto.trim()) return;
+  await buscar(archivoTexto);
+};
+
+$('manualBtn').onclick = async () => {
+  const txt = $('nombresManual').value.trim();
+  if (!txt) { $('nombresManual').focus(); return; }
+  const nombres = txt.split('\n').map(l => l.trim()).filter(Boolean);
+  const dominio = $('dominio').value.trim();
+  resultados = nombres.map(n => ({
+    nombre: n,
+    emails: dominio ? generaPatrones(n, dominio) : []
+  }));
+  pintaResultados();
+};
+
+async function buscar(texto) {
+  $('buscarBtn').disabled = true;
+  $('estado').innerHTML = '<span class="spinner"></span> Extrayendo nombres con IA…';
+  try {
+    let nombres;
+    try {
+      nombres = await extraerNombresConIA(texto);
+    } catch (e) {
+      $('estado').textContent = '⚠️ IA no disponible, intentando extracción básica…';
+      nombres = extraerNombresBasico(texto);
+    }
+    if (!nombres.length) {
+      $('estado').textContent = '⚠️ No se encontraron nombres en el documento.';
+      $('buscarBtn').disabled = false;
+      return;
+    }
+    $('estado').textContent = '✅ ' + nombres.length + ' nombres encontrados. Generando patrones…';
+    const dominio = $('dominio').value.trim();
+    resultados = nombres.map(n => ({
+      nombre: n,
+      emails: dominio ? generaPatrones(n, dominio) : []
+    }));
+    pintaResultados();
+    $('estado').textContent = '✅ ' + nombres.length + ' nombres · ' + (dominio ? resultados.reduce((s, r) => s + r.emails.length, 0) + ' emails generados' : 'sin dominio — añade uno para generar patrones');
+  } catch (e) {
+    $('estado').innerHTML = '<span class="err">Error: ' + e.message + '</span>';
+  }
+  $('buscarBtn').disabled = false;
+}
+
+function extraerNombresBasico(texto) {
+  const lineas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+  const nombres = [];
+  const reNombre = /^[A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]+(?:\s+[A-ZÁÉÍÓÚÑÜ][a-záéíóúñü]+){1,4}$/;
+  for (const l of lineas) {
+    if (reNombre.test(l) && l.split(/\s+/).length <= 5) nombres.push(l);
+  }
+  return [...new Set(nombres)];
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function pintaResultados() {
+  $('resCard').style.display = '';
+  $('resBody').innerHTML = resultados.map(r =>
+    `<tr>
+      <td class="tag-nombre">${esc(r.nombre)}</td>
+      <td>${r.emails.length ? r.emails.map(e => `<span class="email-chip" title="Clic para copiar">${esc(e)}</span>`).join('') : '<span style="color:var(--soft)">Añade un dominio arriba</span>'}</td>
+    </tr>`
+  ).join('');
+  $('resCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Copy individual email on click
+$('resBody').addEventListener('click', async e => {
+  const chip = e.target.closest('.email-chip');
+  if (!chip) return;
+  try { await navigator.clipboard.writeText(chip.textContent); chip.style.background = 'var(--mint2)'; chip.style.borderColor = 'var(--mint2)'; setTimeout(() => { chip.style.background = ''; chip.style.borderColor = ''; }, 800); } catch {}
+});
+
+// Copy all
+$('copiarTodo').onclick = async () => {
+  const all = resultados.flatMap(r => r.emails).join('\n');
+  if (!all) { $('resEstado').textContent = '⚠️ No hay emails para copiar'; return; }
+  try { await navigator.clipboard.writeText(all); $('resEstado').textContent = '📋 ' + resultados.flatMap(r => r.emails).length + ' emails copiados'; } catch { $('resEstado').textContent = '⚠️ Error al copiar'; }
+};
+
+// Export CSV
+$('exportCsv').onclick = () => {
+  let csv = 'Nombre,Email\n';
+  for (const r of resultados) {
+    if (r.emails.length) r.emails.forEach(e => csv += `"${r.nombre}","${e}"\n`);
+    else csv += `"${r.nombre}",""\n`;
+  }
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'correos_' + Date.now() + '.csv'; a.click();
+};
+
+// ── Save / Load history ───────────────────────────────────────────────────────
+$('guardarBtn').onclick = async () => {
+  if (!uid || !resultados.length) return;
+  const fila = {
+    id: 'corr_' + Date.now(), user_id: uid,
+    source_name: $('fileName').textContent || 'manual',
+    domain: $('dominio').value.trim() || null,
+    results: resultados
+  };
+  const { error } = await sb.from('correos_busquedas').insert(fila);
+  $('resEstado').textContent = error ? ('⚠️ ' + error.message) : '✅ Guardado.';
+  if (!error) cargaHistorial();
+};
+
+async function cargaHistorial() {
+  const { data, error } = await sb.from('correos_busquedas')
+    .select('id,source_name,domain,results,created_at')
+    .order('created_at', { ascending: false }).limit(10);
+  if (error || !data?.length) { $('historial').innerHTML = '<span class="aviso">Sin búsquedas guardadas aún.</span>'; return; }
+  $('historial').innerHTML = data.map(e => {
+    const f = new Date(e.created_at);
+    const fecha = f.toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit' }) + ' ' + f.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const n = (e.results || []).length;
+    return `<div class="fila-hist" data-id="${e.id}">
+      <div class="cab"><span class="fecha">${fecha} · ${n} nombres${e.domain ? ' · ' + esc(e.domain) : ''}</span>
+        <button data-cargar="${e.id}">🔄 cargar</button>
+        <button data-borrar="${e.id}">🗑</button></div>
+    </div>`;
+  }).join('');
+}
+let histData = [];
+$('historial').addEventListener('click', async e => {
+  const c = e.target.closest('[data-cargar]');
+  if (c) {
+    const { data } = await sb.from('correos_busquedas').select('results,domain').eq('id', c.dataset.cargar).single();
+    if (data) { resultados = data.results || []; if (data.domain) $('dominio').value = data.domain; pintaResultados(); }
+    return;
+  }
+  const b = e.target.closest('[data-borrar]');
+  if (b && confirm('¿Borrar esta búsqueda?')) {
+    await sb.from('correos_busquedas').delete().eq('id', b.dataset.borrar);
+    cargaHistorial();
+  }
+});
+
+</script>
+</body>
+</html>
