@@ -216,6 +216,107 @@
       <div id="torRes" style="display:none;margin-top:10px;background:var(--input-bg);border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:13px;white-space:pre-wrap;max-height:400px;overflow:auto"></div>
     </div>
 
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- ARGUS OSINT                                                        -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">🛡️ Argus OSINT</h2>
+      <div class="aviso" style="margin-bottom:12px">Módulos de reconocimiento basados en Argus — se ejecutan en el NucBox</div>
+    </div>
+
+    <!-- Argus: Email Harvester -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">🕸️</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Email Harvester</div>
+          <div style="font-size:11px;color:var(--muted)">Crawlea un sitio web y extrae todos los emails que encuentre en las páginas</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="text" id="argHarvestUrl" placeholder="https://empresa.com o dominio">
+        <button class="btn peri" id="argHarvestBtn">Crawl</button>
+      </div>
+      <div class="domain-row" style="margin-top:6px">
+        <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">
+          Máx. páginas: <input type="number" id="argHarvestMax" value="50" min="1" max="200" style="width:60px;background:var(--input-bg);color:var(--ink);border:1px solid var(--line2);border-radius:8px;padding:5px 8px;font-size:13px">
+        </label>
+      </div>
+      <div id="argHarvestEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="argHarvestRes" style="display:none;margin-top:10px">
+        <div id="argHarvestEmails" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+        <div id="argHarvestInfo" class="aviso" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- Argus: Email Config (SPF/DKIM/DMARC) -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">🔐</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Email Config</div>
+          <div style="font-size:11px;color:var(--muted)">Comprueba SPF, DKIM, DMARC y registros MX de un dominio</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="text" id="argConfigDom" placeholder="empresa.com">
+        <button class="btn" id="argConfigBtn" style="background:#6366f1;border-color:#6366f1;color:#fff">Analizar</button>
+      </div>
+      <div id="argConfigEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="argConfigRes" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- Argus: Breach Check (HIBP) -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">💀</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Breach Check</div>
+          <div style="font-size:11px;color:var(--muted)">Consulta HaveIBeenPwned para ver si un email aparece en filtraciones</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="email" id="argBreachEmail" placeholder="email@ejemplo.com">
+        <button class="btn" id="argBreachBtn" style="background:var(--rojo);border-color:var(--rojo);color:#fff">Comprobar</button>
+      </div>
+      <div id="argBreachEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="argBreachRes" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- Argus: Data Leak -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">🔓</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Data Leak</div>
+          <div style="font-size:11px;color:var(--muted)">Busca fugas de datos de un dominio o email en leak-lookup.com</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="text" id="argLeakQuery" placeholder="empresa.com o email@ejemplo.com">
+        <button class="btn" id="argLeakBtn" style="background:#d97706;border-color:#d97706;color:#fff">Buscar fugas</button>
+      </div>
+      <div id="argLeakEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="argLeakRes" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- Argus: Social Media -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">📱</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Social Media</div>
+          <div style="font-size:11px;color:var(--muted)">Detecta perfiles en redes sociales enlazados desde un sitio web</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="text" id="argSocialUrl" placeholder="https://empresa.com">
+        <button class="btn" id="argSocialBtn" style="background:var(--mint2);border-color:var(--mint2);color:#fff">Detectar</button>
+      </div>
+      <div id="argSocialEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="argSocialRes" style="display:none;margin-top:10px"></div>
+    </div>
+
     <!-- OSINT status -->
     <div class="card" id="osintStatus">
       <div class="sec-t">Estado de las herramientas</div>
@@ -662,7 +763,8 @@ async function checkOsint() {
       $('osintCheck').innerHTML = '<span class="ok">✅ NucBox conectado</span> — ' +
         (d.mailaccess ? '📧 MailAccess' : '<span style="color:var(--soft)">⬜ MailAccess</span>') + ' · ' +
         (d.horus ? '👁️ Horus' : '<span style="color:var(--soft)">⬜ Horus</span>') + ' · ' +
-        (d.torbot ? '🧅 TorBot' : '<span style="color:var(--soft)">⬜ TorBot</span>');
+        (d.torbot ? '🧅 TorBot' : '<span style="color:var(--soft)">⬜ TorBot</span>') + ' · ' +
+        (d.argus ? '🛡️ Argus' : '<span style="color:var(--soft)">⬜ Argus</span>');
     } else throw new Error();
   } catch {
     $('osintCheck').innerHTML = '<span style="color:var(--peach)">⚠️ NucBox no accesible</span> — las herramientas OSINT necesitan el NucBox encendido y con los servicios instalados. <a href="/" style="color:var(--peri)">Configura la URL en Settings → IA Local</a>';
@@ -742,6 +844,181 @@ $('torBtn').onclick = async () => {
   }
   $('torBtn').disabled = false;
 };
+
+// ── Argus OSINT ──────────────────────────────────────────────────────────────
+
+// Argus: Email Harvester
+$('argHarvestBtn').onclick = async () => {
+  const url = $('argHarvestUrl').value.trim();
+  if (!url) { $('argHarvestUrl').focus(); return; }
+  const max = parseInt($('argHarvestMax').value) || 50;
+  $('argHarvestEstado').innerHTML = '<span class="spinner"></span> Crawleando ' + esc(url) + ' (máx ' + max + ' páginas)…';
+  $('argHarvestBtn').disabled = true;
+  $('argHarvestRes').style.display = 'none';
+  try {
+    const data = await nucboxFetch('/osint/argus/harvest', { url, max_pages: max });
+    if (data.error) throw new Error(data.error);
+    const emails = data.emails || [];
+    $('argHarvestEmails').innerHTML = emails.length
+      ? emails.map(e => `<span class="email-chip" title="Clic para copiar">${esc(e)}</span>`).join('')
+      : '<span style="color:var(--soft)">No se encontraron emails</span>';
+    $('argHarvestInfo').textContent = emails.length + ' emails encontrados en ' + (data.pages_crawled || 0) + ' páginas';
+    $('argHarvestRes').style.display = '';
+    $('argHarvestEstado').textContent = '✅ Harvest completado';
+  } catch (e) {
+    $('argHarvestEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('argHarvestBtn').disabled = false;
+};
+
+// Argus: Email Config
+$('argConfigBtn').onclick = async () => {
+  const dom = $('argConfigDom').value.trim();
+  if (!dom) { $('argConfigDom').focus(); return; }
+  $('argConfigEstado').innerHTML = '<span class="spinner"></span> Analizando ' + esc(dom) + '…';
+  $('argConfigBtn').disabled = true;
+  $('argConfigRes').style.display = 'none';
+  try {
+    const d = await nucboxFetch('/osint/argus/email-config', { domain: dom });
+    if (d.error) throw new Error(d.error);
+    const spfOk = d.spf?.record && d.spf.record !== 'No SPF';
+    const dmarcOk = d.dmarc?.record && d.dmarc.record !== 'No DMARC';
+    const dkimOk = d.dkim?.length && d.dkim[0].selector !== '-';
+    let html = `<table class="res-table">
+      <tr><th colspan="2" style="color:var(--peri)">📋 Resumen de ${esc(dom)}</th></tr>
+      <tr><td style="width:90px;font-weight:700">SPF</td>
+          <td>${spfOk ? '<span class="ok">✅</span>' : '<span class="err">❌</span>'} <code style="font-size:12px;color:var(--muted);word-break:break-all">${esc(d.spf?.record || '-')}</code></td></tr>
+      <tr><td style="font-weight:700">DMARC</td>
+          <td>${dmarcOk ? '<span class="ok">✅</span>' : '<span class="err">❌</span>'} <code style="font-size:12px;color:var(--muted);word-break:break-all">${esc(d.dmarc?.record || '-')}</code></td></tr>`;
+    if (dmarcOk && d.dmarc.tags) {
+      const t = d.dmarc.tags;
+      if (t.p) html += `<tr><td></td><td style="font-size:12px">Política: <strong>${esc(t.p)}</strong>${t.rua ? ' · Reportes: ' + esc(t.rua) : ''}</td></tr>`;
+    }
+    html += `<tr><td style="font-weight:700">DKIM</td><td>`;
+    if (dkimOk) {
+      html += d.dkim.map(dk => `<span class="ok">✅</span> selector: <strong>${esc(dk.selector)}</strong>`).join('<br>');
+    } else {
+      html += '<span class="err">❌ No se encontraron selectores DKIM</span>';
+    }
+    html += `</td></tr>`;
+    if (d.mx?.length) {
+      html += `<tr><td style="font-weight:700">MX</td><td style="font-size:12px">${d.mx.map(m => esc(m)).join('<br>')}</td></tr>`;
+    }
+    html += `</table>`;
+    $('argConfigRes').innerHTML = html;
+    $('argConfigRes').style.display = '';
+    $('argConfigEstado').textContent = '✅ Análisis completado';
+  } catch (e) {
+    $('argConfigEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('argConfigBtn').disabled = false;
+};
+
+// Argus: Breach Check
+$('argBreachBtn').onclick = async () => {
+  const email = $('argBreachEmail').value.trim();
+  if (!email) { $('argBreachEmail').focus(); return; }
+  $('argBreachEstado').innerHTML = '<span class="spinner"></span> Consultando HIBP para ' + esc(email) + '…';
+  $('argBreachBtn').disabled = true;
+  $('argBreachRes').style.display = 'none';
+  try {
+    const d = await nucboxFetch('/osint/argus/breach', { email });
+    if (d.error) throw new Error(d.error);
+    let html = '';
+    if (d.breaches?.length) {
+      html = `<div style="color:var(--rojo);font-weight:700;margin-bottom:8px">⚠️ Encontrado en ${d.breaches.length} filtración(es)</div>`;
+      html += `<div style="display:flex;flex-wrap:wrap;gap:6px">` +
+        d.breaches.map(b => `<span style="background:rgba(239,68,68,.15);border:1px solid var(--rojo);border-radius:8px;padding:3px 10px;font-size:12px;color:var(--rojo)">${esc(b)}</span>`).join('') +
+        `</div>`;
+    } else {
+      html = `<div class="ok" style="font-weight:700">✅ No aparece en filtraciones conocidas</div>`;
+    }
+    if (d.note) html += `<div class="aviso" style="margin-top:6px">${esc(d.note)}</div>`;
+    $('argBreachRes').innerHTML = html;
+    $('argBreachRes').style.display = '';
+    $('argBreachEstado').textContent = '✅ Consulta completada';
+  } catch (e) {
+    $('argBreachEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('argBreachBtn').disabled = false;
+};
+
+// Argus: Data Leak
+$('argLeakBtn').onclick = async () => {
+  const q = $('argLeakQuery').value.trim();
+  if (!q) { $('argLeakQuery').focus(); return; }
+  $('argLeakEstado').innerHTML = '<span class="spinner"></span> Buscando fugas para ' + esc(q) + '…';
+  $('argLeakBtn').disabled = true;
+  $('argLeakRes').style.display = 'none';
+  try {
+    const d = await nucboxFetch('/osint/argus/leak', { query: q });
+    if (d.error) throw new Error(d.error);
+    let html = '';
+    const checked = d.checked_emails || [];
+    for (const ce of checked) {
+      const icon = ce.status === 'found' ? '🔓' : ce.status === 'clean' ? '✅' : '⚠️';
+      html += `<div style="margin-bottom:8px"><strong>${icon} ${esc(ce.email)}</strong>`;
+      if (ce.status === 'found' && ce.leaks?.length) {
+        html += `<div style="margin-left:16px;margin-top:4px">`;
+        for (const l of ce.leaks.slice(0, 20)) {
+          html += `<div style="font-size:12px;color:var(--peach)">• ${esc(l.source)}${l.data ? ': ' + esc(l.data) : ''}</div>`;
+        }
+        if (ce.leaks.length > 20) html += `<div class="aviso">+${ce.leaks.length - 20} más</div>`;
+        html += `</div>`;
+      } else if (ce.status === 'clean') {
+        html += ` <span style="font-size:12px;color:var(--mint)">sin fugas</span>`;
+      } else if (ce.status === 'error') {
+        html += ` <span style="font-size:12px;color:var(--soft)">error de conexión</span>`;
+      }
+      html += `</div>`;
+    }
+    if (!checked.length) html = '<span class="aviso">Sin resultados</span>';
+    $('argLeakRes').innerHTML = html;
+    $('argLeakRes').style.display = '';
+    $('argLeakEstado').textContent = '✅ Búsqueda completada — ' + (d.leaks?.length || 0) + ' fugas encontradas';
+  } catch (e) {
+    $('argLeakEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('argLeakBtn').disabled = false;
+};
+
+// Argus: Social Media
+$('argSocialBtn').onclick = async () => {
+  const url = $('argSocialUrl').value.trim();
+  if (!url) { $('argSocialUrl').focus(); return; }
+  $('argSocialEstado').innerHTML = '<span class="spinner"></span> Escaneando ' + esc(url) + '…';
+  $('argSocialBtn').disabled = true;
+  $('argSocialRes').style.display = 'none';
+  try {
+    const d = await nucboxFetch('/osint/argus/social', { url });
+    if (d.error) throw new Error(d.error);
+    const profiles = d.profiles || [];
+    let html = '';
+    if (profiles.length) {
+      const icons = { 'Facebook': '📘', 'Twitter/X': '🐦', 'Instagram': '📸', 'LinkedIn': '💼', 'YouTube': '▶️', 'TikTok': '🎵', 'GitHub': '🐙', 'Pinterest': '📌', 'Reddit': '🟠', 'Threads': '🧵', 'Mastodon': '🐘' };
+      html = `<table class="res-table"><thead><tr><th>Red</th><th>URL</th></tr></thead><tbody>`;
+      for (const p of profiles) {
+        html += `<tr><td>${icons[p.platform] || '🌐'} ${esc(p.platform)}</td><td style="word-break:break-all"><a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--peri);font-size:12px">${esc(p.url)}</a></td></tr>`;
+      }
+      html += `</tbody></table>`;
+    } else {
+      html = '<span class="aviso">No se encontraron perfiles de redes sociales</span>';
+    }
+    $('argSocialRes').innerHTML = html;
+    $('argSocialRes').style.display = '';
+    $('argSocialEstado').textContent = '✅ ' + profiles.length + ' perfiles encontrados';
+  } catch (e) {
+    $('argSocialEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('argSocialBtn').disabled = false;
+};
+
+// Click-to-copy for Argus harvest emails too
+$('argHarvestRes')?.addEventListener('click', async e => {
+  const chip = e.target.closest('.email-chip');
+  if (!chip) return;
+  try { await navigator.clipboard.writeText(chip.textContent); chip.style.background = 'var(--mint2)'; chip.style.borderColor = 'var(--mint2)'; setTimeout(() => { chip.style.background = ''; chip.style.borderColor = ''; }, 800); } catch {}
+});
 
 </script>
 </body>
