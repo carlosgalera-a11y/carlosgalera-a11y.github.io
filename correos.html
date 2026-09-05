@@ -260,6 +260,7 @@ init();
 
 // ── File upload ───────────────────────────────────────────────────────────────
 let archivoTexto = '';
+let archivoTipo = ''; // 'tabla' (csv/txt) | 'doc' (pdf/docx)
 const dropZone = $('dropZone');
 const fileInput = $('fileInput');
 
@@ -292,7 +293,8 @@ async function extraerZIP(file) {
     }
   }
   if (!procesados) throw new Error('El ZIP no contiene archivos soportados (PDF, DOCX, TXT, CSV)');
-  return { texto, procesados, total: archivos.length };
+  const soloTablas = archivos.every(e => /\.(txt|csv)$/i.test(e.name) || e.dir);
+  return { texto, procesados, total: archivos.length, tipo: soloTablas ? 'tabla' : 'doc' };
 }
 
 async function procesaArchivo(file) {
@@ -302,14 +304,14 @@ async function procesaArchivo(file) {
   try {
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext === 'pdf') {
-      archivoTexto = await extraerPDF(file);
+      archivoTexto = await extraerPDF(file); archivoTipo = 'doc';
     } else if (ext === 'docx' || ext === 'doc') {
-      archivoTexto = await extraerDOCX(file);
+      archivoTexto = await extraerDOCX(file); archivoTipo = 'doc';
     } else if (ext === 'txt' || ext === 'csv') {
-      archivoTexto = await file.text();
+      archivoTexto = await file.text(); archivoTipo = 'tabla';
     } else if (ext === 'zip') {
       const r = await extraerZIP(file);
-      archivoTexto = r.texto;
+      archivoTexto = r.texto; archivoTipo = r.tipo;
       const lineas = archivoTexto.split('\n').filter(l => l.trim()).length;
       $('fileName').textContent = '✅ ' + file.name + ' — ' + r.procesados + '/' + r.total + ' archivos extraídos, ' + lineas + ' líneas';
       $('buscarBtn').disabled = false;
@@ -412,24 +414,109 @@ $('manualBtn').onclick = async () => {
   pintaResultados();
 };
 
+// ── Parser local para CSV/TXT (sin IA, sin límite de tamaño) ─────────────────
+function parseaFilas(texto) {
+  const lineas = texto.replace(/\r/g, '').split('\n').filter(l => l.trim());
+  if (!lineas.length) return { filas: [], sep: '' };
+  const muestra = lineas.slice(0, 20).join('\n');
+  const cuenta = s => (muestra.match(new RegExp('\\' + s, 'g')) || []).length;
+  const sep = [';', ',', '\t', '|'].map(s => [s, cuenta(s)]).sort((a, b) => b[1] - a[1])[0];
+  const separador = sep[1] >= lineas.slice(0, 20).length ? sep[0] : null;
+  const divide = l => {
+    if (!separador) return [l.trim()];
+    const out = []; let cur = ''; let q = false;
+    for (const c of l) {
+      if (c === '"') { q = !q; continue; }
+      if (c === separador && !q) { out.push(cur.trim()); cur = ''; } else cur += c;
+    }
+    out.push(cur.trim());
+    return out;
+  };
+  return { filas: lineas.map(divide), sep: separador };
+}
+
+const TITULOS = /^(dr|dra|d|dña|don|doña|sr|sra|prof|lic|ing)\.?\s+/i;
+function limpiaNombre(s, giraComa = true) {
+  let n = String(s || '').replace(/\s+/g, ' ').trim().replace(TITULOS, '');
+  if (giraComa && n.includes(',')) { const [ap, nom] = n.split(',').map(x => x.trim()); if (ap && nom) n = nom + ' ' + ap; }
+  if (n === n.toUpperCase()) n = n.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
+  return n;
+}
+const pareceNombre = s => { const n = limpiaNombre(s); return /^[\p{L}'´`.\- ]{4,60}$/u.test(n) && n.split(' ').length >= 2 && n.split(' ').length <= 6; };
+
+function extraerNombresTabla(texto) {
+  const { filas } = parseaFilas(texto);
+  if (!filas.length) return [];
+  const cab = filas[0].map(c => c.toLowerCase());
+  const idx = re => cab.findIndex(c => re.test(c));
+  const iNom = idx(/^(nombre|name|first ?name|nom)\b/), iAp = idx(/apellido|surname|last ?name|cognom/), iFull = idx(/nombre completo|full ?name|nombre y apellidos|profesional|facultativo|m[eé]dico/);
+  const iMail = idx(/e-?mail|correo/);
+  let cuerpo = filas, col = null, colAp = null;
+  if (iNom >= 0 && iAp >= 0 && iNom !== iAp) { col = iNom; colAp = iAp; cuerpo = filas.slice(1); }
+  else if (iFull >= 0) { col = iFull; cuerpo = filas.slice(1); }
+  else if (iNom >= 0) { col = iNom; cuerpo = filas.slice(1); }
+  else if (iAp >= 0) { col = iAp; cuerpo = filas.slice(1); }
+  else {
+    // Sin cabecera reconocible: elegimos la columna cuyas celdas más parecen nombres
+    const ncol = Math.max(...filas.map(f => f.length));
+    let mejor = -1, puntos = 0;
+    for (let c = 0; c < ncol; c++) {
+      const p = filas.slice(0, 200).filter(f => pareceNombre(f[c] || '')).length;
+      if (p > puntos) { puntos = p; mejor = c; }
+    }
+    if (mejor < 0 || puntos < 2) return [];
+    col = mejor;
+    if (!pareceNombre(filas[0][col] || '') || /nombre|name/i.test(filas[0][col])) cuerpo = filas.slice(1);
+  }
+  const vistos = new Set(); const out = [];
+  for (const f of cuerpo) {
+    const nombre = colAp !== null ? limpiaNombre(limpiaNombre(f[col] || '', false) + ' ' + limpiaNombre(f[colAp] || '', false), false).replace(/,/g, '') : limpiaNombre(f[col] || '');
+    if (!pareceNombre(nombre)) continue;
+    const k = normalizaNombre(nombre);
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    const email = iMail >= 0 && /@/.test(f[iMail] || '') ? f[iMail].trim().toLowerCase() : null;
+    out.push({ nombre, email });
+  }
+  return out;
+}
+
 async function buscar(texto) {
   $('buscarBtn').disabled = true;
-  $('estado').innerHTML = '<span class="spinner"></span> Extrayendo nombres con IA…';
+  const dominio = $('dominio').value.trim();
   try {
-    let nombres;
+    let nombres = [];
+    // 1) CSV/TXT: parseo local (rápido, sin límite y sin IA)
+    if (archivoTipo === 'tabla') {
+      $('estado').innerHTML = '<span class="spinner"></span> Leyendo tabla…';
+      const filas = extraerNombresTabla(texto);
+      if (filas.length) {
+        resultados = filas.map(r => ({
+          nombre: r.nombre,
+          emails: [...new Set([...(r.email ? [r.email] : []), ...(dominio ? generaPatrones(r.nombre, dominio) : [])])]
+        }));
+        pintaResultados();
+        const conMail = filas.filter(r => r.email).length;
+        $('estado').textContent = '✅ ' + filas.length + ' nombres' + (conMail ? ' · ' + conMail + ' con email en el archivo' : '') + (dominio ? ' · patrones generados para @' + dominio : ' · añade un dominio para generar patrones');
+        $('buscarBtn').disabled = false;
+        return;
+      }
+    }
+    // 2) Resto: IA, con extracción básica de respaldo
+    $('estado').innerHTML = '<span class="spinner"></span> Extrayendo nombres con IA…';
     try {
       nombres = await extraerNombresConIA(texto);
     } catch (e) {
       $('estado').textContent = '⚠️ IA no disponible, intentando extracción básica…';
       nombres = extraerNombresBasico(texto);
     }
+    if (!nombres.length) nombres = extraerNombresBasico(texto);
     if (!nombres.length) {
       $('estado').textContent = '⚠️ No se encontraron nombres en el documento.';
       $('buscarBtn').disabled = false;
       return;
     }
     $('estado').textContent = '✅ ' + nombres.length + ' nombres encontrados. Generando patrones…';
-    const dominio = $('dominio').value.trim();
     resultados = nombres.map(n => ({
       nombre: n,
       emails: dominio ? generaPatrones(n, dominio) : []
