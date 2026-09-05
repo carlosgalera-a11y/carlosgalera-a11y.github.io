@@ -623,13 +623,32 @@ $('historial').addEventListener('click', async e => {
 });
 
 // ── OSINT Tools (NucBox API) ──────────────────────────────────────────────────
-const NUCBOX = localStorage.getItem('fh_nucbox_url') || 'https://nucboxg10.tail3a7cac.ts.net';
-const NUCBOX_KEY = localStorage.getItem('fh_ia_local_secret') || '';
+// Lee la MISMA config que la app FileHub (Settings → IA Local):
+// localStorage['filehub_minipc_config_v1'] = { tasksBaseUrl, cfAccessClientSecret, ... }
+// El NucBox valida el secret por el header CF-Access-Client-Secret (o x-filehub-key).
+function nucboxCfg() {
+  try {
+    const c = JSON.parse(localStorage.getItem('filehub_minipc_config_v1') || '{}');
+    return {
+      url: (c.tasksBaseUrl || 'https://nucboxg10.tail3a7cac.ts.net').replace(/\/$/, ''),
+      secret: c.cfAccessClientSecret || localStorage.getItem('fh_ia_local_secret') || '',
+      id: c.cfAccessClientId || '',
+    };
+  } catch {
+    return { url: 'https://nucboxg10.tail3a7cac.ts.net', secret: localStorage.getItem('fh_ia_local_secret') || '', id: '' };
+  }
+}
+function nucboxHeaders(extra) {
+  const { secret, id } = nucboxCfg();
+  const h = Object.assign({}, extra || {});
+  if (secret) { h['CF-Access-Client-Secret'] = secret; h['x-filehub-key'] = secret; }
+  if (id) h['CF-Access-Client-Id'] = id;
+  return h;
+}
+const NUCBOX = nucboxCfg().url;
 
 async function nucboxFetch(path, body) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (NUCBOX_KEY) headers['x-filehub-key'] = NUCBOX_KEY;
-  const res = await fetch(NUCBOX + path, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(120000) });
+  const res = await fetch(NUCBOX + path, { method: 'POST', headers: nucboxHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(body), signal: AbortSignal.timeout(120000) });
   if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()).slice(0, 200));
   return res.json();
 }
@@ -637,7 +656,7 @@ async function nucboxFetch(path, body) {
 // Check OSINT status
 async function checkOsint() {
   try {
-    const res = await fetch(NUCBOX + '/osint/status', { headers: NUCBOX_KEY ? { 'x-filehub-key': NUCBOX_KEY } : {}, signal: AbortSignal.timeout(8000) });
+    const res = await fetch(NUCBOX + '/osint/status', { headers: nucboxHeaders(), signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const d = await res.json();
       $('osintCheck').innerHTML = '<span class="ok">✅ NucBox conectado</span> — ' +
