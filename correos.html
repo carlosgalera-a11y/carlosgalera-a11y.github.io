@@ -88,8 +88,8 @@
       <div class="sec-t">1 · Sube tu documento</div>
       <div class="drop-zone" id="dropZone">
         <div class="icono">📄</div>
-        <div class="hint">Arrastra un PDF o DOCX aquí, o haz clic para seleccionar</div>
-        <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt,.csv">
+        <div class="hint">Arrastra un PDF, DOCX, CSV o ZIP aquí, o haz clic para seleccionar</div>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.txt,.csv,.zip">
       </div>
       <div id="fileName" class="aviso" style="margin-top:8px"></div>
     </div>
@@ -228,6 +228,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -268,6 +269,32 @@ dropZone.ondragleave = () => dropZone.classList.remove('over');
 dropZone.ondrop = e => { e.preventDefault(); dropZone.classList.remove('over'); if (e.dataTransfer.files.length) procesaArchivo(e.dataTransfer.files[0]); };
 fileInput.onchange = () => { if (fileInput.files.length) procesaArchivo(fileInput.files[0]); };
 
+async function extraerZIP(file) {
+  const zip = await JSZip.loadAsync(file);
+  let texto = '';
+  const archivos = Object.values(zip.files).filter(f => !f.dir);
+  let procesados = 0;
+  for (const entry of archivos) {
+    const ext = entry.name.split('.').pop().toLowerCase();
+    if (ext === 'txt' || ext === 'csv') {
+      texto += (await entry.async('text')) + '\n';
+      procesados++;
+    } else if (ext === 'pdf') {
+      const buf = await entry.async('arraybuffer');
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      texto += (await extraerPDF(blob)) + '\n';
+      procesados++;
+    } else if (ext === 'docx' || ext === 'doc') {
+      const buf = await entry.async('arraybuffer');
+      const result = await mammoth.extractRawText({ arrayBuffer: buf });
+      texto += result.value + '\n';
+      procesados++;
+    }
+  }
+  if (!procesados) throw new Error('El ZIP no contiene archivos soportados (PDF, DOCX, TXT, CSV)');
+  return { texto, procesados, total: archivos.length };
+}
+
 async function procesaArchivo(file) {
   $('fileName').textContent = '⏳ Leyendo ' + file.name + '…';
   $('buscarBtn').disabled = true;
@@ -280,8 +307,15 @@ async function procesaArchivo(file) {
       archivoTexto = await extraerDOCX(file);
     } else if (ext === 'txt' || ext === 'csv') {
       archivoTexto = await file.text();
+    } else if (ext === 'zip') {
+      const r = await extraerZIP(file);
+      archivoTexto = r.texto;
+      const lineas = archivoTexto.split('\n').filter(l => l.trim()).length;
+      $('fileName').textContent = '✅ ' + file.name + ' — ' + r.procesados + '/' + r.total + ' archivos extraídos, ' + lineas + ' líneas';
+      $('buscarBtn').disabled = false;
+      return;
     } else {
-      $('fileName').innerHTML = '<span class="err">Formato no soportado. Usa PDF, DOCX, TXT o CSV.</span>';
+      $('fileName').innerHTML = '<span class="err">Formato no soportado. Usa PDF, DOCX, TXT, CSV o ZIP.</span>';
       return;
     }
     const lineas = archivoTexto.split('\n').filter(l => l.trim()).length;
