@@ -217,6 +217,70 @@
     </div>
 
     <!-- ════════════════════════════════════════════════════════════════════ -->
+    <!-- EMAIL VERIFICATION (MailAccess)                                    -->
+    <!-- ════════════════════════════════════════════════════════════════════ -->
+    <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">🔍 Verificación de Email</h2>
+      <div class="aviso" style="margin-bottom:12px">Verifica si las direcciones de email candidatas realmente existen (Gravatar + MailAccess)</div>
+    </div>
+
+    <!-- Verify single email -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">✉️</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Verificar Email</div>
+          <div style="font-size:11px;color:var(--muted)">Comprueba si un email existe (Gravatar, Google, perfil)</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="email" id="verifyEmailIn" placeholder="correo@gmail.com">
+        <button class="btn peri" id="verifyEmailBtn">Verificar</button>
+      </div>
+      <div id="verifyEmailRes" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- Batch verify from CSV -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">📋</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Verificación Masiva</div>
+          <div style="font-size:11px;color:var(--muted)">Sube un CSV (Nombre,Email) y verifica cuáles existen realmente</div>
+        </div>
+      </div>
+      <div class="drop-zone" id="verifyDropZone">
+        <input type="file" id="verifyFileIn" accept=".csv,.txt">
+        <div class="icono">📁</div>
+        <div class="hint">Arrastra un CSV aquí o haz clic para seleccionar</div>
+      </div>
+      <div id="verifyBatchInfo" class="aviso" style="margin-top:8px"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <button class="btn mint" id="verifyBatchBtn" disabled>Verificar emails</button>
+        <button class="btn" id="verifyBatchCancel" style="display:none">Cancelar</button>
+        <span id="verifyBatchProgress" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div id="verifyBatchRes" style="display:none;margin-top:12px"></div>
+    </div>
+
+    <!-- MailAccess Investigate -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">🔬</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">MailAccess Investigate</div>
+          <div style="font-size:11px;color:var(--muted)">Investigación OSINT completa de un email (breaches, identidad, cuentas, redes)</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="email" id="maInvestIn" placeholder="correo@ejemplo.com">
+        <button class="btn" id="maInvestBtn" style="background:#8A1C2B;border-color:#8A1C2B;color:#fff">Investigar</button>
+      </div>
+      <div id="maInvestStatus" class="aviso" style="margin-top:8px"></div>
+      <div id="maInvestRes" style="display:none;margin-top:10px;background:var(--input-bg);border:1px solid var(--line2);border-radius:12px;padding:12px;font-size:13px;max-height:500px;overflow:auto"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════════════ -->
     <!-- ARGUS OSINT                                                        -->
     <!-- ════════════════════════════════════════════════════════════════════ -->
     <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px">
@@ -761,7 +825,8 @@ async function checkOsint() {
     if (res.ok) {
       const d = await res.json();
       $('osintCheck').innerHTML = '<span class="ok">✅ NucBox conectado</span> — ' +
-        (d.mailaccess ? '📧 MailAccess' : '<span style="color:var(--soft)">⬜ MailAccess</span>') + ' · ' +
+        (d.verify ? '🔍 Verify' : '<span style="color:var(--soft)">⬜ Verify</span>') + ' · ' +
+        (d.mailaccess_cli ? '📧 MailAccess CLI' : (d.mailaccess ? '📧 MailAccess' : '<span style="color:var(--soft)">⬜ MailAccess</span>')) + ' · ' +
         (d.horus ? '👁️ Horus' : '<span style="color:var(--soft)">⬜ Horus</span>') + ' · ' +
         (d.torbot ? '🧅 TorBot' : '<span style="color:var(--soft)">⬜ TorBot</span>') + ' · ' +
         (d.argus ? '🛡️ Argus' : '<span style="color:var(--soft)">⬜ Argus</span>');
@@ -844,6 +909,177 @@ $('torBtn').onclick = async () => {
   }
   $('torBtn').disabled = false;
 };
+
+// ── Email Verification ──────────────────────────────────────────────────────
+
+// Single email verify
+$('verifyEmailBtn').onclick = async () => {
+  const email = $('verifyEmailIn').value.trim();
+  if (!email) { $('verifyEmailIn').focus(); return; }
+  $('verifyEmailBtn').disabled = true;
+  $('verifyEmailRes').style.display = 'none';
+  try {
+    const data = await nucboxFetch('/osint/verify-email', { email });
+    const el = $('verifyEmailRes');
+    el.style.display = '';
+    if (data.exists === true) {
+      el.innerHTML = `<div style="padding:10px;background:rgba(78,222,163,.1);border:1px solid var(--mint2);border-radius:10px">
+        <strong class="ok">✅ Confirmado</strong> — <code>${data.email_fixed||data.email}</code> existe
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Señales: ${Object.entries(data.signals||{}).filter(([,v])=>v).map(([k])=>k).join(', ')||'—'}</div>
+      </div>`;
+    } else {
+      el.innerHTML = `<div style="padding:10px;background:rgba(255,183,131,.08);border:1px solid var(--peach);border-radius:10px">
+        <strong style="color:var(--peach)">❓ No verificado</strong> — <code>${data.email_fixed||data.email}</code>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">No se pudo confirmar (no tiene Gravatar ni perfil público)</div>
+      </div>`;
+    }
+  } catch (e) {
+    $('verifyEmailRes').style.display = '';
+    $('verifyEmailRes').innerHTML = `<span class="err">${e.message}</span>`;
+  }
+  $('verifyEmailBtn').disabled = false;
+};
+$('verifyEmailIn').onkeydown = e => { if (e.key==='Enter') $('verifyEmailBtn').click(); };
+
+// Batch CSV verify
+let _batchEmails = [];
+const dz = $('verifyDropZone');
+const fi = $('verifyFileIn');
+dz.onclick = () => fi.click();
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('over'); };
+dz.ondragleave = () => dz.classList.remove('over');
+dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); handleVerifyFile(e.dataTransfer.files[0]); };
+fi.onchange = () => { if (fi.files[0]) handleVerifyFile(fi.files[0]); };
+
+function handleVerifyFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l=>l.trim());
+    _batchEmails = [];
+    const seen = new Set();
+    for (const line of lines.slice(1)) { // skip header
+      const parts = line.split(',');
+      if (parts.length < 2) continue;
+      const name = parts[0].replace(/"/g,'').trim();
+      const email = parts[1].replace(/"/g,'').trim();
+      if (!email || seen.has(email)) continue;
+      seen.add(email);
+      _batchEmails.push({name, email});
+    }
+    $('verifyBatchInfo').innerHTML = `📄 <strong>${file.name}</strong> — ${_batchEmails.length} emails únicos`;
+    $('verifyBatchBtn').disabled = false;
+  };
+  reader.readAsText(file);
+}
+
+let _batchJobId = null;
+let _batchTimer = null;
+
+$('verifyBatchBtn').onclick = async () => {
+  if (!_batchEmails.length) return;
+  $('verifyBatchBtn').disabled = true;
+  $('verifyBatchCancel').style.display = '';
+  $('verifyBatchProgress').textContent = 'Enviando…';
+  $('verifyBatchRes').style.display = 'none';
+  try {
+    const resp = await nucboxFetch('/osint/verify-batch', { emails: _batchEmails });
+    _batchJobId = resp.job_id;
+    $('verifyBatchProgress').textContent = `Job ${_batchJobId} — 0/${resp.total}`;
+    _batchTimer = setInterval(pollBatchStatus, 3000);
+  } catch (e) {
+    $('verifyBatchProgress').innerHTML = `<span class="err">${e.message}</span>`;
+    $('verifyBatchBtn').disabled = false;
+    $('verifyBatchCancel').style.display = 'none';
+  }
+};
+
+$('verifyBatchCancel').onclick = async () => {
+  if (_batchJobId) {
+    try { await nucboxFetch('/osint/verify-batch/cancel', { job_id: _batchJobId }); } catch {}
+  }
+  clearInterval(_batchTimer);
+  $('verifyBatchProgress').textContent = 'Cancelado';
+  $('verifyBatchBtn').disabled = false;
+  $('verifyBatchCancel').style.display = 'none';
+};
+
+async function pollBatchStatus() {
+  if (!_batchJobId) return;
+  try {
+    const data = await nucboxFetch('/osint/verify-batch/status', { job_id: _batchJobId });
+    const pct = data.total ? Math.round(data.done/data.total*100) : 0;
+    $('verifyBatchProgress').textContent = `${data.done}/${data.total} (${pct}%) — ${data.status}`;
+
+    if (data.status === 'completed' || data.status === 'cancelled') {
+      clearInterval(_batchTimer);
+      $('verifyBatchCancel').style.display = 'none';
+      $('verifyBatchBtn').disabled = false;
+      renderBatchResults(data);
+    }
+  } catch {}
+}
+
+function renderBatchResults(data) {
+  const el = $('verifyBatchRes');
+  el.style.display = '';
+  const confirmed = data.results || [];
+  let html = `<div style="margin-bottom:10px;font-size:13px">
+    <span class="ok"><strong>${confirmed.length}</strong> confirmados</span> ·
+    <span style="color:var(--muted)">${data.unverified_count} no verificados</span> ·
+    Total: ${data.total}
+  </div>`;
+  if (confirmed.length) {
+    html += `<div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn" onclick="downloadVerifiedCSV()" style="font-size:12px">⬇️ Descargar CSV</button>
+    </div>`;
+    html += '<table class="res-table"><thead><tr><th>Nombre</th><th>Email</th><th>Señales</th></tr></thead><tbody>';
+    for (const r of confirmed) {
+      const signals = Object.entries(r.signals||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ');
+      html += `<tr><td>${r.name||'—'}</td><td><code>${r.email_fixed||r.email}</code></td><td style="font-size:11px;color:var(--mint)">${signals}</td></tr>`;
+    }
+    html += '</tbody></table>';
+  }
+  el.innerHTML = html;
+  window._lastVerifiedResults = confirmed;
+}
+
+function downloadVerifiedCSV() {
+  const rows = window._lastVerifiedResults || [];
+  if (!rows.length) return;
+  let csv = 'Nombre,Email,Confianza,Señales\n';
+  for (const r of rows) {
+    const signals = Object.entries(r.signals||{}).filter(([,v])=>v===true).map(([k])=>k).join('+');
+    csv += `"${(r.name||'').replace(/"/g,"'")}","${r.email_fixed||r.email}","${r.confidence||''}","${signals}"\n`;
+  }
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'emails-verificados.csv';
+  a.click();
+}
+
+// MailAccess Investigate
+$('maInvestBtn').onclick = async () => {
+  const email = $('maInvestIn').value.trim();
+  if (!email) { $('maInvestIn').focus(); return; }
+  $('maInvestBtn').disabled = true;
+  $('maInvestStatus').innerHTML = '<span class="spinner"></span> Investigando (puede tardar 1-3 min)…';
+  $('maInvestRes').style.display = 'none';
+  try {
+    const data = await nucboxFetch('/osint/mailaccess/cli-investigate', { email });
+    $('maInvestRes').style.display = '';
+    if (typeof data === 'object' && data.output) {
+      $('maInvestRes').textContent = data.output;
+    } else {
+      $('maInvestRes').textContent = JSON.stringify(data, null, 2);
+    }
+    $('maInvestStatus').innerHTML = '<span class="ok">✅ Completado</span>';
+  } catch (e) {
+    $('maInvestStatus').innerHTML = `<span class="err">${e.message}</span>`;
+  }
+  $('maInvestBtn').disabled = false;
+};
+$('maInvestIn').onkeydown = e => { if (e.key==='Enter') $('maInvestBtn').click(); };
 
 // ── Argus OSINT ──────────────────────────────────────────────────────────────
 
