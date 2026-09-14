@@ -381,6 +381,23 @@
       <div id="argSocialRes" style="display:none;margin-top:10px"></div>
     </div>
 
+    <!-- Argus: Gmail Finder (name → Gmail) -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">📧</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Gmail Finder</div>
+          <div style="font-size:11px;color:var(--muted)">Escribe un nombre completo y busca su posible Gmail</div>
+        </div>
+      </div>
+      <div class="domain-row">
+        <input type="text" id="gmailFinderName" placeholder="Juan García López" autocomplete="off">
+        <button class="btn" id="gmailFinderBtn" style="background:var(--mint);border-color:var(--mint);color:#0b1326">Buscar</button>
+      </div>
+      <div id="gmailFinderEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="gmailFinderRes" style="display:none;margin-top:10px"></div>
+    </div>
+
     <!-- Argus: Direcciones (username OSINT) -->
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
@@ -1294,6 +1311,51 @@ function _renderDirFound(found, username) {
   }
   return html + `</div>`;
 }
+
+// ── Gmail Finder ────────────────────────────────────────────────────────────
+$('gmailFinderBtn').onclick = async () => {
+  const name = $('gmailFinderName').value.trim();
+  if (!name) { $('gmailFinderName').focus(); return; }
+  $('gmailFinderEstado').innerHTML = '<span class="spinner"></span> Generando variantes de Gmail para <b>' + esc(name) + '</b> y verificando…';
+  $('gmailFinderBtn').disabled = true;
+  $('gmailFinderRes').style.display = 'none';
+  try {
+    const d = await nucboxFetch('/osint/argus/gmail-finder', { name });
+    if (d.error) throw new Error(d.error);
+    const confirmed = d.confirmed || [];
+    const total = d.total_variants || 0;
+    if (!confirmed.length) {
+      $('gmailFinderRes').innerHTML = '<span class="aviso">No se encontró ningún Gmail verificado para «' + esc(name) + '» (' + total + ' variantes probadas)</span>';
+      if (d.all_variants && d.all_variants.length) {
+        $('gmailFinderRes').innerHTML += '<details style="margin-top:8px"><summary style="font-size:12px;color:var(--soft);cursor:pointer">Ver variantes probadas (' + d.all_variants.length + ')</summary><div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.8">' + d.all_variants.map(e => esc(e)).join('<br>') + '</div></details>';
+      }
+    } else {
+      let html = '<div style="display:flex;flex-direction:column;gap:6px">';
+      for (const c of confirmed) {
+        const signals = Object.keys(c.signals || {}).filter(k => c.signals[k] === true).join(', ') || c.confidence;
+        html += `<div style="display:flex;align-items:center;gap:8px;background:var(--card3);border:1px solid var(--line);border-radius:10px;padding:8px 12px">
+          <span style="font-size:16px">✅</span>
+          <span style="font-size:13px;font-weight:600;flex:1">${esc(c.email)}</span>
+          <span style="font-size:11px;color:var(--mint)">${esc(signals)}</span>
+        </div>`;
+      }
+      html += '</div>';
+      if (d.all_variants && d.all_variants.length > confirmed.length) {
+        html += '<details style="margin-top:8px"><summary style="font-size:12px;color:var(--soft);cursor:pointer">Todas las variantes probadas (' + d.all_variants.length + ')</summary><div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.8">' + d.all_variants.map(e => {
+          const found = confirmed.find(c => c.email === e);
+          return found ? '<b style="color:var(--mint)">' + esc(e) + ' ✅</b>' : esc(e);
+        }).join('<br>') + '</div></details>';
+      }
+      $('gmailFinderRes').innerHTML = html;
+    }
+    $('gmailFinderRes').style.display = '';
+    $('gmailFinderEstado').innerHTML = '✅ <b>' + confirmed.length + '</b> Gmail confirmados de ' + total + ' variantes probadas';
+  } catch (e) {
+    $('gmailFinderEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('gmailFinderBtn').disabled = false;
+};
+$('gmailFinderName').addEventListener('keydown', e => { if (e.key === 'Enter') $('gmailFinderBtn').click(); });
 
 // Single username search
 $('argDirBtn').onclick = async () => {
