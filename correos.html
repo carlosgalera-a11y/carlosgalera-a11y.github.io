@@ -381,6 +381,35 @@
       <div id="argSocialRes" style="display:none;margin-top:10px"></div>
     </div>
 
+    <!-- Argus: Direcciones (username OSINT) -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">🔎</span>
+        <div>
+          <div style="font-weight:800;font-size:14px">Direcciones</div>
+          <div style="font-size:11px;color:var(--muted)">Busca un nombre de usuario en +70 webs: redes, foros, tiendas, juegos, dev</div>
+        </div>
+      </div>
+      <!-- Single username -->
+      <div class="domain-row">
+        <input type="text" id="argDirUser" placeholder="nombre_de_usuario" autocomplete="off">
+        <button class="btn" id="argDirBtn" style="background:var(--peri);border-color:var(--peri);color:#fff">Buscar</button>
+      </div>
+      <!-- Bulk: file upload -->
+      <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div style="font-size:11.5px;font-weight:700;color:var(--soft);margin-bottom:6px">O sube un archivo con usernames</div>
+        <div class="drop-zone" id="dirDropZone" style="padding:16px 14px">
+          <div class="icono" style="font-size:22px">📂</div>
+          <div class="hint" style="font-size:12px">CSV, TXT, PDF, DOCX o ZIP — un username por línea o se extraen con IA</div>
+          <input type="file" id="dirFileInput" accept=".pdf,.docx,.doc,.txt,.csv,.zip">
+        </div>
+        <div id="dirFileName" class="aviso" style="margin-top:6px"></div>
+        <button class="btn" id="dirBulkBtn" disabled style="margin-top:8px;background:var(--peri);border-color:var(--peri);color:#fff;display:none">🔎 Buscar todos</button>
+      </div>
+      <div id="argDirEstado" class="aviso" style="margin-top:8px"></div>
+      <div id="argDirRes" style="display:none;margin-top:10px"></div>
+    </div>
+
     <!-- OSINT status -->
     <div class="card" id="osintStatus">
       <div class="sec-t">Estado de las herramientas</div>
@@ -414,6 +443,10 @@ function muestraApp() {
   $('app').style.display = 'block';
   $('quien').textContent = 'Sube un documento con nombres';
   cargaHistorial();
+  // Deep-link: #direcciones scrolls to the Direcciones card
+  if (location.hash === '#direcciones') {
+    setTimeout(() => { const el = $('argDirUser'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 300);
+  }
 }
 $('lbtn').onclick = async () => {
   const { error } = await sb.auth.signInWithPassword({ email: $('lemail').value.trim(), password: $('lpass').value });
@@ -1247,6 +1280,174 @@ $('argSocialBtn').onclick = async () => {
     $('argSocialEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
   }
   $('argSocialBtn').disabled = false;
+};
+
+// Argus: Direcciones (username OSINT)
+const _dirIcons = { 'GitHub': '🐙', 'Twitter/X': '🐦', 'Instagram': '📸', 'LinkedIn': '💼', 'YouTube': '▶️', 'TikTok': '🎵', 'Reddit': '🟠', 'Pinterest': '📌', 'Twitch': '🟣', 'Steam': '🎮', 'Spotify': '🎧', 'SoundCloud': '🔊', 'Medium': '📝', 'Dev.to': '👩‍💻', 'GitLab': '🦊', 'Docker Hub': '🐳', 'Dribbble': '🏀', 'Behance': '🎨', 'Telegram': '✈️', 'Mastodon': '🐘', 'Threads': '🧵', 'Bluesky': '🦋', 'Chess.com': '♟️', 'Lichess': '♟️', 'Duolingo': '🦉', 'Kaggle': '📊', 'Strava': '🏃', 'DeviantArt': '🎨', 'ArtStation': '🎨', 'Unsplash': '📷', 'Letterboxd': '🎬', 'Last.fm': '🎵', 'Bandcamp': '🎸', 'Patreon': '🤝', 'Linktree': '🌳', 'Minecraft': '⛏️', 'HackerRank': '💻', 'LeetCode': '💻', 'CodePen': '✏️', 'Hugging Face': '🤗', 'Vercel': '▲', 'Replit': '💻' };
+
+function _renderDirFound(found, username) {
+  if (!found.length) return '<span class="aviso">No se encontró «' + esc(username) + '» en ninguna plataforma</span>';
+  let html = `<div style="display:flex;flex-wrap:wrap;gap:6px">`;
+  for (const p of found) {
+    const ico = _dirIcons[p.platform] || '🌐';
+    html += `<a href="${esc(p.url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;background:var(--card3);border:1px solid var(--line);border-radius:10px;padding:6px 11px;font-size:12.5px;color:var(--ink);text-decoration:none;transition:border-color .15s,background .15s" onmouseover="this.style.borderColor='var(--peri)';this.style.background='rgba(128,131,255,.12)'" onmouseout="this.style.borderColor='var(--line)';this.style.background='var(--card3)'">${ico} ${esc(p.platform)}</a>`;
+  }
+  return html + `</div>`;
+}
+
+// Single username search
+$('argDirBtn').onclick = async () => {
+  const user = $('argDirUser').value.trim();
+  if (!user) { $('argDirUser').focus(); return; }
+  $('argDirEstado').innerHTML = '<span class="spinner"></span> Buscando <b>' + esc(user) + '</b> en +70 plataformas…';
+  $('argDirBtn').disabled = true;
+  $('argDirRes').style.display = 'none';
+  try {
+    const d = await nucboxFetch('/osint/argus/direcciones', { username: user });
+    if (d.error) throw new Error(d.error);
+    $('argDirRes').innerHTML = _renderDirFound(d.found || [], user);
+    $('argDirRes').style.display = '';
+    $('argDirEstado').innerHTML = '✅ <b>' + d.found_count + '</b> plataformas encontradas de ' + d.total_checked + ' comprobadas' + (d.errors ? ' · <span style="color:var(--soft)">' + d.errors + ' sin respuesta</span>' : '');
+  } catch (e) {
+    $('argDirEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+  }
+  $('argDirBtn').disabled = false;
+};
+$('argDirUser').addEventListener('keydown', e => { if (e.key === 'Enter') $('argDirBtn').click(); });
+
+// Bulk file upload for Direcciones
+let _dirUsernames = [];
+const dirDropZone = $('dirDropZone');
+const dirFileInput = $('dirFileInput');
+dirDropZone.onclick = () => dirFileInput.click();
+dirDropZone.ondragover = e => { e.preventDefault(); dirDropZone.classList.add('over'); };
+dirDropZone.ondragleave = () => dirDropZone.classList.remove('over');
+dirDropZone.ondrop = e => { e.preventDefault(); dirDropZone.classList.remove('over'); if (e.dataTransfer.files.length) _dirProcesaArchivo(e.dataTransfer.files[0]); };
+dirFileInput.onchange = () => { if (dirFileInput.files.length) _dirProcesaArchivo(dirFileInput.files[0]); };
+
+function _dirExtraeUsernames(texto) {
+  const lines = texto.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
+  const usernames = [];
+  const seen = new Set();
+  for (const line of lines) {
+    // Each line: take the first token, strip @, URLs, emails
+    let tok = line.split(/[,;\t|]+/)[0].trim();
+    // If it looks like a URL, extract the path username
+    if (/^https?:\/\//.test(tok)) {
+      const m = tok.match(/(?:\.com|\.net|\.org|\.io|\.me|\.tv)\/@?([^/?#]+)/i);
+      if (m) tok = m[1]; else continue;
+    }
+    // Strip leading @ (common in lists)
+    tok = tok.replace(/^@/, '');
+    // Skip if it looks like an email
+    if (tok.includes('@')) continue;
+    // Skip headers / non-username lines
+    if (/^(username|user|nombre|name|usuario|#|\/\/)$/i.test(tok)) continue;
+    // Validate: 1-64 chars, alnum . _ -
+    tok = tok.replace(/[^\w.\-]/g, '');
+    if (tok.length >= 2 && tok.length <= 64 && !seen.has(tok.toLowerCase())) {
+      seen.add(tok.toLowerCase());
+      usernames.push(tok);
+    }
+  }
+  return usernames;
+}
+
+async function _dirProcesaArchivo(file) {
+  $('dirFileName').textContent = '⏳ Leyendo ' + file.name + '…';
+  $('dirBulkBtn').disabled = true;
+  $('dirBulkBtn').style.display = 'none';
+  _dirUsernames = [];
+  try {
+    let texto = '';
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'csv' || ext === 'txt') {
+      texto = await file.text();
+    } else if (ext === 'pdf') {
+      texto = await extraerPDF(file);
+    } else if (ext === 'docx' || ext === 'doc') {
+      texto = await extraerDOCX(file);
+    } else if (ext === 'zip') {
+      const r = await extraerZIP(file);
+      texto = r.texto;
+    } else {
+      $('dirFileName').innerHTML = '<span class="err">Formato no soportado</span>';
+      return;
+    }
+
+    // Try direct extraction first (one username per line)
+    let users = _dirExtraeUsernames(texto);
+
+    // If too few results and it's a document (not a plain list), use AI
+    if (users.length < 3 && (ext === 'pdf' || ext === 'docx' || ext === 'doc')) {
+      $('dirFileName').textContent = '🤖 Extrayendo usernames con IA…';
+      try {
+        const fragmento = texto.slice(0, 6000);
+        const resp = await pideIA(
+          'Eres un extractor de nombres de usuario (usernames) de internet. Del texto que recibas, extrae TODOS los posibles usernames, handles o nicks de personas que aparezcan. Pueden ser @handles de redes sociales, nicks de foros, nombres de usuario. Devuelve SOLO un JSON array de strings sin @ al inicio. Ejemplo: ["johndoe","maria_garcia","devkid99"]. Si no encuentras ninguno, intenta extraer nombres de personas y genera posibles usernames (nombre.apellido, nombreapellido, etc). Devuelve []  si no hay nada.',
+          fragmento, 1500
+        );
+        const match = resp.match(/\[[\s\S]*?\]/);
+        if (match) {
+          const aiUsers = JSON.parse(match[0]).filter(u => typeof u === 'string' && u.trim().length >= 2);
+          const seen = new Set(users.map(u => u.toLowerCase()));
+          for (const u of aiUsers) {
+            const clean = u.trim().replace(/^@/, '').replace(/[^\w.\-]/g, '');
+            if (clean.length >= 2 && !seen.has(clean.toLowerCase())) {
+              seen.add(clean.toLowerCase());
+              users.push(clean);
+            }
+          }
+        }
+      } catch (aiErr) {
+        // AI failed, continue with what we have
+      }
+    }
+
+    _dirUsernames = users;
+    if (!users.length) {
+      $('dirFileName').innerHTML = '<span class="err">No se encontraron usernames en el archivo</span>';
+      return;
+    }
+    const preview = users.slice(0, 5).join(', ') + (users.length > 5 ? '…' : '');
+    $('dirFileName').innerHTML = '✅ <b>' + users.length + '</b> usernames encontrados: <span style="color:var(--muted);font-size:11px">' + esc(preview) + '</span>';
+    $('dirBulkBtn').disabled = false;
+    $('dirBulkBtn').style.display = '';
+  } catch (e) {
+    $('dirFileName').innerHTML = '<span class="err">Error: ' + esc(e.message) + '</span>';
+  }
+}
+
+// Bulk search all usernames
+$('dirBulkBtn').onclick = async () => {
+  if (!_dirUsernames.length) return;
+  $('dirBulkBtn').disabled = true;
+  $('argDirRes').style.display = 'none';
+  const total = _dirUsernames.length;
+  let html = '';
+  let done = 0;
+  for (const user of _dirUsernames) {
+    done++;
+    $('argDirEstado').innerHTML = '<span class="spinner"></span> Buscando <b>' + esc(user) + '</b> (' + done + '/' + total + ')…';
+    try {
+      const d = await nucboxFetch('/osint/argus/direcciones', { username: user });
+      if (d.error) {
+        html += `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13.5px;color:var(--peach);margin-bottom:4px">@${esc(user)} <span style="color:var(--rojo);font-weight:400;font-size:11px">— error: ${esc(d.error)}</span></div></div>`;
+        continue;
+      }
+      const found = d.found || [];
+      html += `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13.5px;color:var(--peach);margin-bottom:4px">@${esc(user)} <span style="color:var(--soft);font-weight:400;font-size:11px">— ${found.length} de ${d.total_checked}</span></div>`;
+      html += _renderDirFound(found, user);
+      html += `</div>`;
+    } catch (e) {
+      html += `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13.5px;color:var(--peach);margin-bottom:4px">@${esc(user)} <span style="color:var(--rojo);font-weight:400;font-size:11px">— ${esc(e.message)}</span></div></div>`;
+    }
+    // Show partial results as they come
+    $('argDirRes').innerHTML = html;
+    $('argDirRes').style.display = '';
+  }
+  $('argDirEstado').innerHTML = '✅ <b>' + total + '</b> usernames analizados';
+  $('dirBulkBtn').disabled = false;
 };
 
 // Click-to-copy for Argus harvest emails too
