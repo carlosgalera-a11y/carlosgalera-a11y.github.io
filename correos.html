@@ -394,6 +394,20 @@
         <input type="text" id="gmailFinderName" placeholder="Juan García López" autocomplete="off">
         <button class="btn" id="gmailFinderBtn" style="background:var(--mint);border-color:var(--mint);color:#0b1326">Buscar</button>
       </div>
+      <!-- Bulk: lista de nombres / archivo -->
+      <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+        <div style="font-size:11.5px;font-weight:700;color:var(--soft);margin-bottom:6px">O busca varios: un nombre y apellidos por línea</div>
+        <textarea id="gmailBulkNames" rows="3" placeholder="Juan García López&#10;María Fernández Ruiz" style="width:100%;background:var(--input-bg);color:var(--ink);border:1px solid var(--line2);border-radius:12px;padding:11px 12px;font-size:14px;font-family:inherit;resize:vertical"></textarea>
+        <div class="drop-zone" id="gmailDropZone" style="padding:14px;margin-top:8px">
+          <div class="icono" style="font-size:20px">📂</div>
+          <div class="hint" style="font-size:12px">…o sube CSV, TXT, PDF o DOCX con nombres (un nombre por línea o se extraen con IA)</div>
+          <input type="file" id="gmailFileInput" accept=".pdf,.docx,.doc,.txt,.csv">
+        </div>
+        <div id="gmailFileName" class="aviso" style="margin-top:6px"></div>
+        <button class="btn" id="gmailBulkBtn" style="margin-top:8px;background:var(--mint);border-color:var(--mint);color:#0b1326">📧 Buscar correos de todos</button>
+        <button class="btn" id="gmailBulkCancel" style="margin-top:8px;margin-left:6px;display:none">✖ Cancelar</button>
+        <div class="aviso" style="margin-top:6px;font-size:11px">La búsqueda masiva se ejecuta en el NucBox: puedes cerrar el portátil y al volver a abrir esta página se retoma sola.</div>
+      </div>
       <div id="gmailFinderEstado" class="aviso" style="margin-top:8px"></div>
       <div id="gmailFinderRes" style="display:none;margin-top:10px"></div>
     </div>
@@ -463,6 +477,7 @@ function muestraApp() {
   $('quien').textContent = 'Sube un documento con nombres';
   cargaHistorial();
   _dirResumeJob();
+  _gmResumeJob();
   // Deep-link: #direcciones scrolls to the Direcciones card
   if (location.hash === '#direcciones') {
     setTimeout(() => { const el = $('argDirUser'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 300);
@@ -1359,6 +1374,121 @@ $('gmailFinderBtn').onclick = async () => {
   $('gmailFinderBtn').disabled = false;
 };
 $('gmailFinderName').addEventListener('keydown', e => { if (e.key === 'Enter') $('gmailFinderBtn').click(); });
+
+// ── Gmail Finder MASIVO (lista de nombres → correos, job en el NucBox) ──────
+const _GM_JOB_KEY = 'fh_gmail_bulk_job';
+let _gmTimer = null, _gmHtml = '', _gmSince = 0;
+
+function _gmRenderResult(r) {
+  const emails = r.emails || [];
+  if (r.error) return `<div style="margin-bottom:8px"><b style="font-size:13px;color:var(--peach)">${esc(r.name)}</b> <span style="color:var(--rojo);font-size:11px">— ${esc(r.error)}</span></div>`;
+  if (!emails.length) return `<div style="margin-bottom:8px"><b style="font-size:13px;color:var(--ink)">${esc(r.name)}</b> <span style="color:var(--soft);font-size:11px">— sin correo</span></div>`;
+  const chips = emails.map(e => `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--card3);border:1px solid var(--mint);border-radius:10px;padding:4px 9px;font-size:12.5px;color:var(--ink);margin-right:5px">✅ ${esc(e)}</span>`).join('');
+  return `<div style="margin-bottom:8px"><b style="font-size:13px;color:var(--mint)">${esc(r.name)}</b> ${chips}</div>`;
+}
+
+async function _gmPoll(jobId) {
+  let d;
+  try {
+    d = await nucboxFetch('/osint/argus/gmail-finder-bulk/status', { job_id: jobId, since: _gmSince });
+  } catch (e) {
+    $('gmailFinderEstado').innerHTML = '<span class="spinner"></span> Sin conexión con el NucBox, reintentando… <span style="color:var(--soft)">(' + esc(e.message) + ')</span>';
+    _gmTimer = setTimeout(() => _gmPoll(jobId), 5000); return;
+  }
+  if (d.error) { $('gmailFinderEstado').innerHTML = '<span class="err">❌ ' + esc(d.error) + '</span>'; localStorage.removeItem(_GM_JOB_KEY); _gmSetRunning(false); return; }
+  for (const r of d.results || []) _gmHtml += _gmRenderResult(r);
+  _gmSince = d.done || 0;
+  if (_gmHtml) { $('gmailFinderRes').innerHTML = _gmHtml; $('gmailFinderRes').style.display = ''; }
+  if (d.status === 'completed') {
+    $('gmailFinderEstado').innerHTML = '✅ <b>' + d.total + '</b> nombres analizados';
+    localStorage.removeItem(_GM_JOB_KEY); _gmSetRunning(false);
+  } else if (d.status === 'cancelled') {
+    $('gmailFinderEstado').innerHTML = '⏹ Cancelado tras <b>' + d.done + '</b> de ' + d.total;
+    localStorage.removeItem(_GM_JOB_KEY); _gmSetRunning(false);
+  } else {
+    $('gmailFinderEstado').innerHTML = '<span class="spinner"></span> Buscando correo de ' + (d.current ? '<b>' + esc(d.current) + '</b> ' : '') + '(' + d.done + '/' + d.total + ') — en el NucBox, sigue aunque cierres el portátil';
+    _gmTimer = setTimeout(() => _gmPoll(jobId), 3000);
+  }
+}
+function _gmSetRunning(on) {
+  $('gmailBulkBtn').disabled = on;
+  $('gmailBulkCancel').style.display = on ? '' : 'none';
+  if (!on && _gmTimer) { clearTimeout(_gmTimer); _gmTimer = null; }
+}
+function _gmStartPolling(jobId) {
+  if (_gmTimer) clearTimeout(_gmTimer);
+  _gmHtml = ''; _gmSince = 0;
+  $('gmailFinderRes').style.display = 'none';
+  _gmSetRunning(true); _gmPoll(jobId);
+}
+function _gmResumeJob() {
+  let jobId = null; try { jobId = localStorage.getItem(_GM_JOB_KEY); } catch {}
+  if (!jobId) return;
+  $('gmailFinderEstado').innerHTML = '<span class="spinner"></span> Retomando búsqueda de correos en curso…';
+  _gmStartPolling(jobId);
+}
+
+function _gmCollectNames() {
+  return $('gmailBulkNames').value.split('\n').map(l => l.trim()).filter(l => l.length >= 3);
+}
+
+$('gmailBulkBtn').onclick = async () => {
+  const names = _gmCollectNames();
+  if (!names.length) { $('gmailBulkNames').focus(); return; }
+  $('gmailBulkBtn').disabled = true;
+  $('gmailFinderEstado').innerHTML = '<span class="spinner"></span> Enviando ' + names.length + ' nombres al NucBox…';
+  try {
+    const d = await nucboxFetch('/osint/argus/gmail-finder-bulk', { names });
+    if (d.error) throw new Error(d.error);
+    try { localStorage.setItem(_GM_JOB_KEY, d.job_id); } catch {}
+    _gmStartPolling(d.job_id);
+  } catch (e) {
+    $('gmailFinderEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+    $('gmailBulkBtn').disabled = false;
+  }
+};
+$('gmailBulkCancel').onclick = async () => {
+  const jobId = localStorage.getItem(_GM_JOB_KEY);
+  if (!jobId) return;
+  $('gmailBulkCancel').disabled = true;
+  try { await nucboxFetch('/osint/argus/gmail-finder-bulk/cancel', { job_id: jobId }); } catch {}
+  $('gmailBulkCancel').disabled = false;
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const jobId = localStorage.getItem(_GM_JOB_KEY);
+  if (jobId && $('gmailBulkCancel').style.display !== 'none') { if (_gmTimer) clearTimeout(_gmTimer); _gmPoll(jobId); }
+});
+
+// Archivo de nombres → rellena el textarea
+const gmailDropZone = $('gmailDropZone'), gmailFileInput = $('gmailFileInput');
+gmailDropZone.onclick = () => gmailFileInput.click();
+gmailDropZone.ondragover = e => { e.preventDefault(); gmailDropZone.classList.add('over'); };
+gmailDropZone.ondragleave = () => gmailDropZone.classList.remove('over');
+gmailDropZone.ondrop = e => { e.preventDefault(); gmailDropZone.classList.remove('over'); if (e.dataTransfer.files.length) _gmProcesaArchivo(e.dataTransfer.files[0]); };
+gmailFileInput.onchange = () => { if (gmailFileInput.files.length) _gmProcesaArchivo(gmailFileInput.files[0]); };
+
+async function _gmProcesaArchivo(file) {
+  $('gmailFileName').textContent = '⏳ Leyendo ' + file.name + '…';
+  try {
+    let texto = '';
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'csv' || ext === 'txt') texto = await file.text();
+    else if (ext === 'pdf') texto = await extraerPDF(file);
+    else if (ext === 'docx' || ext === 'doc') texto = await extraerDOCX(file);
+    else { $('gmailFileName').innerHTML = '<span class="err">Formato no soportado</span>'; return; }
+    // Un nombre por línea; para docs sueltos, intenta IA
+    let nombres = texto.split(/[\n\r]+/).map(l => l.trim()).filter(l => /[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}\s+[A-Za-zÁÉÍÓÚáéíóúÑñ]{2,}/.test(l) && l.split(/\s+/).length <= 5);
+    if (nombres.length < 3 && (ext === 'pdf' || ext === 'docx' || ext === 'doc')) {
+      try { const ai = await extraerNombresConIA(texto); if (ai && ai.length) nombres = ai; } catch {}
+    }
+    if (!nombres.length) { $('gmailFileName').innerHTML = '<span class="err">No se encontraron nombres</span>'; return; }
+    $('gmailBulkNames').value = nombres.join('\n');
+    $('gmailFileName').innerHTML = '✅ <b>' + nombres.length + '</b> nombres cargados';
+  } catch (e) {
+    $('gmailFileName').innerHTML = '<span class="err">Error: ' + esc(e.message) + '</span>';
+  }
+}
 
 // Single username search
 $('argDirBtn').onclick = async () => {
