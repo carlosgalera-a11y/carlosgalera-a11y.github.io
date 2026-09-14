@@ -422,6 +422,8 @@
         </div>
         <div id="dirFileName" class="aviso" style="margin-top:6px"></div>
         <button class="btn" id="dirBulkBtn" disabled style="margin-top:8px;background:var(--peri);border-color:var(--peri);color:#fff;display:none">🔎 Buscar todos</button>
+        <button class="btn" id="dirBulkCancel" style="margin-top:8px;margin-left:6px;display:none">✖ Cancelar</button>
+        <div class="aviso" style="margin-top:6px;font-size:11px">La búsqueda masiva se ejecuta en el NucBox: puedes cerrar el portátil y al volver a abrir esta página se retoma sola.</div>
       </div>
       <div id="argDirEstado" class="aviso" style="margin-top:8px"></div>
       <div id="argDirRes" style="display:none;margin-top:10px"></div>
@@ -460,6 +462,7 @@ function muestraApp() {
   $('app').style.display = 'block';
   $('quien').textContent = 'Sube un documento con nombres';
   cargaHistorial();
+  _dirResumeJob();
   // Deep-link: #direcciones scrolls to the Direcciones card
   if (location.hash === '#direcciones') {
     setTimeout(() => { const el = $('argDirUser'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); } }, 300);
@@ -1480,37 +1483,102 @@ async function _dirProcesaArchivo(file) {
   }
 }
 
-// Bulk search all usernames
+// Bulk search: runs as a background job on the NucBox so it survives the laptop sleeping
+const _DIR_JOB_KEY = 'fh_dir_bulk_job';
+let _dirJobTimer = null;
+let _dirJobHtml = '';
+let _dirJobSince = 0;
+
+function _dirRenderResult(r) {
+  const head = `<div style="font-weight:800;font-size:13.5px;color:var(--peach);margin-bottom:4px">@${esc(r.username)} `;
+  if (r.error) return `<div style="margin-bottom:14px">${head}<span style="color:var(--rojo);font-weight:400;font-size:11px">— error: ${esc(r.error)}</span></div></div>`;
+  const found = r.found || [];
+  return `<div style="margin-bottom:14px">${head}<span style="color:var(--soft);font-weight:400;font-size:11px">— ${found.length} de ${r.total_checked}</span></div>${_renderDirFound(found, r.username)}</div>`;
+}
+
+async function _dirPollJob(jobId) {
+  let d;
+  try {
+    d = await nucboxFetch('/osint/argus/direcciones-bulk/status', { job_id: jobId, since: _dirJobSince });
+  } catch (e) {
+    $('argDirEstado').innerHTML = '<span class="spinner"></span> Sin conexión con el NucBox, reintentando… <span style="color:var(--soft)">(' + esc(e.message) + ')</span>';
+    _dirJobTimer = setTimeout(() => _dirPollJob(jobId), 5000);
+    return;
+  }
+  if (d.error) {
+    $('argDirEstado').innerHTML = '<span class="err">❌ ' + esc(d.error) + '</span>';
+    localStorage.removeItem(_DIR_JOB_KEY);
+    _dirSetRunning(false);
+    return;
+  }
+  for (const r of d.results || []) _dirJobHtml += _dirRenderResult(r);
+  _dirJobSince = d.done || 0;
+  if (_dirJobHtml) { $('argDirRes').innerHTML = _dirJobHtml; $('argDirRes').style.display = ''; }
+  if (d.status === 'completed') {
+    $('argDirEstado').innerHTML = '✅ <b>' + d.total + '</b> usernames analizados';
+    localStorage.removeItem(_DIR_JOB_KEY);
+    _dirSetRunning(false);
+  } else if (d.status === 'cancelled') {
+    $('argDirEstado').innerHTML = '⏹ Cancelado tras <b>' + d.done + '</b> de ' + d.total;
+    localStorage.removeItem(_DIR_JOB_KEY);
+    _dirSetRunning(false);
+  } else {
+    $('argDirEstado').innerHTML = '<span class="spinner"></span> Buscando ' + (d.current ? '<b>' + esc(d.current) + '</b> ' : '') + '(' + d.done + '/' + d.total + ') — en el NucBox, sigue aunque cierres el portátil';
+    _dirJobTimer = setTimeout(() => _dirPollJob(jobId), 3000);
+  }
+}
+
+function _dirSetRunning(on) {
+  $('dirBulkBtn').disabled = on;
+  $('dirBulkCancel').style.display = on ? '' : 'none';
+  if (!on && _dirJobTimer) { clearTimeout(_dirJobTimer); _dirJobTimer = null; }
+}
+
+function _dirStartPolling(jobId) {
+  if (_dirJobTimer) clearTimeout(_dirJobTimer);
+  _dirJobHtml = ''; _dirJobSince = 0;
+  $('argDirRes').style.display = 'none';
+  _dirSetRunning(true);
+  _dirPollJob(jobId);
+}
+
+function _dirResumeJob() {
+  let jobId = null;
+  try { jobId = localStorage.getItem(_DIR_JOB_KEY); } catch {}
+  if (!jobId) return;
+  $('argDirEstado').innerHTML = '<span class="spinner"></span> Retomando búsqueda masiva en curso…';
+  _dirStartPolling(jobId);
+}
+
 $('dirBulkBtn').onclick = async () => {
   if (!_dirUsernames.length) return;
   $('dirBulkBtn').disabled = true;
-  $('argDirRes').style.display = 'none';
-  const total = _dirUsernames.length;
-  let html = '';
-  let done = 0;
-  for (const user of _dirUsernames) {
-    done++;
-    $('argDirEstado').innerHTML = '<span class="spinner"></span> Buscando <b>' + esc(user) + '</b> (' + done + '/' + total + ')…';
-    try {
-      const d = await nucboxFetch('/osint/argus/direcciones', { username: user });
-      if (d.error) {
-        html += `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13.5px;color:var(--peach);margin-bottom:4px">@${esc(user)} <span style="color:var(--rojo);font-weight:400;font-size:11px">— error: ${esc(d.error)}</span></div></div>`;
-        continue;
-      }
-      const found = d.found || [];
-      html += `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13.5px;color:var(--peach);margin-bottom:4px">@${esc(user)} <span style="color:var(--soft);font-weight:400;font-size:11px">— ${found.length} de ${d.total_checked}</span></div>`;
-      html += _renderDirFound(found, user);
-      html += `</div>`;
-    } catch (e) {
-      html += `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13.5px;color:var(--peach);margin-bottom:4px">@${esc(user)} <span style="color:var(--rojo);font-weight:400;font-size:11px">— ${esc(e.message)}</span></div></div>`;
-    }
-    // Show partial results as they come
-    $('argDirRes').innerHTML = html;
-    $('argDirRes').style.display = '';
+  $('argDirEstado').innerHTML = '<span class="spinner"></span> Enviando ' + _dirUsernames.length + ' usernames al NucBox…';
+  try {
+    const d = await nucboxFetch('/osint/argus/direcciones-bulk', { usernames: _dirUsernames });
+    if (d.error) throw new Error(d.error);
+    try { localStorage.setItem(_DIR_JOB_KEY, d.job_id); } catch {}
+    _dirStartPolling(d.job_id);
+  } catch (e) {
+    $('argDirEstado').innerHTML = '<span class="err">❌ ' + esc(e.message) + '</span>';
+    $('dirBulkBtn').disabled = false;
   }
-  $('argDirEstado').innerHTML = '✅ <b>' + total + '</b> usernames analizados';
-  $('dirBulkBtn').disabled = false;
 };
+
+$('dirBulkCancel').onclick = async () => {
+  const jobId = localStorage.getItem(_DIR_JOB_KEY);
+  if (!jobId) return;
+  $('dirBulkCancel').disabled = true;
+  try { await nucboxFetch('/osint/argus/direcciones-bulk/cancel', { job_id: jobId }); } catch {}
+  $('dirBulkCancel').disabled = false;
+};
+
+// When the laptop wakes up, poll right away instead of waiting for the old timer
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const jobId = localStorage.getItem(_DIR_JOB_KEY);
+  if (jobId && $('dirBulkCancel').style.display !== 'none') { if (_dirJobTimer) clearTimeout(_dirJobTimer); _dirPollJob(jobId); }
+});
 
 // Click-to-copy for Argus harvest emails too
 $('argHarvestRes')?.addEventListener('click', async e => {
