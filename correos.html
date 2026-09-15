@@ -1377,14 +1377,46 @@ $('gmailFinderName').addEventListener('keydown', e => { if (e.key === 'Enter') $
 
 // ── Gmail Finder MASIVO (lista de nombres → correos, job en el NucBox) ──────
 const _GM_JOB_KEY = 'fh_gmail_bulk_job';
-let _gmTimer = null, _gmHtml = '', _gmSince = 0;
+let _gmTimer = null, _gmSince = 0;
+// Modelo de datos (para poder filtrar colisiones): acumulamos filas y contamos
+// cuántas PERSONAS distintas comparten cada correo. Los "handles" genéricos de
+// iniciales (martinez.j@gmail.com…) salen para decenas de médicos distintos y
+// casi seguro son erróneos, así que por defecto se ocultan.
+let _gmAll = [];              // [{name, emails, error}]
+let _gmEmailPeople = {};      // email -> Set(nombres)
+let _gmHideCollisions = true;
+
+function _gmIsCollision(e) { const s = _gmEmailPeople[e]; return !!(s && s.size > 1); }
+function _gmToggleCollisions(on) { _gmHideCollisions = on; _gmRebuild(); }
 
 function _gmRenderResult(r) {
   const emails = r.emails || [];
   if (r.error) return `<div style="margin-bottom:8px"><b style="font-size:13px;color:var(--peach)">${esc(r.name)}</b> <span style="color:var(--rojo);font-size:11px">— ${esc(r.error)}</span></div>`;
   if (!emails.length) return `<div style="margin-bottom:8px"><b style="font-size:13px;color:var(--ink)">${esc(r.name)}</b> <span style="color:var(--soft);font-size:11px">— sin correo</span></div>`;
-  const chips = emails.map(e => `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--card3);border:1px solid var(--mint);border-radius:10px;padding:4px 9px;font-size:12.5px;color:var(--ink);margin-right:5px">✅ ${esc(e)}</span>`).join('');
+  const shown = _gmHideCollisions ? emails.filter(e => !_gmIsCollision(e)) : emails;
+  if (!shown.length) return `<div style="margin-bottom:8px"><b style="font-size:13px;color:var(--ink)">${esc(r.name)}</b> <span style="color:var(--soft);font-size:11px">— correo compartido, oculto (poco fiable)</span></div>`;
+  const chips = shown.map(e => {
+    const col = _gmIsCollision(e);
+    const border = col ? 'var(--peach)' : 'var(--mint)';
+    const tag = col ? ` <span style="color:var(--peach);font-size:10px">·compartido ×${_gmEmailPeople[e].size}</span>` : '';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--card3);border:1px solid ${border};border-radius:10px;padding:4px 9px;font-size:12.5px;color:var(--ink);margin-right:5px">✅ ${esc(e)}${tag}</span>`;
+  }).join('');
   return `<div style="margin-bottom:8px"><b style="font-size:13px;color:var(--mint)">${esc(r.name)}</b> ${chips}</div>`;
+}
+
+// Reconstruye toda la lista aplicando el filtro + barra de control arriba.
+function _gmRebuild() {
+  let uniq = new Set(), hidden = 0;
+  for (const r of _gmAll) for (const e of (r.emails || [])) { if (_gmIsCollision(e)) hidden++; else uniq.add(e); }
+  const bar = `<div style="position:sticky;top:0;background:var(--card2);padding:8px 4px;margin-bottom:8px;border-bottom:1px solid var(--line);font-size:12px;z-index:1">
+    <label style="cursor:pointer;user-select:none"><input type="checkbox" ${_gmHideCollisions ? 'checked' : ''} onchange="_gmToggleCollisions(this.checked)" style="vertical-align:middle;margin-right:6px">Ocultar correos compartidos por varias personas (poco fiables)</label>
+    <span style="color:var(--soft);margin-left:8px">· ${uniq.size} correos únicos${_gmHideCollisions ? ` · ${hidden} ocultos` : ` · ${hidden} marcados`}</span>
+  </div>`;
+  let body = '';
+  for (const r of _gmAll) body += _gmRenderResult(r);
+  const el = $('gmailFinderRes');
+  el.innerHTML = bar + body;
+  el.style.display = _gmAll.length ? '' : 'none';
 }
 
 async function _gmPoll(jobId) {
@@ -1396,9 +1428,12 @@ async function _gmPoll(jobId) {
     _gmTimer = setTimeout(() => _gmPoll(jobId), 5000); return;
   }
   if (d.error) { $('gmailFinderEstado').innerHTML = '<span class="err">❌ ' + esc(d.error) + '</span>'; localStorage.removeItem(_GM_JOB_KEY); _gmSetRunning(false); return; }
-  for (const r of d.results || []) _gmHtml += _gmRenderResult(r);
+  for (const r of d.results || []) {
+    _gmAll.push(r);
+    for (const e of (r.emails || [])) { (_gmEmailPeople[e] || (_gmEmailPeople[e] = new Set())).add(r.name); }
+  }
   _gmSince = d.done || 0;
-  if (_gmHtml) { $('gmailFinderRes').innerHTML = _gmHtml; $('gmailFinderRes').style.display = ''; }
+  if (_gmAll.length) _gmRebuild();
   if (d.status === 'completed') {
     $('gmailFinderEstado').innerHTML = '✅ <b>' + d.total + '</b> nombres analizados';
     localStorage.removeItem(_GM_JOB_KEY); _gmSetRunning(false);
@@ -1417,7 +1452,7 @@ function _gmSetRunning(on) {
 }
 function _gmStartPolling(jobId) {
   if (_gmTimer) clearTimeout(_gmTimer);
-  _gmHtml = ''; _gmSince = 0;
+  _gmAll = []; _gmEmailPeople = {}; _gmSince = 0;
   $('gmailFinderRes').style.display = 'none';
   _gmSetRunning(true); _gmPoll(jobId);
 }
