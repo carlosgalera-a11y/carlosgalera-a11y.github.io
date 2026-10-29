@@ -161,6 +161,7 @@
   .tag { font-style: normal; font-size: 8.5px; font-weight: 800; padding: 0 4px; border-radius: 4px; flex: none; letter-spacing: .03em; }
   .tag.egs { background: var(--src-egs-bg); color: var(--src-egs); }
   .tag.ag { background: var(--src-ag-bg); color: var(--src-ag); }
+  .tag.casa { background: color-mix(in srgb, var(--area-otro) 18%, transparent); color: var(--area-otro); }
   .mas { font-size: 10.5px; color: var(--muted); font-weight: 600; }
 
   /* ── Semana ── */
@@ -177,6 +178,7 @@
   .ficha b { display: block; font-size: 11px; opacity: .85; }
   .ficha.fh { background: var(--src-fh-bg); border-left: 3px solid var(--tarea); }
   .ficha.egs { background: var(--src-egs-bg); border-left: 3px solid var(--src-egs); }
+  .ficha.casa { background: color-mix(in srgb, var(--area-otro) 14%, transparent); border-left: 3px solid var(--area-otro); }
 
   /* ── Día ── */
   .dia { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
@@ -552,23 +554,28 @@ async function cargar() {
   render();
 }
 
-// Elementos de un día en el calendario: eventos (por hora), tareas de FileHub y tareas de EGStrategy que vencen.
+// Elementos de un día en el calendario: eventos (por hora), tareas de casa (de los dos, con su hora),
+// tareas de FileHub y tareas de EGStrategy que vencen.
 function itemsDia(f) {
   const ev = eventos.filter(e => (e.start_date || '').slice(0, 10) === f)
-    .sort((a, b) => horaDe(a).localeCompare(horaDe(b)))
     .map(e => ({ k: 'ev', hora: horaDe(e), titulo: e.title, est: estiloEv(e), raw: e }));
+  const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === f)
+    .map(t => ({ k: 'casa', hora: (t.hora || '').slice(0, 5), titulo: t.title, raw: t }));
+  const conHora = [...ev, ...cs].sort((a, b) => (a.hora || '99').localeCompare(b.hora || '99'));
   const fh = tareasMes.filter(t => dueDe(t) === f).map(t => ({ k: 'fh', titulo: t.title, raw: t }));
   const eg = egsTareas().filter(t => t.vence === f).map(t => ({ k: 'egs', titulo: t.texto, raw: t }));
-  return [...ev, ...fh, ...eg];
+  return [...conHora, ...fh, ...eg];
 }
 function itemMini(it) {
   if (it.k === 'ev') return `<div class="it"><i class="dot" style="background:${it.est.dot}"></i><span>${it.hora ? `<b>${it.hora}</b> ` : ''}${esc(it.titulo)}</span></div>`;
   if (it.k === 'fh') return `<div class="it${it.raw.completed ? ' hecha' : ''}"><i class="cuad"></i><span>${esc(it.titulo)}</span></div>`;
+  if (it.k === 'casa') return `<div class="it${it.raw.done ? ' hecha' : ''}"><i class="tag casa">CASA</i><span>${it.hora ? `<b>${it.hora}</b> ` : ''}${esc(it.titulo)}</span></div>`;
   return `<div class="it"><i class="tag egs">EGS</i><span>${esc(it.titulo)}</span></div>`;
 }
 function ficha(it) {
   if (it.k === 'ev') return `<div class="ficha" style="background:${it.est.bg};color:${it.est.fg}">${it.hora ? `<b>${it.hora}</b>` : ''}${esc(it.titulo)}</div>`;
   if (it.k === 'fh') return `<div class="ficha fh${it.raw.completed ? ' hecha' : ''}" data-fh="${esc(it.raw.id)}">${esc(it.titulo)}</div>`;
+  if (it.k === 'casa') return `<div class="ficha casa${it.raw.done ? ' hecha' : ''}" data-casa="${esc(it.raw.id)}">${it.hora ? `<b>${it.hora}</b>` : ''}${esc(it.titulo)}</div>`;
   return `<div class="ficha egs" data-egs="${esc(it.raw.id)}"><i class="tag egs">EGS</i> ${esc(it.titulo)}</div>`;
 }
 
@@ -607,15 +614,20 @@ const filaFH = t => `<div class="lfila${t.completed ? ' hecha' : ''}" data-fh="$
   + `<span class="meta">${t.priority ? `<i class="prio" style="background:${PRIO[t.priority] || PRIO.low}"></i> ` : ''}${esc(CATEG[t.category] || t.category || '')}</span></div>`;
 const filaEGS = t => `<div class="lfila" data-egs="${esc(t.id)}"><i class="tag egs">EGS</i><span>${esc(t.texto)}</span>`
   + `<span class="meta">${esc(t.proyecto)} · ${esc(t.estadoNombre)}</span></div>`;
+const filaCasa = t => `<div class="lfila${t.done ? ' hecha' : ''}" data-casa="${esc(t.id)}"><span class="pers ${t.assignee === 'montse' ? 'm' : t.assignee === 'ambos' ? 'a' : ''}">${t.assignee === 'ambos' ? 'C+M' : t.assignee === 'montse' ? 'M' : 'C'}</span>`
+  + `<span>${esc(t.title)}</span><span class="meta">${t.hora ? t.hora.slice(0, 5) : t.fecha ? fechaCorta(t.fecha) : 'sin fecha'}</span></div>`;
 function htmlDia() {
   const s = ymd(cursor), its = itemsDia(s);
-  const ev = its.filter(i => i.k === 'ev');
+  const ev = its.filter(i => i.k === 'ev' || (i.k === 'casa' && i.hora));
   let h = `<div class="dia"><div class="dia-cab">${chipsTurno(cursor)}</div><div><section><h4>Agenda</h4>`;
-  h += ev.length ? ev.map(i => `<div class="ev-fila" style="background:${i.est.bg};color:${i.est.fg}"><span class="h">${i.hora || 'Todo el día'}</span><span class="tt">${esc(i.titulo)}</span></div>`).join('')
+  h += ev.length ? ev.map(i => i.k === 'casa'
+      ? `<div class="ev-fila${i.raw.done ? ' hecha' : ''}" style="background:color-mix(in srgb, var(--area-otro) 14%, transparent)" data-casa="${esc(i.raw.id)}"><span class="h">${i.hora}</span><span class="tt">📌 ${esc(i.titulo)}</span></div>`
+      : `<div class="ev-fila" style="background:${i.est.bg};color:${i.est.fg}"><span class="h">${i.hora || 'Todo el día'}</span><span class="tt">${esc(i.titulo)}</span></div>`).join('')
     : '<div class="vacio">Sin eventos.</div>';
   h += '</section></div><div><section><h4>Tareas del día</h4>';
   const fh = tareasMes.filter(t => dueDe(t) === s), eg = egsTareas().filter(t => t.vence === s);
-  h += (fh.length || eg.length) ? fh.map(filaFH).join('') + eg.map(filaEGS).join('') : '<div class="vacio">Nada que venza este día.</div>';
+  const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === s && !t.hora);
+  h += (fh.length || eg.length || cs.length) ? cs.map(filaCasa).join('') + fh.map(filaFH).join('') + eg.map(filaEGS).join('') : '<div class="vacio">Nada que venza este día.</div>';
   h += '</section>';
   if (s === HOY_S) {
     const atrFH = pendientes.filter(t => dueDe(t) && dueDe(t) < HOY_S);
@@ -748,8 +760,7 @@ function htmlCasa() {
   const chips = (cls, act, opts, on) => `<div class="chips ${cls}">${opts.map(([v, t]) => `<button data-${act}="${v}"${on === v ? ' class="on"' : ''}>${t}</button>`).join('')}</div>`;
   // Tareas pendientes compartidas: las de FileHub marcadas «compartida» (de los dos) y las tareas de casa.
   const compartidas = pendientes.filter(t => t.shared && dePersona(t.user_id === UID_MONTSE ? 'montse' : 'carlos'));
-  const tCasa = tareasCasa().filter(t => dePersona(t.assignee));
-  const filaCasa = t => `<div class="lfila" data-casa="${esc(t.id)}">${chipPers(t.assignee)}<span>${esc(t.title)}</span><span class="meta">${t.fecha ? fechaCorta(t.fecha) : 'sin fecha'}</span></div>`;
+  const tCasa = tareasCasa().filter(t => dePersona(t.assignee)).sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (a.hora || '99').localeCompare(b.hora || '99'));
   return `<div class="casa">
     <div class="casa-cab">
       ${chips('', 'pers', [['ambos', '👫 Juntos'], ['carlos', 'Carlos'], ['montse', 'Montse']], persona)}
