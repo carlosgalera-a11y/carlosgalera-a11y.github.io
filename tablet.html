@@ -302,12 +302,34 @@
   .btn.prim { background: var(--indigo); border-color: var(--indigo); color: #fff; }
 
   /* ── Acceso ── */
-  #login { position: fixed; inset: 0; background: var(--bg); display: none; align-items: center; justify-content: center; z-index: 30; padding: 16px; }
-  #login .caja { width: min(380px, 100%); padding: 22px; }
-  #login h3 { font-size: 17px; margin-bottom: 6px; }
-  #login p { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
-  #login input { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 11px 12px; font-size: 16px; margin-bottom: 8px; font-family: inherit; }
-  #login .btn { width: 100%; height: 44px; margin-bottom: 8px; }
+  /* Portada: siempre oscura, sea cual sea el tema del panel, para que la imagen se lea igual. */
+  #login { position: fixed; inset: 0; display: none; z-index: 30; overflow: auto; color: #F8FAFC;
+    padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    background: linear-gradient(90deg, #0b132640, #0b1326a6), url('/cab-hogar.jpg') center / cover no-repeat, #0b1326; }
+  #login .portada { margin: auto; width: min(1120px, 100%); min-height: min(640px, 100%); display: grid; grid-template-columns: 1fr minmax(320px, 380px); gap: 56px; align-items: center; }
+  #login .lema { align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; gap: 32px; }
+  #login .hora { font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: clamp(64px, 11vw, 124px); line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  #login .fecha { margin-top: 12px; font-size: clamp(17px, 2vw, 22px); color: #cbd5e1; }
+  #login .fecha::first-letter { text-transform: uppercase; }
+  #login h1 { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.01em; }
+  #login .sub { margin-top: 6px; font-size: 15px; color: #cbd5e1; }
+  #login .caja { width: 100%; padding: 26px; background: #131b2ed9; border: 1px solid #ffffff1f; border-radius: 18px; box-shadow: 0 18px 50px #00000059; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  #login h2 { font-family: 'Hanken Grotesk', sans-serif; font-weight: 700; font-size: 22px; margin-bottom: 6px; }
+  #login .caja p { font-size: 14px; line-height: 1.45; color: #cbd5e1; margin-bottom: 18px; }
+  #login input { width: 100%; border: 1px solid #334155; background: #0b1326b3; color: #F8FAFC; border-radius: 10px; padding: 12px; font-size: 16px; margin-bottom: 8px; font-family: inherit; }
+  #login input::placeholder { color: #94A3B8; }
+  #login .btn { width: 100%; height: 48px; margin-bottom: 8px; background: transparent; border-color: #475569; color: #F8FAFC; font-size: 15px; }
+  #login .btn.prim { background: #ffb783; border-color: #ffb783; color: #2a1506; margin-bottom: 14px; }
+  #login .btn:last-child { margin-bottom: 0; }
+  #login input:focus-visible, #login .btn:focus-visible { outline: 2px solid #ffb783; outline-offset: 2px; }
+  @media (prefers-reduced-motion: no-preference) { #login .portada { animation: portada-entra .5s ease-out both; } }
+  @keyframes portada-entra { from { opacity: 0; transform: translateY(8px); } }
+  @media (max-width: 860px), (orientation: portrait) {
+    #login { background-position: center, 50% 30%, center; background-image: linear-gradient(#0b132680, #0b1326cc), url('/cab-hogar.jpg'); }
+    #login .portada { grid-template-columns: minmax(0, 480px); justify-content: center; gap: 28px; min-height: 0; }
+    #login .lema { gap: 16px; }
+  }
+  @media (max-height: 520px) and (min-width: 861px) { #login .hora { font-size: 64px; } #login .sub { display: none; } #login .portada { gap: 32px; } }
 
   /* Vertical o pantallas pequeñas: el lateral pasa debajo y se desplaza todo. */
   @media (max-width: 980px), (orientation: portrait) {
@@ -372,13 +394,25 @@
 </div>
 
 <div id="login">
-  <div class="caja card">
-    <h3>Panel de FileHub</h3>
-    <p>Entra con tu cuenta de FileHub. Si ya tienes sesión en el calendario de este navegador, se usa sola.</p>
-    <button class="btn prim" id="gbtn">Entrar con Google</button>
-    <input id="lemail" type="email" placeholder="Correo" autocomplete="username">
-    <input id="lpass" type="password" placeholder="Contraseña" autocomplete="current-password">
-    <button class="btn" id="lbtn">Entrar</button>
+  <div class="portada">
+    <div class="lema">
+      <div>
+        <div class="hora" id="pHora"></div>
+        <div class="fecha" id="pFecha"></div>
+      </div>
+      <div>
+        <h1>Panel de FileHub</h1>
+        <div class="sub">Calendario, tareas, casa y parte diario</div>
+      </div>
+    </div>
+    <div class="caja">
+      <h2>Entrar</h2>
+      <p>Entra con tu cuenta de FileHub. Si ya tienes sesión en el calendario de este navegador, se usa sola.</p>
+      <button class="btn prim" id="gbtn">Entrar con Google</button>
+      <input id="lemail" type="email" placeholder="Correo" autocomplete="username" aria-label="Correo">
+      <input id="lpass" type="password" placeholder="Contraseña" autocomplete="current-password" aria-label="Contraseña">
+      <button class="btn" id="lbtn">Entrar</button>
+    </div>
   </div>
 </div>
 <div class="hoja" id="hoja"><div class="hoja-in" id="hojaIn"></div></div>
@@ -1166,12 +1200,21 @@ $('lbtn').onclick = async () => {
   if (error) { alert('No se pudo entrar: ' + error.message); return; }
   location.reload();
 };
+// Hora y fecha de la portada: solo se actualizan mientras está a la vista.
+function relojPortada() {
+  if ($('login').style.display !== 'flex') return;
+  const ahora = new Date();
+  $('pHora').textContent = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  $('pFecha').textContent = ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+setInterval(relojPortada, 15000);
 function aplicaSesion(session) {
   const nuevo = session?.user?.id || null;
   if (nuevo === uid && ultimaCarga) return;
   uid = nuevo;
   emailSesion = (session?.user?.email || '').toLowerCase();
   $('login').style.display = uid || DEMO ? 'none' : 'flex';
+  relojPortada();
   if (uid || DEMO) cargar(); else render();
 }
 sb.auth.onAuthStateChange((_ev, session) => {
