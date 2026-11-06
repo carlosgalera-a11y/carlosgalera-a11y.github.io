@@ -271,6 +271,18 @@
   .fila-nota .x { border: none; background: transparent; color: var(--soft); cursor: pointer; font-size: 15px; line-height: 1; flex: none; }
   .fila-nota .cuerpo { white-space: pre-wrap; color: var(--ink); }
 
+  /* ── Parte de hoy (lo mismo que llega por Telegram a las 7:30) ── */
+  #parteCard { margin: 0 0 14px; }
+  #parteCard summary { cursor: pointer; font-size: 14px; font-weight: 700; }
+  #parteCard .sub { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+  #parteCuerpo { margin-top: 12px; font-size: 13px; }
+  #parteCuerpo .turnos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  #parteCuerpo h3 { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  #parteCuerpo ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  #parteCuerpo .hora { font-weight: 700; font-variant-numeric: tabular-nums; }
+  #parteCuerpo .atr { margin-top: 10px; color: var(--atr-fg); font-size: 12.5px; }
+  #parteVoz { margin-top: 12px; }
+
   #login { max-width: 380px; margin: 34px auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: none; box-shadow: var(--shadow); }
   #login h3 { font-size: 15px; margin-bottom: 12px; }
   #login input { background: var(--input-bg); color: var(--ink); }
@@ -411,6 +423,12 @@
     <button id="lbtn" class="btn primary" style="width:100%">Entrar</button>
     <p style="font-size:11px;color:var(--muted);margin-top:8px">Misma cuenta que la webapp FileHub. Si ya has entrado en FileHub en este navegador, la sesión se comparte sola.</p>
   </div>
+
+  <details class="panelcard" id="parteCard" hidden>
+    <summary><span id="parteResumen">📋 Parte de hoy</span></summary>
+    <div id="parteCuerpo"></div>
+    <button id="parteVoz" class="btn" type="button">🔊 Escuchar</button>
+  </details>
 
   <div id="vistaMes">
     <!-- Un ÚNICO grid: los días de la semana (L–D) son las 7 primeras celdas,
@@ -766,9 +784,140 @@ async function render() {
   else { $('vistaMes').style.display = 'none'; $('cols').style.display = 'grid'; renderCols(); }
   pintaUltimas();
   pintaNotas();
+  pintaParte();
   $('estado').textContent = uid ? '' : 'Sin sesión: se ven los turnos, pero no tus eventos ni tareas de FileHub.';
   $('estado').style.display = $('estado').textContent ? 'block' : 'none';
 }
+
+// ── Parte de hoy ───────────────────────────────────────────────────────────
+// Lo mismo que la función `parte-agenda` manda por Telegram a las 7:30. Hace sus
+// propias consultas porque `eventos`/`tareas` solo traen el rango a la vista, y
+// hoy puede estar fuera; por eso tampoco le afecta el filtro Todas/Mías/Comunes.
+const diasDesdeHoy = n => { const d = new Date(HOY); d.setDate(d.getDate() + n); return ymd(d); };
+
+async function leerParte() {
+  const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
+  const manana = diasDesdeHoy(1);
+  const [ev, ta, atr] = await Promise.all([
+    sb.from('calendar_events').select('title,start_date,end_date').or(miasOComunes)
+      .gte('start_date', diasDesdeHoy(-60)).lt('start_date', manana).order('start_date'),
+    sb.from('tasks').select('title,priority').or(miasOComunes)
+      .eq('completed', false).gte('due_date', HOY_S).lt('due_date', manana),
+    sb.from('tasks').select('id', { count: 'exact', head: true }).eq('user_id', uid)
+      .eq('completed', false).gte('due_date', ATRAS_DESDE).lt('due_date', HOY_S),
+  ]);
+  const fallo = ev.error || ta.error || atr.error;
+  if (fallo) throw fallo;
+
+  // Un evento de varios días cuenta todos los días hasta su fin.
+  const vistos = new Set();
+  const evs = (ev.data || []).flatMap(e => {
+    const ini = String(e.start_date || '');
+    const fin = String(e.end_date || ini);
+    const finDia = fin.slice(0, 10);
+    if (finDia < HOY_S) return [];
+    const h = ini.slice(0, 10) === HOY_S && ini[10] === 'T' ? ini.slice(11, 16) : '';
+    const hora = h && h !== '00:00' ? h : '';
+    const hf = finDia === HOY_S && fin[10] === 'T' ? fin.slice(11, 16) : '';
+    const clave = `${hora}|${e.title}`;
+    if (vistos.has(clave)) return [];
+    vistos.add(clave);
+    let hasta = '';
+    if (finDia > HOY_S) {
+      const d = new Date(finDia + 'T12:00:00');
+      hasta = d.getMonth() === HOY.getMonth() ? `hasta el ${d.getDate()}` : `hasta el ${fmt(d, { day: 'numeric', month: 'long' })}`;
+    }
+    return [{ titulo: String(e.title || ''), hora, horaFin: hora && hf && hf !== hora && hf !== '23:59' ? hf : '', hasta }];
+  }).sort((a, b) => a.hora.localeCompare(b.hora));
+
+  const tas = (ta.data || []).slice().sort((a, b) => Number(b.priority === 'high') - Number(a.priority === 'high'));
+  const festivo = evs.some(e => /\bfestivo\b/i.test(e.titulo));
+  return { evs, tas, atrasadas: atr.count || 0, turno: festivo ? null : turnoDe(HOY) };
+}
+
+const VOZ_TURNO = t => t === T.URG_T ? 'urgencias de 13 a 20' : t === T.AG_M ? 'agenda de 8 a 15' : 'agenda de 13 a 20';
+function textoVozParte({ evs, tas, atrasadas, turno }, fecha) {
+  const h = new Date().getHours();
+  const saludo = h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
+  const v = [`${saludo}, ${quienSoy().nombre}. Hoy es ${fecha}.`];
+  if (turno) v.push(`Tienes ${VOZ_TURNO(turno)}${turnoEsTarde(turno) ? ', y por la mañana EGS TEK de 8 y media a 12' : ''}.`);
+  if (evs.length) v.push((evs.length === 1 ? 'Un evento: ' : `${evs.length} eventos: `) + evs.map(e => `${e.hora ? 'a las ' + e.hora + ', ' : ''}${e.titulo}${e.hasta ? ', ' + e.hasta : ''}`).join('. ') + '.');
+  if (tas.length) v.push((tas.length === 1 ? 'Una tarea: ' : `${tas.length} tareas: `) + tas.map(t => t.title).join('. ') + '.');
+  if (!turno && !evs.length && !tas.length) v.push('Hoy no tienes nada apuntado.');
+  if (atrasadas) v.push(`Y ${atrasadas === 1 ? 'una tarea atrasada' : atrasadas + ' tareas atrasadas'}.`);
+  return v.join(' ');
+}
+
+let parteVozTxt = '';
+async function pintaParte() {
+  const card = $('parteCard');
+  card.hidden = !uid;
+  if (!uid) return;
+  const fecha = fmt(HOY, { weekday: 'long', day: 'numeric', month: 'long' });
+  const pon = (sub, html) => {
+    $('parteResumen').innerHTML = `📋 Parte de hoy · ${esc(fecha)}<span class="sub">${esc(sub)}</span>`;
+    $('parteCuerpo').innerHTML = html;
+  };
+  let p;
+  try { p = await leerParte(); }
+  catch (e) {
+    parteVozTxt = '';
+    $('parteVoz').hidden = true;
+    pon('', `<div class="vacio">No se ha podido leer el parte: ${esc(msgFallo(e))}</div>`);
+    return;
+  }
+  const { evs, tas, atrasadas, turno } = p;
+  const plural = (n, s, pl) => `${n} ${n === 1 ? s : pl}`;
+  const sub = [
+    evs.length ? plural(evs.length, 'evento', 'eventos') : '',
+    tas.length ? plural(tas.length, 'tarea', 'tareas') : '',
+    atrasadas ? plural(atrasadas, 'atrasada', 'atrasadas') : '',
+  ].filter(Boolean).join(' · ');
+  pon(sub, [
+    turno ? `<div class="turnos">${turnoChip(turno)}${turnoEsTarde(turno) ? turnoChip(EGSTEK) : ''}</div>` : '',
+    evs.length ? `<h3>Eventos</h3><ul>${evs.map(e => `<li>${e.hora ? `<span class="hora">${e.hora}${e.horaFin ? '–' + e.horaFin : ''}</span> ` : ''}${esc(e.titulo)}${e.hasta ? ` (${esc(e.hasta)})` : ''}</li>`).join('')}</ul>` : '',
+    tas.length ? `<h3>Tareas</h3><ul>${tas.map(t => `<li>${esc(t.title)}${t.priority === 'high' ? ' ⚡' : ''}</li>`).join('')}</ul>` : '',
+    !turno && !evs.length && !tas.length ? '<div class="vacio">Hoy no tienes nada apuntado.</div>' : '',
+    atrasadas ? `<div class="atr">⚠️ ${plural(atrasadas, 'tarea atrasada', 'tareas atrasadas')}</div>` : '',
+  ].join(''));
+  parteVozTxt = textoVozParte(p, fecha);
+  $('parteVoz').hidden = !('speechSynthesis' in window);
+}
+
+// Voz del propio navegador: sin coste, sin red y sin clave. Se dice frase a
+// frase porque Chrome corta las locuciones largas a los ~15 segundos.
+function pararVozParte() {
+  speechSynthesis.cancel();
+  $('parteVoz').textContent = '🔊 Escuchar';
+}
+$('parteVoz').onclick = () => {
+  if (speechSynthesis.speaking || speechSynthesis.pending) { pararVozParte(); return; }
+  const limpio = parteVozTxt
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/\s*[·—–]\s*/g, ', ')
+    .replace(/\s+/g, ' ').trim();
+  const frases = limpio.replace(/([.:;])\s+/g, '$1\n').split('\n').filter(Boolean);
+  if (!frases.length) return;
+  const voces = speechSynthesis.getVoices();
+  const voz = voces.find(v => /^es[-_]ES/i.test(v.lang)) || voces.find(v => /^es/i.test(v.lang));
+  speechSynthesis.cancel();
+  frases.forEach((f, i) => {
+    const u = new SpeechSynthesisUtterance(f);
+    u.lang = 'es-ES';
+    if (voz) u.voice = voz;
+    if (i === frases.length - 1) u.onend = pararVozParte;
+    u.onerror = pararVozParte;
+    speechSynthesis.speak(u);
+  });
+  $('parteVoz').textContent = '⏹ Parar';
+};
+addEventListener('pagehide', () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); });
+
+// Abierto por defecto; si lo plegaste, se queda plegado en este navegador.
+$('parteCard').open = localStorage.getItem('fh_cal_parte') !== 'cerrado';
+$('parteCard').addEventListener('toggle', () => {
+  localStorage.setItem('fh_cal_parte', $('parteCard').open ? 'abierto' : 'cerrado');
+});
 
 // ── Vista MES ──────────────────────────────────────────────────────────────
 function renderMes(start) {
