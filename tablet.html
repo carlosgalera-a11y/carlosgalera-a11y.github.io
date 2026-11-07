@@ -570,6 +570,7 @@ let partes = [], tablero = null, egs = null, panelFalta = false;
 // Casa (Carlos + Montse): gastos del piso (piso_horta_gastos) y rutinas/tareas de casa (casa_items).
 let gastos = [], casa = [];
 const hechasAhora = new Set(); // tareas de casa marcadas desde el Resumen: siguen a la vista, tachadas
+const nuevasAhora = new Set(); // tareas de casa añadidas desde el Resumen: salen arriba, aunque haya muchas más antiguas
 const COLS_CASA = 'id,kind,title,assignee,done,fecha,hora,fecha_fin,importe,lugar,categoria,prioridad,cada_dias,ultima_vez,datos,notas,created_at';
 let parteIdx = 0, verSinFecha = false, ultimaCarga = 0, cargando = false, errorCarga = '';
 
@@ -881,7 +882,7 @@ function htmlHoy() {
   const pendCasa = casa.filter(i => i.kind === 'tarea' && !i.done);
   const paquetes = pendCasa.filter(i => i.categoria === 'paquete');
   const verTareas = casa.filter(i => i.kind === 'tarea' && (!i.done || hechasAhora.has(i.id)))
-    .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (a.hora || '99').localeCompare(b.hora || '99'));
+    .sort((a, b) => (nuevasAhora.has(b.id) - nuevasAhora.has(a.id)) || (a.fecha || '9999').localeCompare(b.fecha || '9999') || (a.hora || '99').localeCompare(b.hora || '99'));
   const compras = casa.filter(i => i.kind === 'compra' && !i.done && !i.datos?.grupo);
   const quien = p => pendCasa.filter(i => i.assignee === p).length;
   const urlCasa = `https://carlosgalera-a11y.github.io/casa/?volver=${SOLO_RESUMEN ? 'calendario' : 'tablet'}`;
@@ -1503,12 +1504,14 @@ async function guardaTareaCasa() {
   const hora = /^\d{2}:\d{2}/.test(campo('hora') || '') ? campo('hora').slice(0, 5) : null;
   const nueva = { kind: 'tarea', title, assignee: elegido('assignee') || 'ambos', fecha: fechaValida(campo('fecha')), hora, lugar: campo('lugar') || null,
     categoria: elegido('tipo') === 'paquete' ? 'paquete' : null, prioridad: 'media', created_by: emailSesion || null };
-  if (DEMO) casa.push({ id: 'c' + Date.now(), ...nueva, done: false, created_at: new Date().toISOString() });
+  let creada;
+  if (DEMO) creada = { id: 'c' + Date.now(), ...nueva, done: false, created_at: new Date().toISOString() };
   else {
     const { data, error } = await conReintento(() => sb.from('casa_items').insert(nueva).select(COLS_CASA).single());
     if (error) { avisaFallo(error, 'guardar'); return; }
-    casa.push(data);
+    creada = data;
   }
+  casa.push(creada); nuevasAhora.add(creada.id);
   cierraHoja(); render();
 }
 async function guardaGasto() {
