@@ -293,6 +293,13 @@
   #encargoCaja .ops { display: flex; gap: 8px; justify-content: flex-end; }
   #encMsg { font-size: 12.5px; color: var(--muted); }
 
+  /* ── Planes de ocio: sugerencias, no compromisos, por eso van con borde discontinuo ── */
+  .ev.plan { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+  .fila-ev.plan { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+  .fila-ev.plan a, .row.plan a { color: inherit; }
+  .plan-add { border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 7px; font-size: 11px; padding: 2px 7px; cursor: pointer; flex: none; font-family: inherit; }
+  #planesBtn.off { opacity: .5; }
+
   #login { max-width: 380px; margin: 34px auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: none; box-shadow: var(--shadow); }
   #login h3 { font-size: 15px; margin-bottom: 12px; }
   #login input { background: var(--input-bg); color: var(--ink); }
@@ -408,6 +415,7 @@
     <span class="chip chip-turno"><span class="dot" style="background:var(--blue)"></span> Agenda tarde 13–20</span>
     <span class="chip"><span class="dot" style="background:var(--indigo)"></span> Eventos</span>
     <span class="chip"><span class="dot" style="background:var(--tarea)"></span> Tareas</span>
+    <button id="planesBtn" class="btn" type="button" title="Enseña u oculta en el calendario los planes que sugiere el agente de ocio">🎭 Planes</button>
     <button id="viernesBtn" class="btn" title="Los viernes alternan mañana/tarde cada semana. Toca para corregir el turno de ESTA semana.">🔄 Viernes…</button>
   </div>
 
@@ -749,6 +757,55 @@ const evDelDia = f => eventos.filter(e => (e.start_date || '').slice(0, 10) === 
 const taDelDia = f => tareas.filter(t => (t.due_date || '').slice(0, 10) === f && pasaFiltro(t));
 const horaDe = e => (e.start_date || '').length > 10 ? (e.start_date || '').slice(11, 16) : '';
 
+// ── Planes de ocio ─────────────────────────────────────────────────────────
+// Los sugiere el agente «ocio» de Hermes los domingos y los miércoles (panel_tablet, tipo «ocio»;
+// la RLS solo se los deja leer a Carlos). No están en calendar_events porque son propuestas, no
+// compromisos: así no cuentan en el parte de hoy. «Apuntar» sí crea un evento de verdad.
+let planes = [];
+let verPlanes = localStorage.getItem('fh_cal_planes') !== 'no';
+async function cargarPlanes() {
+  if (!uid) { planes = []; return; }
+  const { data, error } = await sb.from('panel_tablet').select('fecha,contenido').eq('tipo', 'ocio')
+    .gte('fecha', diasDesdeHoy(-21)).order('fecha', { ascending: false });
+  if (error) { planes = []; return; }
+  const vistos = new Set();
+  planes = (data || []).flatMap(f => Array.isArray(f.contenido?.planes) ? f.contenido.planes : [])
+    .filter(p => p && p.titulo && p.fecha && /^https?:\/\//.test(p.url || ''))
+    .filter(p => { const k = p.fecha + '|' + p.url; if (vistos.has(k)) return false; vistos.add(k); return true; });
+}
+const yaApuntado = p => eventos.some(e => (e.start_date || '').slice(0, 10) === p.fecha && e.title === p.titulo);
+const planesDelDia = f => verPlanes && f >= HOY_S
+  ? planes.filter(p => p.fecha === f && !yaApuntado(p)).sort((a, b) => (a.hora || '').localeCompare(b.hora || ''))
+  : [];
+const enlacePlan = p => `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.titulo)}</a>`;
+const botonApuntar = p => `<button class="plan-add" type="button" data-plan-url="${esc(p.url)}" data-plan-fecha="${esc(p.fecha)}" title="Crear un evento con este plan">➕ Apuntar</button>`;
+const filaPlan = p => `<div class="fila-ev plan"><span class="hora">${p.hora ? esc(p.hora) : '🎭'}</span><span class="t">${enlacePlan(p)}${p.lugar ? ' · ' + esc(p.lugar) : ''}</span>${botonApuntar(p)}</div>`;
+async function apuntarPlan(url, fecha) {
+  const p = planes.find(x => x.url === url && x.fecha === fecha);
+  if (!p) return;
+  const inicio = p.hora ? `${p.fecha}T${p.hora}` : p.fecha;
+  const { error } = await conReintento(() => sb.from('calendar_events').insert({
+    id: `ev_plan_${Date.now()}`, user_id: uid, title: p.titulo, start_date: inicio, end_date: inicio, type: 'personal', shared: false,
+  }));
+  if (error) { alert('No se pudo apuntar: ' + msgFallo(error)); return; }
+  $('panel').classList.remove('open');
+  render();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.plan-add');
+  if (b) { e.stopPropagation(); apuntarPlan(b.dataset.planUrl, b.dataset.planFecha); return; }
+  if (e.target.closest('.plan a')) e.stopPropagation();
+}, true);
+function pintaPlanesBtn() {
+  $('planesBtn').classList.toggle('off', !verPlanes);
+  $('planesBtn').style.display = planes.length ? '' : 'none';
+}
+$('planesBtn').onclick = () => {
+  verPlanes = !verPlanes;
+  localStorage.setItem('fh_cal_planes', verPlanes ? 'si' : 'no');
+  render();
+};
+
 // ── Estado de vista ────────────────────────────────────────────────────────
 // En móvil, la primera visita abre en «3 días» (la rejilla mensual es densa en pantalla pequeña).
 let modo = localStorage.getItem('fh_cal_modo') || (matchMedia('(max-width: 760px)').matches ? 'tres' : 'mes'); // mes | tres | dia
@@ -797,7 +854,8 @@ async function render() {
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === modo));
   $('rangoTitulo').textContent = tituloRango();
   const { start, end } = rango();
-  await cargarDatos(ymd(start), ymd(end));
+  await Promise.all([cargarDatos(ymd(start), ymd(end)), cargarPlanes()]);
+  pintaPlanesBtn();
   if (modo === 'mes') { $('vistaMes').style.display = ''; $('cols').style.display = 'none'; renderMes(start); }
   else { $('vistaMes').style.display = 'none'; $('cols').style.display = 'grid'; renderCols(); }
   pintaUltimas();
@@ -960,6 +1018,8 @@ function renderMes(start) {
         return `<span class="ev" style="background:${s.bg};color:${s.fg}"><span class="dot" style="background:${s.dot}"></span>${badgeQuien(e)}<span class="t">${h ? h + ' ' : ''}${esc(e.title)}</span>${e.user_id === uid ? `<b class="x" data-id="${e.id}" title="Eliminar">×</b>` : ''}</span>`;
       }).join('')}
       ${evs.length > 3 ? `<span class="masmini">+${evs.length - 3} más</span>` : ''}
+      ${planesDelDia(fecha).slice(0, 2).map(p => `<span class="ev plan" title="Plan sugerido"><span class="t">🎭 ${p.hora ? p.hora + ' ' : ''}${esc(p.titulo)}</span></span>`).join('')}
+      ${planesDelDia(fecha).length > 2 ? `<span class="masmini">+${planesDelDia(fecha).length - 2} planes</span>` : ''}
       ${pend ? `<span class="tareasmini">☑ ${pend} tarea${pend > 1 ? 's' : ''}</span>` : ''}
       <button class="addbtn" title="Añadir">+</button>
     </div>`;
@@ -997,6 +1057,7 @@ function renderCols() {
             <span class="hora">${h || '—'}</span>${badgeQuien(e)}<span class="t">${esc(e.title)}</span>
             ${e.user_id === uid ? `<button class="x" data-id="${e.id}" title="Eliminar">×</button>` : ''}</div>`;
         }).join('') : '<div class="vacio">Sin eventos</div>'}
+        ${planesDelDia(fecha).map(filaPlan).join('')}
       </div>
       <div>
         <div class="sec-t">Tareas</div>
@@ -1142,6 +1203,7 @@ function abrePanel(fecha) {
       const s = estiloEv(ev);
       return `<div class="row"><span class="dot" style="background:${s.dot}"></span>${badgeQuien(ev)}<span class="t">${horaDe(ev) ? horaDe(ev) + ' · ' : ''}${esc(ev.title)}</span>${botonEncargo('evento:' + ev.id, ev.title)}${ev.user_id === uid ? `<button class="del" data-id="${ev.id}">×</button>` : ''}</div>`;
     }),
+    ...planesDelDia(fecha).map(p => `<div class="row plan"><span class="t">🎭 ${p.hora ? p.hora + ' · ' : ''}${enlacePlan(p)}${p.lugar ? ' · ' + esc(p.lugar) : ''}${p.precio ? ' · ' + esc(p.precio) : ''}</span>${botonApuntar(p)}</div>`),
     ...tas.map(ta => `<div class="row"><span class="dot" style="background:${PRIO[ta.priority] || PRIO.low}"></span>${badgeQuien(ta)}<span class="t"${ta.completed ? ' style="text-decoration:line-through;color:var(--soft)"' : ''}>☑ ${esc(ta.title)}</span>${botonEncargo('tarea:' + ta.id, ta.title)}${ta.user_id === uid ? `<button class="del" data-tid="${ta.id}">×</button>` : ''}</div>`),
   ].join('') || '<p style="font-size:12px;color:var(--muted)">Nada apuntado este día.</p>';
   cierraEncargo(); $('encMsg').textContent = '';
