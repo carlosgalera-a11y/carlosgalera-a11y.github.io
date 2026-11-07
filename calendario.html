@@ -323,8 +323,8 @@
   .ev .quien { width: 12px; height: 12px; font-size: 8px; }
   .seg.mini { padding: 2px; border-radius: 999px; }
   .seg.mini button { padding: 4px 10px; font-size: 12px; border-radius: 999px; }
-  #filaShared { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 2px 0 10px; cursor: pointer; }
-  #filaShared input { width: 17px; height: 17px; accent-color: var(--indigo); margin: 0; flex: none; }
+  #filaShared, #filaMontse { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 2px 0 10px; cursor: pointer; }
+  #filaShared input, #filaMontse input { width: 17px; height: 17px; accent-color: var(--indigo); margin: 0; flex: none; }
 
   .ver-atr { font-size: 11.5px; padding: 4px 10px; margin-top: 4px; align-self: flex-start; color: var(--atr-fg); border-color: var(--atr-line); }
 
@@ -411,10 +411,11 @@
   </header>
 
   <div class="leyenda">
-    <div class="seg mini" id="segFiltro" title="Filtra eventos y tareas: todas, solo tuyas o solo las compartidas">
+    <div class="seg mini" id="segFiltro" title="Qué calendario ves: todo, solo lo tuyo, lo común o el de Montse">
       <button data-f="todas">Todas</button>
       <button data-f="mias">Mías</button>
-      <button data-f="comunes">👥 Comunes</button>
+      <button data-f="comunes">👥 Común</button>
+      <button data-f="montse">Montse</button>
     </div>
     <span class="chip chip-turno"><span class="dot" style="background:var(--red)"></span> Urgencias tarde 13–20</span>
     <span class="chip chip-turno"><span class="dot" style="background:var(--green)"></span> Agenda mañana 8–15</span>
@@ -525,6 +526,7 @@
       </select>
     </div>
     <label id="filaShared"><input type="checkbox" id="fShared"> 👥 Compartida — la veis Carlos y Montse</label>
+    <label id="filaMontse"><input type="checkbox" id="fMontse"> 👩 En el calendario de Montse — ella también lo ve</label>
     <div class="fila">
       <button id="fVerDia" class="btn">Ver este día</button>
       <button id="fGuardar" class="btn primary">Guardar</button>
@@ -619,7 +621,9 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const UID_CARLOS = '69428dff-f2b6-46ae-8120-0052e9bbed51';
 const UID_MONTSE = '94c1791d-3a28-4452-a166-233cb9783749';
 const NOMBRES = { [UID_CARLOS]: 'Carlos', [UID_MONTSE]: 'Montse' };
-const badgeQuien = x => x.shared
+const badgeQuien = x => x.para === 'montse'
+  ? '<span class="quien m" title="En el calendario de Montse">M</span>'
+  : x.shared
   ? `<span class="quien${x.user_id === UID_MONTSE ? ' m' : ''}" title="Compartida · de ${NOMBRES[x.user_id] || '—'}">${(NOMBRES[x.user_id] || '?')[0]}</span>`
   : '';
 
@@ -720,17 +724,17 @@ const prioTxt = { high: 'alta', medium: 'media', low: 'baja' };
 
 async function cargarDatos(desde, hasta) {
   if (!uid) { eventos = []; tareas = []; atrasadas = []; sinFecha = []; ultimas = []; notas = []; return; }
-  const cols = 'id,title,completed,category,priority,due_date,user_id,shared';
+  const cols = 'id,title,completed,category,priority,due_date,user_id,shared,para';
   const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
   const [ev, ta, atr, sf, ult, nts] = await Promise.all([
-    sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared')
+    sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
       .gte('start_date', desde).lt('start_date', hasta).order('start_date'),
     sb.from('tasks').select(cols).or(miasOComunes)
       .gte('due_date', desde).lt('due_date', hasta).order('due_date'),
-    sb.from('tasks').select(cols).eq('user_id', uid)
+    sb.from('tasks').select(cols).eq('user_id', uid).is('para', null)
       .eq('completed', false).gte('due_date', ATRAS_DESDE).lt('due_date', HOY_S)
       .order('due_date', { ascending: false }).limit(20),
-    sb.from('tasks').select(cols).eq('user_id', uid)
+    sb.from('tasks').select(cols).eq('user_id', uid).is('para', null)
       .eq('completed', false).is('due_date', null).limit(8),
     sb.from('tasks').select(cols + ',created_at').or(miasOComunes)
       .order('created_at', { ascending: false }).limit(10),
@@ -748,9 +752,17 @@ async function cargarDatos(desde, hasta) {
 }
 // Filtro Todas / Mías / Comunes (persistido en este navegador)
 let filtro = localStorage.getItem('fh_cal_filtro') || 'todas';
-const pasaFiltro = x => filtro === 'mias' ? x.user_id === uid : filtro === 'comunes' ? !!x.shared : true;
+// «para» marca lo apuntado en el calendario de Montse desde otra cuenta: es suyo, no de quien lo escribió.
+const deMontse = x => x.user_id === UID_MONTSE || x.para === 'montse';
+const pasaFiltro = x => filtro === 'mias' ? (uid === UID_MONTSE ? deMontse(x) : x.user_id === uid && x.para !== 'montse')
+  : filtro === 'comunes' ? !!x.shared && x.para !== 'montse'
+  : filtro === 'montse' ? deMontse(x) : true;
 function pintaFiltro() {
-  document.querySelectorAll('#segFiltro button').forEach(b => b.classList.toggle('on', b.dataset.f === filtro));
+  if (uid === UID_MONTSE && filtro === 'montse') filtro = 'mias'; // para Montse, «Mías» ya es su calendario
+  document.querySelectorAll('#segFiltro button').forEach(b => {
+    b.classList.toggle('on', b.dataset.f === filtro);
+    if (b.dataset.f === 'montse') b.style.display = uid === UID_MONTSE ? 'none' : '';
+  });
 }
 $('segFiltro').addEventListener('click', e => {
   const b = e.target.closest('button[data-f]');
@@ -782,7 +794,7 @@ async function cargarPlanes() {
     .filter(p => { const k = p.fecha + '|' + p.url; if (vistos.has(k)) return false; vistos.add(k); return true; });
 }
 const yaApuntado = p => eventos.some(e => (e.start_date || '').slice(0, 10) === p.fecha && e.title === p.titulo);
-const planesDelDia = f => verPlanes && f >= HOY_S
+const planesDelDia = f => verPlanes && filtro !== 'montse' && f >= HOY_S
   ? planes.filter(p => p.fecha === f && !yaApuntado(p)).sort((a, b) => (a.hora || '').localeCompare(b.hora || ''))
   : [];
 const enlacePlan = p => `<a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.titulo)}</a>`;
@@ -825,6 +837,8 @@ const fmt = (d, o) => d.toLocaleDateString('es-ES', o);
 const MISMO_DOMINIO = new URL(document.baseURI).origin === location.origin;
 // La primera vez después de publicarla se abre en el Resumen; luego manda la última vista elegida.
 if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.setItem('fh_cal_resumen', '1'); modo = 'resumen'; }
+// El botón «← Resumen» del panel de casa vuelve aquí con ?vista=resumen, sea cual sea la última vista elegida.
+if (MISMO_DOMINIO && new URLSearchParams(location.search).get('vista') === 'resumen') modo = 'resumen';
 
 function rango() {
   if (modo === 'mes') {
@@ -865,6 +879,7 @@ function tituloRango() {
 }
 
 async function render() {
+  pintaFiltro();
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === modo));
   $('rangoTitulo').textContent = tituloRango();
   const { start, end } = rango();
@@ -891,10 +906,11 @@ const diasDesdeHoy = n => { const d = new Date(HOY); d.setDate(d.getDate() + n);
 async function leerParte() {
   const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
   const manana = diasDesdeHoy(1);
+  const sinMontse = q => uid === UID_MONTSE ? q : q.is('para', null);
   const [ev, ta, atr] = await Promise.all([
-    sb.from('calendar_events').select('title,start_date,end_date').or(miasOComunes)
+    sinMontse(sb.from('calendar_events').select('title,start_date,end_date').or(miasOComunes))
       .gte('start_date', diasDesdeHoy(-60)).lt('start_date', manana).order('start_date'),
-    sb.from('tasks').select('title,priority').or(miasOComunes)
+    sinMontse(sb.from('tasks').select('title,priority').or(miasOComunes))
       .eq('completed', false).gte('due_date', HOY_S).lt('due_date', manana),
     sb.from('tasks').select('id', { count: 'exact', head: true }).eq('user_id', uid)
       .eq('completed', false).gte('due_date', ATRAS_DESDE).lt('due_date', HOY_S),
@@ -1042,7 +1058,7 @@ function renderMes(start) {
     const fecha = ymd(d);
     const fuera = d.getMonth() !== m;
     const esHoy = d.getTime() === HOY.getTime();
-    const t = turnoDe(d);
+    const t = filtro === 'montse' ? null : turnoDe(d);
     const evs = evDelDia(fecha);
     const tas = taDelDia(fecha);
     const pend = tas.filter(x => !x.completed).length;
@@ -1075,7 +1091,7 @@ function renderCols() {
   for (let i = 0; i < n; i++) {
     const fecha = ymd(d);
     const esHoy = d.getTime() === HOY.getTime();
-    const t = turnoDe(d);
+    const t = filtro === 'montse' ? null : turnoDe(d);
     const evs = evDelDia(fecha);
     const tas = taDelDia(fecha);
     html += `<div class="col${esHoy ? ' hoy' : ''}" data-f="${fecha}">
@@ -1085,7 +1101,7 @@ function renderCols() {
         ${esHoy ? '<span class="badge-hoy">Hoy</span>' : ''}
       </div>
       ${turnoEsTarde(t) ? turnoChip(EGSTEK) : ''}
-      ${t ? turnoChip(t) : '<span class="vacio">Sin turno en el centro</span>'}
+      ${t ? turnoChip(t) : filtro === 'montse' ? '' : '<span class="vacio">Sin turno en el centro</span>'}
       <div>
         <div class="sec-t">Agenda</div>
         ${evs.length ? evs.map(e => {
@@ -1246,7 +1262,10 @@ function abrePanel(fecha) {
   cierraEncargo(); $('encMsg').textContent = '';
   marcaEncargados();
   $('fTitulo').value = ''; $('fHora').value = '';
-  $('fShared').checked = false;
+  // El formulario parte del calendario que estás viendo.
+  $('fShared').checked = filtro === 'comunes';
+  $('fMontse').checked = filtro === 'montse' && uid === UID_CARLOS;
+  $('filaMontse').style.display = uid === UID_CARLOS ? 'flex' : 'none';
   $('filaShared').style.display = NOMBRES[uid] ? 'flex' : 'none';
   $('panel').classList.add('open');
   $('fTitulo').focus();
@@ -1325,6 +1344,10 @@ $('fVerDia').onclick = () => {
   cambiaModo('dia');
   $('panel').classList.remove('open');
 };
+// Una cosa va a un solo calendario. Lo de Montse lleva shared=true para que ella pueda verlo.
+$('fMontse').addEventListener('change', () => { if ($('fMontse').checked) $('fShared').checked = false; });
+$('fShared').addEventListener('change', () => { if ($('fShared').checked) $('fMontse').checked = false; });
+const destinoForm = () => $('fMontse').checked ? { shared: true, para: 'montse' } : { shared: $('fShared').checked };
 $('fGuardar').onclick = async () => {
   const titulo = $('fTitulo').value.trim();
   if (!titulo || !diaPanel) return;
@@ -1335,13 +1358,13 @@ $('fGuardar').onclick = async () => {
     ({ error } = await conReintento(() => sb.from('calendar_events').insert({
       id: `ev_cal_${Date.now()}`, user_id: uid, title: titulo,
       start_date: start, end_date: start, type: $('fTipo').value,
-      shared: $('fShared').checked,
+      ...destinoForm(),
     })));
   } else {
     ({ error } = await conReintento(() => sb.from('tasks').insert({
       id: `task_cal_${Date.now()}`, user_id: uid, title: titulo, completed: false,
       category: $('fCat').value, priority: $('fPrio').value, due_date: diaPanel,
-      shared: $('fShared').checked,
+      ...destinoForm(),
     })));
   }
   if (error) { alert('No se pudo guardar: ' + msgFallo(error)); return; }

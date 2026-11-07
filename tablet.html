@@ -182,6 +182,26 @@
   .ficha.casa { background: color-mix(in srgb, var(--area-otro) 14%, transparent); border-left: 3px solid var(--area-otro); }
 
   /* ── Día ── */
+  /* ── Fin de semana y Compras ── */
+  .finde { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; height: 100%; }
+  .finde .scol-cab .num { font-size: 18px; }
+  .finde .scol-cab .num small { font-size: 13px; }
+  .finde .scol-lista { gap: 7px; padding: 8px; }
+  .finde .ficha { font-size: 14.5px; padding: 9px 11px; }
+  .finde .ficha b { display: inline; font-size: 13px; margin-right: 6px; }
+  .finde-planes { font-size: 12.5px; font-weight: 800; color: var(--muted); margin-top: 8px; }
+  .finde .hoy-fila .btn { height: 34px; min-width: 34px; padding: 0 8px; }
+  .compras { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; align-items: start; }
+  .compra { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 6px; cursor: pointer; font-size: 13.5px; }
+  .compra.hecha { opacity: .55; }
+  .compra.hecha .compra-t { text-decoration: line-through; }
+  .compra-ok { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 15px; cursor: pointer; }
+  .compra-t { flex: 1; min-width: 0; line-height: 1.3; word-break: break-word; }
+  .compra-t small { display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px; }
+  .compra b { white-space: nowrap; }
+  .gastos-mes { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  @media (max-width: 700px) { .finde { grid-template-columns: minmax(0, 1fr); height: auto; } }
+
   /* ── Incrustada en calendario.html (?solo=resumen): sin cabecera ni lateral ── */
   html.solo .top, html.solo .lateral, html.solo .vista-cab { display: none; }
   html.solo .app { padding: 0; height: 100dvh; min-height: 0; }
@@ -190,7 +210,7 @@
   html.solo, html.solo body { background: transparent; }
 
   /* ── Resumen: todo lo del día de un vistazo ── */
-  .hoy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  #contenido > .hoy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .hoy-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
   .hoy-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 30px; }
   .hoy-cab h4 { font-size: 13px; font-weight: 800; flex: 1; }
@@ -215,8 +235,8 @@
   @media (max-width: 700px) { .horario-dias { grid-template-columns: minmax(0, 1fr); } }
   .hoja label.enc { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
   .hoja .enc-campo { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font: inherit; font-size: 14px; background: var(--card); color: var(--ink); }
-  @media (max-width: 1100px) { .hoy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 700px) { .hoy { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 1100px) { #contenido > .hoy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 700px) { #contenido > .hoy { grid-template-columns: minmax(0, 1fr); } }
   .dia { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
   .dia-cab { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .dia h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 4px 0 8px; }
@@ -274,7 +294,7 @@
   .pie .aviso { color: var(--aviso-fg); background: var(--aviso-bg); border: 1px solid var(--aviso-line); border-radius: 8px; padding: 6px 8px; display: block; margin-top: 4px; }
 
   /* ── Casa: gastos con Montse, tareas compartidas y reparto de la casa ── */
-  .casa { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; min-height: 100%; }
+  #contenido > .casa { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 10px; min-height: 100%; }
   .casa-cab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .casa-cab .chips { margin-left: 0; }
   .casa-cab .sep { flex: 1; }
@@ -393,7 +413,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -411,6 +431,9 @@
         <h2 id="titulo"></h2>
         <div class="chips" id="filtroFuente">
           <button data-f="todo">Todo</button><button data-f="fh">FileHub</button><button data-f="egs">EGStrategy</button><button data-f="ag">Agentes</button>
+        </div>
+        <div class="chips" id="filtroCal" title="Qué calendario ves: todo, solo lo tuyo, lo común o el de Montse">
+          <button data-c="todo">Todo</button><button data-c="mio">Mío</button><button data-c="comun">👥 Común</button><button data-c="montse">Montse</button>
         </div>
       </div>
       <div id="contenido"></div>
@@ -513,6 +536,7 @@ function turnoDe(d) {
 }
 const chip = t => `<span class="chip-t" style="background:${t.bg};color:${t.fg}">${t.label}</span>`;
 // Las mañanas con turno de tarde son de EGS TEK (8:30–12), como en el calendario.
+const chipsTurnoCal = d => filtroCal === 'montse' ? '' : chipsTurno(d);
 function chipsTurno(d) {
   const t = turnoDe(d);
   if (!t) return '';
@@ -525,6 +549,10 @@ const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
 let vista = SOLO_RESUMEN || !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
 if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
+// Calendario que se ve en Mes, Semana, Día y Fin de semana: todo, lo mío, lo común o lo de Montse.
+const VISTAS_CAL = ['mes', 'semana', 'dia', 'finde'];
+let filtroCal = localStorage.getItem('fh_tab_cal') || 'todo';
+let compraVer = 'pendientes';
 let cursor = new Date(HOY);
 let mesCargado = '';
 // FileHub: eventos y tareas del mes visible, pendientes (kanban) y hechas hace poco.
@@ -554,11 +582,27 @@ const PRIO = { high: 'var(--prio-high)', medium: 'var(--prio-medium)', low: 'var
 const PRIO_EGS = { blocker: 'high', alta: 'high', media: 'medium', baja: 'low' };
 const CATEG = { personal: 'Personal', work: 'Trabajo', finance: 'Finanzas', other: 'Otros' };
 const ESTADO_AG = { todo: 'en cola', ready: 'lista', triage: 'por clasificar', running: 'en marcha', blocked: 'espera tu «sí»', done: 'hecha' };
-const badgeQuien = x => x.shared && x.user_id !== uid
+const badgeQuien = x => x.para === 'montse' && !soyMontse() ? '<span class="quien m" title="En el calendario de Montse">M</span>' : x.shared && x.user_id !== uid
   ? `<span class="quien${x.user_id === UID_MONTSE ? ' m' : ''}" title="Compartida · de ${NOMBRES[x.user_id] || '—'}">${(NOMBRES[x.user_id] || '?')[0]}</span>` : '';
 const egsTareas = () => (egs?.contenido?.ok && Array.isArray(egs.contenido.tareas)) ? egs.contenido.tareas : [];
 const agTareas = () => Array.isArray(tablero?.contenido?.tareas) ? tablero.contenido.tareas : [];
 const dueDe = t => (t.due_date || '').slice(0, 10);
+// «para» marca lo apuntado en el calendario de Montse desde otra cuenta: es suyo, no de quien lo escribió.
+const deMontse = x => x.user_id === UID_MONTSE || x.para === 'montse';
+const soyMontse = () => uid === UID_MONTSE;
+function pasaCal(x) {
+  if (!VISTAS_CAL.includes(vista)) return soyMontse() || x.para !== 'montse'; // Resumen: lo tuyo y lo común
+  if (filtroCal === 'comun') return !!x.shared && x.para !== 'montse';
+  if (filtroCal === 'montse') return deMontse(x);
+  if (filtroCal === 'mio') return soyMontse() ? deMontse(x) : x.user_id === (uid || UID_CARLOS) && x.para !== 'montse';
+  return true;
+}
+function pasaCasaCal(t) {
+  if (!VISTAS_CAL.includes(vista) || filtroCal === 'todo') return true;
+  if (filtroCal === 'comun') return t.assignee === 'ambos';
+  return t.assignee === 'ambos' || t.assignee === (filtroCal === 'montse' ? 'montse' : yoCasa());
+}
+const verEgsCal = () => !VISTAS_CAL.includes(vista) || filtroCal === 'todo' || (filtroCal === 'mio' && !soyMontse());
 
 // ── Datos ──────────────────────────────────────────────────────────────────
 function rangoMes(c) {
@@ -586,10 +630,10 @@ async function cargar() {
     if (DEMO) { if (!ultimaCarga) datosDemo(); }
     else if (uid) {
       const { desde, hasta } = rangoMes(cursor);
-      const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage';
+      const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage,para';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
       const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho] = await Promise.all([
-        conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared')
+        conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
           .gte('due_date', desde).lt('due_date', hasta).order('due_date')),
@@ -613,7 +657,7 @@ async function cargar() {
       if (err) throw err;
       eventos = ev.data || [];
       tareasMes = ta.data || [];
-      pendientes = (pe.data || []).filter(t => !dueDe(t) || dueDe(t) >= ATRAS_DESDE);
+      pendientes = (pe.data || []).filter(t => (!dueDe(t) || dueDe(t) >= ATRAS_DESDE) && (soyMontse() || t.para !== 'montse'));
       hechasFH = he.data || [];
       // Si la tabla aún no existe (migración panel_tablet sin aplicar), el resto del panel funciona igual.
       panelFalta = !!pt.error;
@@ -649,13 +693,13 @@ async function cargar() {
 // Elementos de un día en el calendario: eventos (por hora), tareas de casa (de los dos, con su hora),
 // tareas de FileHub y tareas de EGStrategy que vencen.
 function itemsDia(f) {
-  const ev = eventos.filter(e => (e.start_date || '').slice(0, 10) === f)
+  const ev = eventos.filter(e => (e.start_date || '').slice(0, 10) === f && pasaCal(e))
     .map(e => ({ k: 'ev', hora: horaDe(e), titulo: e.title, est: estiloEv(e), raw: e }));
-  const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === f)
+  const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === f && pasaCasaCal(t))
     .map(t => ({ k: 'casa', hora: (t.hora || '').slice(0, 5), titulo: t.title, raw: t }));
   const conHora = [...ev, ...cs].sort((a, b) => (a.hora || '99').localeCompare(b.hora || '99'));
-  const fh = tareasMes.filter(t => dueDe(t) === f).map(t => ({ k: 'fh', titulo: t.title, raw: t }));
-  const eg = egsTareas().filter(t => t.vence === f).map(t => ({ k: 'egs', titulo: t.texto, raw: t }));
+  const fh = tareasMes.filter(t => dueDe(t) === f && pasaCal(t)).map(t => ({ k: 'fh', titulo: t.title, raw: t }));
+  const eg = (verEgsCal() ? egsTareas() : []).filter(t => t.vence === f).map(t => ({ k: 'egs', titulo: t.texto, raw: t }));
   return [...conHora, ...fh, ...eg];
 }
 function itemMini(it) {
@@ -680,7 +724,7 @@ function htmlMes() {
     h += '<div class="mes-fila">';
     for (let c = 0; c < 7; c++) {
       const d = masDias(inicio, f * 7 + c), s = ymd(d), its = itemsDia(s);
-      const turno = chipsTurno(d);
+      const turno = chipsTurnoCal(d);
       // Con dos chips (EGS TEK + turno de tarde) caben menos líneas.
       const max = filas > 5 ? (turno.includes(EGSTEK.label) ? 1 : 2) : (turno.includes(EGSTEK.label) ? 2 : 3);
       h += `<div class="celda${d.getMonth() !== mes ? ' fuera' : ''}${s === HOY_S ? ' hoy' : ''}" data-dia="${s}">`
@@ -697,7 +741,7 @@ function htmlSemana() {
   for (let i = 0; i < 7; i++) {
     const d = masDias(lunes, i), s = ymd(d), its = itemsDia(s);
     h += `<div class="scol${s === HOY_S ? ' hoy' : ''}"><div class="scol-cab" data-dia="${s}">`
-      + `<div class="num"><small>${fmt(d, { weekday: 'short' }).replace('.', '')}</small>${d.getDate()}</div>${chipsTurno(d)}</div>`
+      + `<div class="num"><small>${fmt(d, { weekday: 'short' }).replace('.', '')}</small>${d.getDate()}</div>${chipsTurnoCal(d)}</div>`
       + `<div class="scol-lista">${its.map(ficha).join('') || '<div class="vacio">—</div>'}</div></div>`;
   }
   return h + '</div>';
@@ -711,17 +755,17 @@ const filaCasa = t => `<div class="lfila${t.done ? ' hecha' : ''}" data-casa="${
 function htmlDia() {
   const s = ymd(cursor), its = itemsDia(s);
   const ev = its.filter(i => i.k === 'ev' || (i.k === 'casa' && i.hora));
-  let h = `<div class="dia"><div class="dia-cab">${chipsTurno(cursor)}</div><div><section><h4>Agenda</h4>`;
+  let h = `<div class="dia"><div class="dia-cab">${chipsTurnoCal(cursor)}</div><div><section><h4>Agenda</h4>`;
   h += ev.length ? ev.map(i => i.k === 'casa'
       ? `<div class="ev-fila${i.raw.done ? ' hecha' : ''}" style="background:color-mix(in srgb, var(--area-otro) 14%, transparent)" data-casa="${esc(i.raw.id)}"><span class="h">${i.hora}</span><span class="tt">📌 ${esc(i.titulo)}</span></div>`
       : `<div class="ev-fila" style="background:${i.est.bg};color:${i.est.fg}"><span class="h">${i.hora || 'Todo el día'}</span><span class="tt">${esc(i.titulo)}</span></div>`).join('')
     : '<div class="vacio">Sin eventos.</div>';
   h += '</section></div><div><section><h4>Tareas del día</h4>';
-  const fh = tareasMes.filter(t => dueDe(t) === s), eg = egsTareas().filter(t => t.vence === s);
-  const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === s && !t.hora);
+  const fh = tareasMes.filter(t => dueDe(t) === s && pasaCal(t)), eg = verEgsCal() ? egsTareas().filter(t => t.vence === s) : [];
+  const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === s && !t.hora && pasaCasaCal(t));
   h += (fh.length || eg.length || cs.length) ? cs.map(filaCasa).join('') + fh.map(filaFH).join('') + eg.map(filaEGS).join('') : '<div class="vacio">Nada que venza este día.</div>';
   h += '</section>';
-  if (s === HOY_S) {
+  if (s === HOY_S && verEgsCal()) {
     const atrFH = pendientes.filter(t => dueDe(t) && dueDe(t) < HOY_S);
     const atrEG = egsTareas().filter(t => t.vence && t.vence < HOY_S);
     if (atrFH.length || atrEG.length) {
@@ -759,7 +803,7 @@ function htmlHoy() {
       : `<div class="ev-fila" style="background:${i.est.bg};color:${i.est.fg}"><span class="h">${i.hora || 'Todo el día'}</span><span class="tt">${esc(i.titulo)}</span></div>`).join('')
     : '<div class="vacio">Sin eventos hoy.</div>';
 
-  const fh = tareasMes.filter(t => dueDe(t) === HOY_S), eg = egsTareas().filter(t => t.vence === HOY_S);
+  const fh = tareasMes.filter(t => dueDe(t) === HOY_S && pasaCal(t)), eg = egsTareas().filter(t => t.vence === HOY_S);
   const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === HOY_S && !t.hora);
   const atr = pendientes.filter(t => dueDe(t) && dueDe(t) < HOY_S).length + egsTareas().filter(t => t.vence && t.vence < HOY_S).length;
   const tareasHoy = ((fh.length || eg.length || cs.length) ? cs.map(filaCasa).join('') + fh.map(filaFH).join('') + eg.map(filaEGS).join('') : '<div class="vacio">Nada que venza hoy.</div>')
@@ -825,7 +869,7 @@ function htmlHoy() {
     <div class="hoy-fila"><div>🧹 <b>${tareasPend.length}</b> tarea${tareasPend.length === 1 ? "" : "s"}<small>Carlos ${quien('carlos')} · Montse ${quien('montse')} · los dos ${quien('ambos')}</small></div></div>
     <div class="hoy-fila"><div>🛒 <b>${compras.length}</b> compra${compras.length === 1 ? "" : "s"} pendiente${compras.length === 1 ? "" : "s"}${compras.length ? `<small>${esc(compras.slice(0, 3).map(i => i.title).join(' · '))}</small>` : ''}</div></div>
     <div class="hoy-fila"><div>📦 <b>${paquetes.length}</b> paquete${paquetes.length === 1 ? "" : "s"} por recoger${paquetes.length ? `<small>${esc(paquetes.slice(0, 3).map(i => i.title + (i.lugar ? ' (' + i.lugar + ')' : '')).join(' · '))}</small>` : ''}</div></div>`;
-  const botonCasa = '<a class="btn" href="https://carlosgalera-a11y.github.io/casa/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>';
+  const botonCasa = `<a class="btn" href="https://carlosgalera-a11y.github.io/casa/?volver=${SOLO_RESUMEN ? 'calendario' : 'tablet'}" target="_top" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>`;
 
   return `<div class="hoy">
     ${tarjetaHorario}
@@ -979,6 +1023,7 @@ function htmlRutinas() {
     + rcol('Hechas · 7 días', R.filter(r => r.ultima_vez && r.ultima_vez >= hace7 && r.ultima_vez <= HOY_S && hechaEl(r, r.ultima_vez)).sort((x, y) => y.ultima_vez.localeCompare(x.ultima_vez)).map(r => rut(r, r.ultima_vez)))
     + '</div>';
 }
+const filaGasto = g => `<div class="gasto" data-gasto="${esc(g.id)}">${chipPers(g.paid_by)}<span>${esc(g.title)}<span class="sub">${fechaCorta(g.fecha)} · pagó ${PERSONAS[g.paid_by] || '?'} · para ${g.beneficiario === 'ambos' ? 'los dos' : PERSONAS[g.beneficiario]}</span></span><span class="imp">${eur(g.amount)}</span></div>`;
 function htmlCasa() {
   const sC = saldoDe('carlos'), mes = HOY_S.slice(0, 7);
   const delMes = gastos.filter(g => (g.fecha || '').startsWith(mes) && g.category !== 'ajuste');
@@ -1008,7 +1053,7 @@ function htmlCasa() {
         <div class="casa-panel">
           <h4>Gastos del piso<a href="https://carlosgalera-a11y.github.io/gastos/" target="_blank" rel="noopener">Abrir gastos ↗</a></h4>
           ${porCat.length ? `<div class="barras">${porCat.slice(0, 4).map(([c, n]) => `<div class="barra"><span>${(CAT_GASTO[c] || c).replace(/^\S+ /, '')}</span><i style="width:${Math.round(n / porCat[0][1] * 100)}%"></i><b>${eur(n)}</b></div>`).join('')}</div>` : ''}
-          <div class="lista-scroll">${gastos.slice(0, 10).map(g => `<div class="gasto" data-gasto="${esc(g.id)}">${chipPers(g.paid_by)}<span>${esc(g.title)}<span class="sub">${fechaCorta(g.fecha)} · pagó ${PERSONAS[g.paid_by] || '?'} · para ${g.beneficiario === 'ambos' ? 'los dos' : PERSONAS[g.beneficiario]}</span></span><span class="imp">${eur(g.amount)}</span></div>`).join('') || '<div class="vacio">Sin gastos todavía.</div>'}</div>
+          <div class="lista-scroll">${gastos.slice(0, 10).map(filaGasto).join('') || '<div class="vacio">Sin gastos todavía.</div>'}</div>
         </div>
         <div class="casa-panel">
           <h4>Tareas pendientes<span class="n">${compartidas.length + tCasa.length}</span></h4>
@@ -1016,6 +1061,78 @@ function htmlCasa() {
         </div>
       </div>
     </div></div>`;
+}
+
+// ── Gastos: el saldo y el mes elegido ──────────────────────────────────────
+const enlaceBtn = (url, txt, destino = '_blank') => `<a class="btn" href="${url}" target="${destino}"${destino === '_blank' ? ' rel="noopener"' : ''} style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">${txt}</a>`;
+function htmlGastos() {
+  const mes = ymd(cursor).slice(0, 7);
+  const delMes = gastos.filter(g => (g.fecha || '').startsWith(mes));
+  const reales = delMes.filter(g => g.category !== 'ajuste');
+  const total = reales.reduce((s, g) => s + g.amount, 0);
+  const pago = p => reales.filter(g => g.paid_by === p).reduce((s, g) => s + g.amount, 0);
+  const porCat = Object.entries(reales.reduce((o, g) => { o[g.category || 'otros'] = (o[g.category || 'otros'] || 0) + g.amount; return o; }, {})).sort((a, b) => b[1] - a[1]);
+  const sC = saldoDe('carlos');
+  const saldoTxt = Math.abs(sC) < 0.5 ? 'En paz' : sC > 0 ? `Montse debe ${eur(sC)} a Carlos` : `Carlos debe ${eur(-sC)} a Montse`;
+  return `<div class="casa">
+    <div class="casa-cab"><span class="sep"></span><button class="btn" id="nuevoGasto">+ Gasto</button>${enlaceBtn('https://carlosgalera-a11y.github.io/gastos/', 'Abrir gastos ↗')}</div>
+    <div class="casa-stats">
+      <div class="casa-stat card" style="--c:${Math.abs(sC) < 0.5 ? 'var(--src-egs)' : sC > 0 ? 'var(--indigo)' : 'var(--montse)'}"><div class="n">${Math.abs(sC) < 0.5 ? '✓' : eur(Math.abs(sC))}</div><div class="l">${saldoTxt}</div></div>
+      <div class="casa-stat card" style="--c:var(--src-fh)"><div class="n">${eur(total)}</div><div class="l">${cap(fmt(cursor, { month: 'long' }))} · ${reales.length} gasto${reales.length === 1 ? '' : 's'}</div></div>
+      <div class="casa-stat card" style="--c:var(--area-compra)"><div class="n">${eur(pago('carlos'))} · ${eur(pago('montse'))}</div><div class="l">Pagó Carlos · pagó Montse</div></div>
+    </div>
+    <div class="gastos-mes">
+      ${porCat.length ? `<div class="barras">${porCat.map(([c, n]) => `<div class="barra"><span>${(CAT_GASTO[c] || c).replace(/^\S+ /, '')}</span><i style="width:${Math.round(n / porCat[0][1] * 100)}%"></i><b>${eur(n)}</b></div>`).join('')}</div>` : ''}
+      <div>${delMes.map(filaGasto).join('') || '<div class="vacio">Sin gastos este mes.</div>'}</div>
+    </div></div>`;
+}
+
+// ── Compras: la misma lista que el panel de casa, por tienda ───────────────
+const TIENDAS = { ikea: 'IKEA', conforama: 'Conforama', otra: 'Otras tiendas' };
+const listaCompra = i => (i.categoria || 'otra') + '|' + (i.datos?.grupo || '');
+function filaCompra(i) {
+  const d = i.datos || {};
+  const donde = d.pasillo ? `Pasillo ${d.pasillo} · ubicación ${d.ubic || '—'}` : d.seccion ? [d.zona, d.seccion].filter(Boolean).join(' · ') : i.lugar || '';
+  const sub = [d.uds > 1 ? `${d.uds} uds` : '', d.ref ? `Ref. ${d.ref}` : '', donde].filter(Boolean).join(' · ');
+  return `<div class="compra${i.done ? ' hecha' : ''}" data-casa="${esc(i.id)}">
+    <button class="compra-ok" type="button" data-comprado="${esc(i.id)}" aria-label="${i.done ? 'Volver a pendiente' : 'Marcar como comprado'}">${i.done ? '↩' : '✓'}</button>
+    <span class="compra-t">${esc(i.title)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>
+    ${i.importe != null ? `<b>${esc(eur(Number(i.importe)))}</b>` : ''}</div>`;
+}
+function htmlCompras() {
+  const todas = casa.filter(i => i.kind === 'compra');
+  const vis = compraVer === 'todo' ? todas : todas.filter(i => !i.done);
+  // Primero las listas principales; las alternativas (datos.grupo) van detrás, como en el panel de casa.
+  const listas = [...new Set(vis.map(listaCompra))].sort((a, b) => (b.endsWith('|') - a.endsWith('|')) || a.localeCompare(b));
+  const chip = (v, txt) => `<button data-cver="${v}"${compraVer === v ? ' class="on"' : ''}>${txt}</button>`;
+  const pend = todas.filter(i => !i.done).length;
+  return `<div class="casa" style="grid-template-rows:auto minmax(0,1fr)">
+    <div class="casa-cab">
+      <div class="chips">${chip('pendientes', `Por comprar (${pend})`)}${chip('todo', 'Todo')}</div>
+      <span class="sep"></span>
+      <button class="btn" id="nuevaCompra">+ Compra</button>${enlaceBtn('https://carlosgalera-a11y.github.io/casa/?volver=tablet#compras', 'Abrir en Casa ›', '_top')}
+    </div>
+    ${listas.length ? `<div class="compras">${listas.map(k => {
+      const [tienda, grupo] = k.split('|'), l = vis.filter(i => listaCompra(i) === k);
+      return `<div class="casa-panel"><h4>${esc(TIENDAS[tienda] || tienda)}${grupo ? ' · ' + esc(grupo) : ''}<span class="n">${l.length}</span></h4><div>${l.map(filaCompra).join('')}</div></div>`;
+    }).join('')}</div>` : '<div class="vacio">No hay nada por comprar. Pulsa «+ Compra» para añadir algo.</div>'}
+  </div>`;
+}
+
+// ── Fin de semana: sábado y domingo, con lo apuntado y los planes del agente de ocio ──
+const sabadoDe = d => masDias(d, d.getDay() === 0 ? -1 : 6 - d.getDay());
+function htmlFinde() {
+  const col = d => {
+    const s = ymd(d), its = itemsDia(s);
+    const sugeridos = filtroCal === 'montse' ? [] : planes.map((p, i) => ({ p, i })).filter(x => x.p.fecha === s);
+    const verPlanes = sugeridos.length ? '<h4 class="finde-planes">🎭 Planes que sugiere el agente</h4>' + sugeridos.map(({ p, i }) => `<div class="hoy-fila"><div><a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.titulo)}</a>
+        <small>${[p.hora, p.lugar, p.precio].filter(Boolean).map(esc).join(' · ')}</small></div>
+        <button class="btn" data-apuntar="${i}" title="Apuntar en el calendario">➕</button></div>`).join('') : '';
+    return `<div class="scol${s === HOY_S ? ' hoy' : ''}"><div class="scol-cab" data-dia="${s}"><div class="num"><small>${fmt(d, { weekday: 'long' })}</small> ${d.getDate()}</div>${chipsTurnoCal(d)}</div>
+      <div class="scol-lista">${its.map(ficha).join('') || '<div class="vacio">Nada apuntado.</div>'}${verPlanes}</div></div>`;
+  };
+  const sab = sabadoDe(cursor);
+  return `<div class="finde">${col(sab)}${col(masDias(sab, 1))}</div>`;
 }
 
 function tituloVista() {
@@ -1026,6 +1143,12 @@ function tituloVista() {
     return (vista === 'casa' ? 'Casa · ' : '') + `${fmt(l, { day: 'numeric', month: 'short' })} – ${fmt(d, { day: 'numeric', month: 'short', year: 'numeric' })}`.replace(/\./g, '');
   }
   if (vista === 'dia') return cap(fmt(cursor, { weekday: 'long', day: 'numeric', month: 'long' }));
+  if (vista === 'gastos') return 'Gastos · ' + cap(fmt(cursor, { month: 'long', year: 'numeric' }));
+  if (vista === 'finde') {
+    const s = sabadoDe(cursor), dom = masDias(s, 1), mesCorto = d => fmt(d, { month: 'short' }).replace('.', '');
+    return `Fin de semana · ${s.getDate()}${s.getMonth() === dom.getMonth() ? '' : ' ' + mesCorto(s)}–${dom.getDate()} ${mesCorto(dom)}`;
+  }
+  if (vista === 'compras') return 'Compras';
   return vista === 'casa' ? 'Casa' : 'Tareas';
 }
 
@@ -1103,13 +1226,19 @@ function pintaEstado() {
 function render() {
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
+  if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
+  $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
+  document.querySelectorAll('#filtroCal button').forEach(b => {
+    b.classList.toggle('on', b.dataset.c === filtroCal);
+    b.style.display = b.dataset.c === 'montse' && soyMontse() ? 'none' : '';
+  });
   $('titulo').textContent = tituloVista();
   $('turnoHoy').innerHTML = chipsTurno(HOY);
   const c = $('contenido');
   c.className = 'v-' + vista;
-  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : htmlKanban();
+  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : htmlKanban();
   pintaStats(); pintaParte(); pintaEstado();
 }
 
@@ -1207,6 +1336,17 @@ function formGasto() {
     <div class="acc"><button class="btn prim" data-guardar="gasto">Guardar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
   $('hojaIn').querySelector('[name="title"]').focus();
 }
+function formCompra() {
+  abreHoja(`<span class="fuente" style="--c:var(--area-compra)">🛒 Compras</span><h3>Nueva compra</h3>
+    <div class="form">
+      <label>Qué<input name="title" maxlength="200" placeholder="Leche, pilas, una lámpara…"></label>
+      <label>Tienda${opc('categoria', [['otra', 'Otra'], ['ikea', 'IKEA'], ['conforama', 'Conforama']], 'otra')}</label>
+      <label>Dónde (opcional)<input name="lugar" maxlength="120" placeholder="Pasillo, sección…"></label>
+      <label>Para${opc('assignee', [['ambos', 'Los dos'], ['carlos', 'Carlos'], ['montse', 'Montse']], 'ambos')}</label>
+    </div>
+    <div class="acc"><button class="btn prim" data-guardar="compra">Guardar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
+  $('hojaIn').querySelector('[name="title"]').focus();
+}
 function hojaGasto(id) {
   const g = gastos.find(x => x.id === id);
   if (!g) return;
@@ -1266,6 +1406,18 @@ async function guardaRutina(id) {
   }
   cierraHoja(); render();
 }
+async function guardaCompra() {
+  const title = campo('title');
+  if (!title) { alert('Escribe qué hay que comprar.'); return; }
+  const nueva = { kind: 'compra', title, categoria: elegido('categoria') || 'otra', lugar: campo('lugar') || null, assignee: elegido('assignee') || 'ambos', created_by: emailSesion || null };
+  if (DEMO) casa.push({ id: 'c' + Date.now(), ...nueva, done: false, created_at: new Date().toISOString() });
+  else {
+    const { data, error } = await conReintento(() => sb.from('casa_items').insert(nueva).select(COLS_CASA).single());
+    if (error) { avisaFallo(error, 'guardar'); return; }
+    casa.push(data);
+  }
+  cierraHoja(); render();
+}
 async function guardaGasto() {
   const title = campo('title'), amount = Math.round(Number(String(campo('amount')).replace(',', '.')) * 100) / 100;
   if (!title) { alert('Escribe qué es el gasto.'); return; }
@@ -1294,14 +1446,17 @@ $('hoja').addEventListener('click', e => {
   const g = e.target.closest('[data-gacc]');
   if (g) return borraGasto(g.dataset.id);
   const s = e.target.closest('[data-guardar]');
-  if (s) return s.dataset.guardar === 'gasto' ? guardaGasto() : guardaRutina(s.dataset.id);
+  if (s) return s.dataset.guardar === 'gasto' ? guardaGasto() : s.dataset.guardar === 'compra' ? guardaCompra() : guardaRutina(s.dataset.id);
 });
 
 // ── Interacción ────────────────────────────────────────────────────────────
 function cambiaVista(v) {
+  // El fin de semana y los gastos se abren siempre en el actual, aunque vinieras de otro mes.
+  const alActual = v !== vista && (v === 'finde' || v === 'gastos');
   vista = v; localStorage.setItem('fh_tab_vista', v);
+  if (alActual) cursor = new Date(HOY);
   // El resumen es siempre de hoy: si estabas en otro mes, hay que volver a pedir sus datos.
-  if (v === 'hoy' && !DEMO && rangoMes(HOY).desde !== mesCargado) { cursor = new Date(HOY); cargar(); return; }
+  if ((v === 'hoy' || alActual) && !DEMO && rangoMes(HOY).desde !== mesCargado) { cursor = new Date(HOY); cargar(); return; }
   render();
 }
 $('segVista').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) cambiaVista(b.dataset.v); });
@@ -1309,6 +1464,11 @@ $('filtroFuente').addEventListener('click', e => {
   const b = e.target.closest('button[data-f]');
   if (!b) return;
   fuente = b.dataset.f; localStorage.setItem('fh_tab_fuente', fuente); render();
+});
+$('filtroCal').addEventListener('click', e => {
+  const b = e.target.closest('button[data-c]');
+  if (!b) return;
+  filtroCal = b.dataset.c; localStorage.setItem('fh_tab_cal', filtroCal); render();
 });
 $('stats').addEventListener('click', e => {
   const s = e.target.closest('[data-fuente]');
@@ -1318,6 +1478,11 @@ $('stats').addEventListener('click', e => {
 $('contenido').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('#encargarBtn')) return formEncargo();
+  if (t.closest('#nuevaCompra')) return formCompra();
+  const cv = t.closest('[data-cver]');
+  if (cv) { compraVer = cv.dataset.cver; render(); return; }
+  const cp = t.closest('[data-comprado]');
+  if (cp) { const r = casa.find(x => x.id === cp.dataset.comprado); return r && accionCasa(r.id, r.done ? 'pendiente' : 'hecha'); }
   const ap = t.closest('[data-apuntar]');
   if (ap) return apuntarPlan(Number(ap.dataset.apuntar));
   const iv = t.closest('[data-irvista]');
@@ -1341,8 +1506,8 @@ $('contenido').addEventListener('click', e => {
 });
 // Solo se vuelve a pedir a Supabase si el cursor sale del mes cargado.
 const irA = async d => { cursor = d; if (!DEMO && rangoMes(cursor).desde !== mesCargado) await cargar(); else render(); };
-const mueve = dir => irA(vista === 'mes' ? new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1)
-  : masDias(cursor, dir * (vista === 'semana' || vista === 'casa' ? 7 : 1)));
+const mueve = dir => irA(vista === 'mes' || vista === 'gastos' ? new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1)
+  : masDias(cursor, dir * (vista === 'semana' || vista === 'casa' || vista === 'finde' ? 7 : 1)));
 $('atras').onclick = () => mueve(-1);
 $('adelante').onclick = () => mueve(1);
 $('hoyBtn').onclick = () => irA(new Date(HOY));
@@ -1450,6 +1615,8 @@ function datosDemo() {
     { id: 'e5', title: 'Viaje', start_date: d(9), type: 'trip' },
     { id: 'e6', title: 'Formación', start_date: d(-3) + 'T16:00', type: 'work' },
     { id: 'e7', title: 'Dentista', start_date: d(0) + 'T17:30', type: 'personal' },
+    { id: 'e8', title: 'Revisión de Montse', start_date: d(1) + 'T10:00', type: 'personal', shared: true, para: 'montse' },
+    { id: 'e9', title: 'Comida con la familia', start_date: d(2) + 'T14:00', type: 'personal', shared: true },
   ].map(e => ({ user_id: yo, shared: false, ...e }));
   pendientes = [
     ta('f1', 'Renovar ITV del coche', -2, { priority: 'high' }),
@@ -1492,6 +1659,8 @@ function datosDemo() {
     rutina('c8', 'Menú de la semana', 'cocina', 'ambos', 7, -7),
     rutina('c9', 'Plancha', 'limpieza', 'montse', 7, 0),
     { id: 'c10', kind: 'tarea', title: 'Recoger paquete en Correos', assignee: 'carlos', fecha: d(1), hora: '18:00', done: false },
+    { id: 'c11', kind: 'compra', title: 'KALLAX estantería, blanco', categoria: 'ikea', assignee: 'ambos', done: false, datos: { ref: '303.721.88', uds: 2, pasillo: '12', ubic: '04' } },
+    { id: 'c12', kind: 'compra', title: 'Pilas', categoria: 'otra', assignee: 'carlos', done: false },
   ];
   const gasto = (id, title, amount, category, paid_by, beneficiario, n) => ({ id, title, amount, category, paid_by, beneficiario, fecha: d(n), created_by: PERSONAS[paid_by] });
   planes = [
