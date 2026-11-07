@@ -203,6 +203,15 @@
   .hoy-fila .btn { height: 28px; min-width: 0; padding: 0 8px; font-size: 12px; flex: none; }
   .hoy-mas { display: block; width: 100%; margin-top: 8px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; text-align: left; cursor: pointer; padding: 2px 0; }
   .hoy-card .ev-fila { margin-bottom: 6px; }
+  .hoy-card.horario { grid-column: 1 / -1; }
+  .horario-dias { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .horario-dia { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; line-height: 1.3; min-width: 0; }
+  .horario-dia.es-hoy { border-color: var(--ink); border-width: 2px; }
+  .horario-dia.pasado { opacity: .5; }
+  .horario-dia b { display: block; font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 5px; }
+  .horario-dia .h { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 13px; font-weight: 800; margin-bottom: 5px; }
+  .horario-dia span.q { display: block; word-break: break-word; }
+  @media (max-width: 700px) { .horario-dias { grid-template-columns: minmax(0, 1fr); } }
   .hoja label.enc { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
   .hoja .enc-campo { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font: inherit; font-size: 14px; background: var(--card); color: var(--ink); }
   @media (max-width: 1100px) { .hoy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -520,7 +529,10 @@ let mesCargado = '';
 // FileHub: eventos y tareas del mes visible, pendientes (kanban) y hechas hace poco.
 let eventos = [], tareasMes = [], pendientes = [], hechasFH = [];
 // Resumen: planes del agente de ocio y empleo (los sube el PC), proyectos del Workspace y encargos a agentes.
-let planes = [], empleo = null, proyectos = [], tareasProy = [], encargos = [];
+let planes = [], empleo = null, proyectos = [], tareasProy = [], encargos = [], horario = [];
+// Horario de la consulta, apuntado como eventos con id «horario_AAAA-MM-DD». Se enseña la semana en curso;
+// en fin de semana, la siguiente, que es la que importa.
+const lunesHorario = () => { const dia = (HOY.getDay() + 6) % 7; return masDias(HOY, dia >= 5 ? 7 - dia : -dia); };
 // Lo que sube el PC (panel_tablet): partes diarios, tablero de los agentes y EGStrategy.
 let partes = [], tablero = null, egs = null, panelFalta = false;
 // Casa (Carlos + Montse): gastos del piso (piso_horta_gastos) y rutinas/tareas de casa (casa_items).
@@ -575,7 +587,7 @@ async function cargar() {
       const { desde, hasta } = rangoMes(cursor);
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
-      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en] = await Promise.all([
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -593,6 +605,8 @@ async function cargar() {
         conReintento(() => sb.from('ws_projects').select('id,name,status').order('created_at')),
         conReintento(() => sb.from('ws_tasks').select('id,project_id,title,due_date,priority').eq('completed', false).limit(300)),
         conReintento(() => sb.from('agente_encargos').select('id,agente,titulo,estado,created_at').order('created_at', { ascending: false }).limit(8)),
+        conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date').like('id', 'horario%')
+          .gte('start_date', ymd(lunesHorario())).lt('start_date', ymd(masDias(lunesHorario(), 7))).order('start_date')),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -618,6 +632,7 @@ async function cargar() {
       proyectos = wp.data || [];
       tareasProy = wt.data || [];
       encargos = en.data || [];
+      horario = ho.data || [];
       mesCargado = desde;
     }
     errorCarga = '';
@@ -775,7 +790,17 @@ function htmlHoy() {
     ...enCola.map(e => filaEnc(e, 'se lanza en unos minutos')), ...enMarcha.slice(0, 3).map(t => filaAg(t, 'en marcha'))].join('') || '<div class="vacio">Nada en marcha ni esperándote.</div>';
   const botonEnc = (DEMO || uid === UID_CARLOS) ? '<button class="btn" id="encargarBtn" type="button">＋ Encargar</button>' : '';
 
+  const diaHorario = e => {
+    const d = (e.start_date || '').slice(0, 10), ini = (e.start_date || '').slice(11, 13), fin = (e.end_date || '').slice(11, 13);
+    const t = /urgenc/i.test(e.title) ? 'urg' : Number(ini) < 13 ? 'agm' : 'agt';
+    return `<div class="horario-dia${d === HOY_S ? ' es-hoy' : d < HOY_S ? ' pasado' : ''}"><b>${esc(fechaCorta(d))}</b>
+      <span class="h" style="background:var(--t-${t}-bg);color:var(--t-${t}-fg)">${esc(String(Number(ini)))}–${esc(String(Number(fin)))} h</span>
+      <span class="q">${esc(String(e.title).replace(/^🩺\s*/, ''))}</span></div>`;
+  };
+  const tarjetaHorario = horario.length ? `<section class="hoy-card horario"><div class="hoy-cab"><h4>🩺 Mi horario · semana del ${esc(fechaCorta((horario[0].start_date || '').slice(0, 10)))}</h4></div><div class="horario-dias">${horario.map(diaHorario).join('')}</div></section>` : '';
+
   return `<div class="hoy">
+    ${tarjetaHorario}
     ${tarjetaHoy('📅 Agenda de hoy', agenda)}
     ${tarjetaHoy('✅ Tareas de hoy', tareasHoy)}
     ${tarjetaHoy('🤖 Agentes', verAg, botonEnc)}
@@ -1447,6 +1472,14 @@ function datosDemo() {
   proyectos = [{ id: 'p1', name: 'MedikAI' }, { id: 'p2', name: 'EGS TeK' }, { id: 'p3', name: 'Sin tareas' }];
   tareasProy = [{ id: 'w1', project_id: 'p1', title: 'Apartado de las UBAs', due_date: d(1) }, { id: 'w2', project_id: 'p1', title: 'Repaso Santa Coloma', due_date: null }, { id: 'w3', project_id: 'p2', title: 'Grabar medicaciones', due_date: d(4) }];
   encargos = [{ id: 'n1', agente: 'casa', titulo: 'Buscar fontanero', estado: 'pendiente' }];
+  const lh = lunesHorario(), dh = n => ymd(masDias(lh, n));
+  horario = [
+    { id: 'horario_a', title: '🩺 Urgencias (MURG)', start_date: dh(0) + 'T13:00', end_date: dh(0) + 'T20:00' },
+    { id: 'horario_b', title: '🩺 Agenda: 1/2 M18 + 1/2 M11', start_date: dh(1) + 'T08:00', end_date: dh(1) + 'T15:00' },
+    { id: 'horario_c', title: '🩺 Agenda M11', start_date: dh(2) + 'T13:00', end_date: dh(2) + 'T20:00' },
+    { id: 'horario_d', title: '🩺 Agenda M11', start_date: dh(3) + 'T08:00', end_date: dh(3) + 'T15:00' },
+    { id: 'horario_e', title: '🩺 Agenda D M11', start_date: dh(4) + 'T08:00', end_date: dh(4) + 'T15:00' },
+  ];
   gastos = [
     gasto('g1', 'Compra súper', 64.3, 'comida', 'montse', 'ambos', 0),
     gasto('g2', 'Luz octubre', 58.2, 'luz', 'carlos', 'ambos', -2),
