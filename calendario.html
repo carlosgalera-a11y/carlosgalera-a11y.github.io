@@ -283,6 +283,16 @@
   #parteCuerpo .atr { margin-top: 10px; color: var(--atr-fg); font-size: 12.5px; }
   #parteVoz { margin-top: 12px; }
 
+  /* ── Encargar a un agente de Hermes ── */
+  .enc { border: none; background: transparent; cursor: pointer; font-size: 14px; line-height: 1; padding: 2px 4px; flex: none; }
+  .enc.hecho { opacity: .55; }
+  #encargoCaja { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
+  #encargoCaja[hidden] { display: none; }
+  #encargoCaja .t { font-size: 13px; font-weight: 700; }
+  #encargoCaja input, #encargoCaja select, #encargoCaja textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: var(--input-bg); color: var(--ink); }
+  #encargoCaja .ops { display: flex; gap: 8px; justify-content: flex-end; }
+  #encMsg { font-size: 12.5px; color: var(--muted); }
+
   #login { max-width: 380px; margin: 34px auto; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: none; box-shadow: var(--shadow); }
   #login h3 { font-size: 15px; margin-bottom: 12px; }
   #login input { background: var(--input-bg); color: var(--ink); }
@@ -462,6 +472,14 @@
     <h3 id="panelTitulo">Añadir</h3>
     <div class="sub" id="panelSub"></div>
     <div class="evlist" id="evlist"></div>
+    <div id="encargoCaja" hidden>
+      <div class="t">🤖 Encargar a un agente</div>
+      <input id="encTitulo" maxlength="300" placeholder="Qué tiene que hacer" aria-label="Encargo">
+      <select id="encAgente" aria-label="Agente"></select>
+      <textarea id="encDetalle" rows="2" maxlength="3800" placeholder="Más detalle, si hace falta (opcional)" aria-label="Detalle"></textarea>
+      <div class="ops"><button id="encCancelar" class="btn" type="button">Cancelar</button><button id="encEnviar" class="btn primary" type="button">Encargar</button></div>
+    </div>
+    <div id="encMsg"></div>
     <div class="tabs">
       <button id="tabEv" class="on">Evento</button>
       <button id="tabTa">Tarea</button>
@@ -1052,6 +1070,63 @@ async function borraNota(id) {
   return false; // ya repintado aquí; el manejador global no necesita render()
 }
 
+// ── Encargar a un agente de Hermes ─────────────────────────────────────────
+// El encargo se guarda en agente_encargos y el PC lo recoge y lo lanza en el
+// tablero de Hermes (encargos-hermes.py); de ahí pasa solo a la tablet.
+const AGENTES = [
+  ['coordinador', 'Coordinador (decide él a quién pasarlo)'], ['casa', 'Casa y agenda'], ['medikai', 'MedikAI'],
+  ['egstek', 'EGS TeK'], ['egstrategy', 'EGStrategy'], ['finanzas', 'Finanzas'],
+  ['herramientas-formacion', 'Herramientas Formación'], ['empleo', 'Empleo'],
+];
+$('encAgente').innerHTML = AGENTES.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('');
+const nombreAgente = v => (AGENTES.find(a => a[0] === v) || [v, v])[1].replace(/ \(.*\)$/, '');
+const botonEncargo = (origen, titulo) => uid === UID_CARLOS
+  ? `<button class="enc" type="button" data-origen="${esc(origen)}" data-titulo="${esc(titulo)}" title="Encargar a un agente" aria-label="Encargar a un agente">🤖</button>`
+  : '';
+let encargoOrigen = null;
+function cierraEncargo() { encargoOrigen = null; $('encargoCaja').hidden = true; }
+async function marcaEncargados() {
+  const botones = [...document.querySelectorAll('#evlist .enc')];
+  if (!botones.length) return;
+  const { data } = await sb.from('agente_encargos').select('origen,agente,estado')
+    .in('origen', botones.map(b => b.dataset.origen)).order('created_at', { ascending: false });
+  const vistos = new Set();
+  for (const e of data || []) {
+    if (vistos.has(e.origen)) continue;
+    vistos.add(e.origen);
+    const b = botones.find(x => x.dataset.origen === e.origen);
+    if (!b) continue;
+    b.classList.add('hecho');
+    b.title = `${nombreAgente(e.agente)}: ${e.estado === 'lanzado' ? 'encargo lanzado' : e.estado === 'error' ? 'no se pudo lanzar' : 'esperando al PC'}. Toca para encargar otra vez.`;
+  }
+}
+$('evlist').addEventListener('click', e => {
+  const b = e.target.closest('.enc');
+  if (!b) return;
+  encargoOrigen = b.dataset.origen;
+  $('encTitulo').value = b.dataset.titulo;
+  $('encDetalle').value = '';
+  $('encMsg').textContent = '';
+  $('encargoCaja').hidden = false;
+  $('encDetalle').focus();
+});
+$('encCancelar').onclick = cierraEncargo;
+$('encEnviar').onclick = async () => {
+  const titulo = $('encTitulo').value.trim();
+  if (!titulo) { $('encTitulo').focus(); return; }
+  const agente = $('encAgente').value;
+  const texto = $('encDetalle').value.trim();
+  const detalle = (texto ? texto + '\n\n' : '') + `Día en el calendario: ${diaPanel}`;
+  const origen = encargoOrigen;
+  $('encEnviar').disabled = true;
+  const { error } = await conReintento(() => sb.from('agente_encargos').insert({ agente, titulo, detalle, origen }));
+  $('encEnviar').disabled = false;
+  if (error) { $('encMsg').textContent = '⚠️ No se pudo encargar: ' + msgFallo(error); return; }
+  cierraEncargo();
+  $('encMsg').textContent = `🤖 Encargado a ${nombreAgente(agente)}. El PC lo lanza en un par de minutos y aparecerá en la tablet.`;
+  marcaEncargados();
+};
+
 // ── Interacción global (eventos, tareas, panel) ───────────────────────────
 let diaPanel = null, tipoPanel = 'ev';
 function abrePanel(fecha) {
@@ -1065,10 +1140,12 @@ function abrePanel(fecha) {
   $('evlist').innerHTML = [
     ...evs.map(ev => {
       const s = estiloEv(ev);
-      return `<div class="row"><span class="dot" style="background:${s.dot}"></span>${badgeQuien(ev)}<span class="t">${horaDe(ev) ? horaDe(ev) + ' · ' : ''}${esc(ev.title)}</span>${ev.user_id === uid ? `<button class="del" data-id="${ev.id}">×</button>` : ''}</div>`;
+      return `<div class="row"><span class="dot" style="background:${s.dot}"></span>${badgeQuien(ev)}<span class="t">${horaDe(ev) ? horaDe(ev) + ' · ' : ''}${esc(ev.title)}</span>${botonEncargo('evento:' + ev.id, ev.title)}${ev.user_id === uid ? `<button class="del" data-id="${ev.id}">×</button>` : ''}</div>`;
     }),
-    ...tas.map(ta => `<div class="row"><span class="dot" style="background:${PRIO[ta.priority] || PRIO.low}"></span>${badgeQuien(ta)}<span class="t"${ta.completed ? ' style="text-decoration:line-through;color:var(--soft)"' : ''}>☑ ${esc(ta.title)}</span>${ta.user_id === uid ? `<button class="del" data-tid="${ta.id}">×</button>` : ''}</div>`),
+    ...tas.map(ta => `<div class="row"><span class="dot" style="background:${PRIO[ta.priority] || PRIO.low}"></span>${badgeQuien(ta)}<span class="t"${ta.completed ? ' style="text-decoration:line-through;color:var(--soft)"' : ''}>☑ ${esc(ta.title)}</span>${botonEncargo('tarea:' + ta.id, ta.title)}${ta.user_id === uid ? `<button class="del" data-tid="${ta.id}">×</button>` : ''}</div>`),
   ].join('') || '<p style="font-size:12px;color:var(--muted)">Nada apuntado este día.</p>';
+  cierraEncargo(); $('encMsg').textContent = '';
+  marcaEncargados();
   $('fTitulo').value = ''; $('fHora').value = '';
   $('fShared').checked = false;
   $('filaShared').style.display = NOMBRES[uid] ? 'flex' : 'none';
