@@ -538,7 +538,7 @@ const lunesHorario = () => { const dia = (HOY.getDay() + 6) % 7; return masDias(
 let partes = [], tablero = null, egs = null, panelFalta = false;
 // Casa (Carlos + Montse): gastos del piso (piso_horta_gastos) y rutinas/tareas de casa (casa_items).
 let gastos = [], casa = [];
-const COLS_CASA = 'id,kind,title,assignee,done,fecha,hora,categoria,prioridad,cada_dias,ultima_vez,datos,notas,created_at';
+const COLS_CASA = 'id,kind,title,assignee,done,fecha,hora,fecha_fin,importe,lugar,categoria,prioridad,cada_dias,ultima_vez,datos,notas,created_at';
 let parteIdx = 0, verSinFecha = false, ultimaCarga = 0, cargando = false, errorCarga = '';
 
 const TIPO_EV = {
@@ -602,7 +602,7 @@ async function cargar() {
         // El saldo necesita todos los gastos; las RLS solo dejan verlos a Carlos y Montse (otra sesión: []).
         conReintento(() => sb.from('piso_horta_gastos').select('id,title,amount,category,paid_by,beneficiario,fecha,created_by')
           .order('fecha', { ascending: false }).limit(3000)),
-        conReintento(() => sb.from('casa_items').select(COLS_CASA).in('kind', ['limpieza', 'tarea']).order('created_at')),
+        conReintento(() => sb.from('casa_items').select(COLS_CASA).in('kind', ['limpieza', 'tarea', 'compra', 'factura']).order('created_at')),
         conReintento(() => sb.from('ws_projects').select('id,name,status').order('created_at')),
         conReintento(() => sb.from('ws_tasks').select('id,project_id,title,due_date,priority').eq('completed', false).limit(300)),
         conReintento(() => sb.from('agente_encargos').select('id,agente,titulo,estado,created_at').order('created_at', { ascending: false }).limit(8)),
@@ -810,6 +810,23 @@ function htmlHoy() {
     + sinAjustes.slice(0, 3).map(g => `<div class="hoy-fila"><div>${esc(g.title)}<small>${esc(fechaCorta((g.fecha || '').slice(0, 10)))} · pagó ${esc(pagador(g.paid_by))}</small></div><b>${esc(eur(g.amount))}</b></div>`).join('');
   const botonesGastos = `<button class="btn" type="button" data-gastos>＋ Añadir</button><a class="btn" href="https://carlosgalera-a11y.github.io/gastos/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>`;
 
+  // Casa: lo mismo que el panel de casa, en una tarjeta. Sin sesión de la pareja, casa viene vacío.
+  const mesCasa = HOY_S.slice(0, 7);
+  const facturasMes = casa.filter(f => f.kind === 'factura' && (f.fecha || f.fecha_fin || '').slice(0, 7) === mesCasa);
+  const porPagar = facturasMes.filter(f => !f.done), pagadas = facturasMes.filter(f => f.done);
+  const sumaF = l => eur(l.reduce((s, f) => s + (Number(f.importe) || 0), 0));
+  const alquiler = facturasMes.filter(f => f.categoria === 'alquiler');
+  const textoAlquiler = !alquiler.length ? 'sin apuntar' : alquiler.every(f => f.done) ? '✓ pagado' : 'por pagar';
+  const paquetes = casa.filter(i => i.kind === 'tarea' && i.categoria === 'paquete' && !i.done);
+  const tareasPend = casa.filter(i => i.kind === 'tarea' && i.categoria !== 'paquete' && !i.done);
+  const compras = casa.filter(i => i.kind === 'compra' && !i.done && !i.datos?.grupo);
+  const quien = p => tareasPend.filter(i => i.assignee === p).length;
+  const verCasa = `<div class="hoy-fila"><div>🧾 <b>${esc(cap(fmt(HOY, { month: 'long' })))}</b>: ${porPagar.length} por pagar (${esc(sumaF(porPagar))}) · ${pagadas.length} pagadas (${esc(sumaF(pagadas))})<small>🏠 Alquiler: ${esc(textoAlquiler)}</small></div></div>
+    <div class="hoy-fila"><div>🧹 <b>${tareasPend.length}</b> tarea${tareasPend.length === 1 ? "" : "s"}<small>Carlos ${quien('carlos')} · Montse ${quien('montse')} · los dos ${quien('ambos')}</small></div></div>
+    <div class="hoy-fila"><div>🛒 <b>${compras.length}</b> compra${compras.length === 1 ? "" : "s"} pendiente${compras.length === 1 ? "" : "s"}${compras.length ? `<small>${esc(compras.slice(0, 3).map(i => i.title).join(' · '))}</small>` : ''}</div></div>
+    <div class="hoy-fila"><div>📦 <b>${paquetes.length}</b> paquete${paquetes.length === 1 ? "" : "s"} por recoger${paquetes.length ? `<small>${esc(paquetes.slice(0, 3).map(i => i.title + (i.lugar ? ' (' + i.lugar + ')' : '')).join(' · '))}</small>` : ''}</div></div>`;
+  const botonCasa = '<a class="btn" href="https://carlosgalera-a11y.github.io/casa/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>';
+
   return `<div class="hoy">
     ${tarjetaHorario}
     ${tarjetaHoy('📅 Agenda de hoy', agenda)}
@@ -819,6 +836,7 @@ function htmlHoy() {
     ${tarjetaHoy('💼 Empleo e ingresos', verEmpleo)}
     ${tarjetaHoy('🗂️ Proyectos', verProy, '<a class="btn" href="https://filehubworksplace.com/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>')}
     ${gastos.length ? tarjetaHoy('💶 Gastos del piso', verGastos, botonesGastos) : ''}
+    ${casa.length ? tarjetaHoy('🏠 Casa', verCasa, botonCasa) : ''}
   </div>`;
 }
 function formEncargo() {
