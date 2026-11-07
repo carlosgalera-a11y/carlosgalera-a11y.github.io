@@ -181,6 +181,24 @@
   .ficha.casa { background: color-mix(in srgb, var(--area-otro) 14%, transparent); border-left: 3px solid var(--area-otro); }
 
   /* ── Día ── */
+  /* ── Resumen: todo lo del día de un vistazo ── */
+  .hoy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .hoy-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .hoy-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 30px; }
+  .hoy-cab h4 { font-size: 13px; font-weight: 800; flex: 1; }
+  .hoy-cab .btn { height: 30px; min-width: 0; padding: 0 10px; font-size: 12px; }
+  .hoy-fila { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.3; }
+  .hoy-fila:first-of-type { border-top: 0; padding-top: 2px; }
+  .hoy-fila > div { flex: 1; min-width: 0; word-break: break-word; }
+  .hoy-fila a { color: inherit; font-weight: 600; }
+  .hoy-fila small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .hoy-fila .btn { height: 28px; min-width: 0; padding: 0 8px; font-size: 12px; flex: none; }
+  .hoy-mas { display: block; width: 100%; margin-top: 8px; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; text-align: left; cursor: pointer; padding: 2px 0; }
+  .hoy-card .ev-fila { margin-bottom: 6px; }
+  .hoja label.enc { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  .hoja .enc-campo { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; font: inherit; font-size: 14px; background: var(--card); color: var(--ink); }
+  @media (max-width: 1100px) { .hoy { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 700px) { .hoy { grid-template-columns: minmax(0, 1fr); } }
   .dia { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
   .dia-cab { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .dia h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 4px 0 8px; }
@@ -357,7 +375,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -485,12 +503,15 @@ function chipsTurno(d) {
 
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
-let vista = localStorage.getItem('fh_tab_vista') || 'mes';
+let vista = localStorage.getItem('fh_tab_resumen') ? (localStorage.getItem('fh_tab_vista') || 'hoy') : 'hoy';
+localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
 let cursor = new Date(HOY);
 let mesCargado = '';
 // FileHub: eventos y tareas del mes visible, pendientes (kanban) y hechas hace poco.
 let eventos = [], tareasMes = [], pendientes = [], hechasFH = [];
+// Resumen: planes del agente de ocio y empleo (los sube el PC), proyectos del Workspace y encargos a agentes.
+let planes = [], empleo = null, proyectos = [], tareasProy = [], encargos = [];
 // Lo que sube el PC (panel_tablet): partes diarios, tablero de los agentes y EGStrategy.
 let partes = [], tablero = null, egs = null, panelFalta = false;
 // Casa (Carlos + Montse): gastos del piso (piso_horta_gastos) y rutinas/tareas de casa (casa_items).
@@ -545,7 +566,7 @@ async function cargar() {
       const { desde, hasta } = rangoMes(cursor);
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
-      const [ev, ta, pe, he, pt, ga, ca] = await Promise.all([
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -560,6 +581,9 @@ async function cargar() {
         conReintento(() => sb.from('piso_horta_gastos').select('id,title,amount,category,paid_by,beneficiario,fecha,created_by')
           .order('fecha', { ascending: false }).limit(3000)),
         conReintento(() => sb.from('casa_items').select(COLS_CASA).in('kind', ['limpieza', 'tarea']).order('created_at')),
+        conReintento(() => sb.from('ws_projects').select('id,name,status').order('created_at')),
+        conReintento(() => sb.from('ws_tasks').select('id,project_id,title,due_date,priority').eq('completed', false).limit(300)),
+        conReintento(() => sb.from('agente_encargos').select('id,agente,titulo,estado,created_at').order('created_at', { ascending: false }).limit(8)),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -576,6 +600,15 @@ async function cargar() {
       // Un beneficiario raro inflaría el saldo del pagador: se normaliza a «ambos», como hace FileHub.
       gastos = (ga.data || []).map(g => ({ ...g, amount: Number(g.amount) || 0, beneficiario: ['carlos', 'montse'].includes(g.beneficiario) ? g.beneficiario : 'ambos' }));
       casa = ca.data || [];
+      const vistos = new Set();
+      planes = filas.filter(f => f.tipo === 'ocio').flatMap(f => Array.isArray(f.contenido?.planes) ? f.contenido.planes : [])
+        .filter(p => p && p.titulo && p.fecha >= HOY_S && p.fecha <= ymd(masDias(HOY, 14)) && /^https?:\/\//.test(p.url || ''))
+        .filter(p => { const k = p.fecha + '|' + p.url; if (vistos.has(k)) return false; vistos.add(k); return true; })
+        .sort((a, b) => (a.fecha + (a.hora || '')).localeCompare(b.fecha + (b.hora || '')));
+      empleo = filas.find(f => f.tipo === 'empleo') || null;
+      proyectos = wp.data || [];
+      tareasProy = wt.data || [];
+      encargos = en.data || [];
       mesCargado = desde;
     }
     errorCarga = '';
@@ -673,6 +706,104 @@ function htmlDia() {
     }
   }
   return h + '</div></div>';
+}
+
+// ── Resumen ────────────────────────────────────────────────────────────────
+const AGENTES = [
+  ['coordinador', 'Coordinador (decide él a quién pasarlo)'], ['casa', 'Casa y agenda'], ['medikai', 'MedikAI'],
+  ['egstek', 'EGS TeK'], ['egstrategy', 'EGStrategy'], ['finanzas', 'Finanzas'],
+  ['herramientas-formacion', 'Herramientas Formación'], ['empleo', 'Empleo'],
+];
+const nombreAgente = v => (AGENTES.find(a => a[0] === v) || [v, v])[1].replace(/ \(.*\)$/, '');
+const tarjetaHoy = (titulo, cuerpo, extra = '') => `<section class="hoy-card"><div class="hoy-cab"><h4>${titulo}</h4>${extra}</div>${cuerpo}</section>`;
+const urlSegura = u => /^https?:\/\//.test(u || '') ? u : '';
+// El informe de empleo es texto para Telegram: «1. Puesto · Empresa», «Encaje: alto…» y la URL.
+function ofertasEmpleo() {
+  const t = empleo?.contenido?.texto || '';
+  return t.split(/^\s*(?=\d+\.\s)/m).slice(1).map(b => ({
+    titulo: b.split('\n')[0].replace(/^\d+\.\s*/, '').trim(),
+    encaje: (b.match(/Encaje:\s*(alto|medio|bajo)/i) || [])[1] || '',
+    url: (b.match(/https?:\/\/[^\s)>]+/) || [])[0] || '',
+  })).filter(o => o.titulo).slice(0, 5);
+}
+function htmlHoy() {
+  const its = itemsDia(HOY_S);
+  const ev = its.filter(i => i.k === 'ev' || (i.k === 'casa' && i.hora));
+  const agenda = ev.length ? ev.map(i => i.k === 'casa'
+      ? `<div class="ev-fila${i.raw.done ? ' hecha' : ''}" style="background:color-mix(in srgb, var(--area-otro) 14%, transparent)" data-casa="${esc(i.raw.id)}"><span class="h">${i.hora}</span><span class="tt">📌 ${esc(i.titulo)}</span></div>`
+      : `<div class="ev-fila" style="background:${i.est.bg};color:${i.est.fg}"><span class="h">${i.hora || 'Todo el día'}</span><span class="tt">${esc(i.titulo)}</span></div>`).join('')
+    : '<div class="vacio">Sin eventos hoy.</div>';
+
+  const fh = tareasMes.filter(t => dueDe(t) === HOY_S), eg = egsTareas().filter(t => t.vence === HOY_S);
+  const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === HOY_S && !t.hora);
+  const atr = pendientes.filter(t => dueDe(t) && dueDe(t) < HOY_S).length + egsTareas().filter(t => t.vence && t.vence < HOY_S).length;
+  const tareasHoy = ((fh.length || eg.length || cs.length) ? cs.map(filaCasa).join('') + fh.map(filaFH).join('') + eg.map(filaEGS).join('') : '<div class="vacio">Nada que venza hoy.</div>')
+    + (atr ? `<button class="hoy-mas" data-irvista="kanban">⚠️ ${atr} atrasadas · ver en el kanban ›</button>` : '');
+
+  const filasPlan = planes.slice(0, 6).map(p => `<div class="hoy-fila"><div><a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.titulo)}</a>
+      <small>${esc(fechaCorta(p.fecha))}${p.hora ? ' · ' + esc(p.hora) : ''}${p.lugar ? ' · ' + esc(p.lugar) : ''}${p.precio ? ' · ' + esc(p.precio) : ''}</small></div>
+      <button class="btn" data-apuntar="${planes.indexOf(p)}" title="Apuntar en el calendario">➕</button></div>`).join('');
+  const verPlanes = filasPlan || '<div class="vacio">El agente de ocio los manda los domingos y los miércoles.</div>';
+
+  const ofertas = ofertasEmpleo();
+  const verEmpleo = ofertas.length ? ofertas.map(o => {
+      const u = urlSegura(o.url);
+      return `<div class="hoy-fila"><div>${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(o.titulo)}</a>` : esc(o.titulo)}${o.encaje ? `<small>Encaje ${esc(o.encaje.toLowerCase())}</small>` : ''}</div></div>`;
+    }).join('') + (empleo?.fecha ? `<div class="vacio">Informe del ${esc(fechaCorta(empleo.fecha))}</div>` : '')
+    : '<div class="vacio">El agente de empleo lo manda cada día a las 6:30.</div>';
+
+  const conTareas = proyectos.map(p => ({ p, ts: tareasProy.filter(t => t.project_id === p.id) })).filter(x => x.ts.length).sort((a, b) => b.ts.length - a.ts.length);
+  const verProy = conTareas.length ? conTareas.slice(0, 6).map(({ p, ts }) => {
+      const orden = ts.slice().sort((a, b) => String(a.due_date || '9999').localeCompare(String(b.due_date || '9999')));
+      return `<div class="hoy-fila"><div><b>${esc(p.name)}</b> · ${ts.length} pendiente${ts.length === 1 ? '' : 's'}<small>${esc(orden[0].title)}</small></div></div>`;
+    }).join('') : '<div class="vacio">Sin tareas pendientes en tus proyectos.</div>';
+
+  const esperan = agTareas().filter(t => t.estado === 'blocked'), enMarcha = agTareas().filter(t => t.estado === 'running');
+  const enCola = encargos.filter(e => e.estado === 'pendiente'), fallidos = encargos.filter(e => e.estado === 'error');
+  const filaAg = (t, txt) => `<div class="hoy-fila" data-ag="${esc(t.id)}" style="cursor:pointer"><div>${esc(t.titulo)}<small>${esc(nombreAgente(t.agente))} · ${txt}</small></div></div>`;
+  const filaEnc = (e, txt) => `<div class="hoy-fila"><div>${esc(e.titulo)}<small>${esc(nombreAgente(e.agente))} · ${txt}</small></div></div>`;
+  const verAg = [...esperan.slice(0, 4).map(t => filaAg(t, 'espera tu «sí»')), ...fallidos.slice(0, 2).map(e => filaEnc(e, 'no se pudo lanzar')),
+    ...enCola.map(e => filaEnc(e, 'se lanza en unos minutos')), ...enMarcha.slice(0, 3).map(t => filaAg(t, 'en marcha'))].join('') || '<div class="vacio">Nada en marcha ni esperándote.</div>';
+  const botonEnc = (DEMO || uid === UID_CARLOS) ? '<button class="btn" id="encargarBtn" type="button">＋ Encargar</button>' : '';
+
+  return `<div class="hoy">
+    ${tarjetaHoy('📅 Agenda de hoy', agenda)}
+    ${tarjetaHoy('✅ Tareas de hoy', tareasHoy)}
+    ${tarjetaHoy('🤖 Agentes', verAg, botonEnc)}
+    ${tarjetaHoy('🎭 Planes', verPlanes)}
+    ${tarjetaHoy('💼 Empleo e ingresos', verEmpleo)}
+    ${tarjetaHoy('🗂️ Proyectos', verProy, '<a class="btn" href="https://filehubworksplace.com/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>')}
+  </div>`;
+}
+function formEncargo() {
+  abreHoja(`<h3>🤖 Encargar a un agente</h3>
+    <label class="enc" for="encTitulo">Qué tiene que hacer</label><input class="enc-campo" id="encTitulo" maxlength="300">
+    <label class="enc" for="encAgente">Agente</label><select class="enc-campo" id="encAgente">${AGENTES.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('')}</select>
+    <label class="enc" for="encDetalle">Más detalle (opcional)</label><textarea class="enc-campo" id="encDetalle" rows="3" maxlength="3800"></textarea>
+    <div class="acc"><button class="btn" data-cerrar>Cancelar</button><button class="btn prim" id="encGuardar" type="button">Encargar</button></div>`);
+  $('encTitulo').focus();
+  $('encGuardar').onclick = async () => {
+    const titulo = $('encTitulo').value.trim();
+    if (!titulo) { $('encTitulo').focus(); return; }
+    const fila = { agente: $('encAgente').value, titulo, detalle: $('encDetalle').value.trim() || null, origen: 'tablet' };
+    if (DEMO) { encargos.unshift({ id: 'x' + Date.now(), ...fila, estado: 'pendiente' }); cierraHoja(); render(); return; }
+    const { error } = await conReintento(() => sb.from('agente_encargos').insert(fila));
+    if (error) return avisaFallo(error, 'encargar');
+    cierraHoja();
+    cargar();
+  };
+}
+async function apuntarPlan(i) {
+  const p = planes[i];
+  if (!p) return;
+  const inicio = p.hora ? `${p.fecha}T${p.hora}` : p.fecha;
+  const fila = { id: `ev_plan_${Date.now()}`, user_id: uid, title: p.titulo, start_date: inicio, end_date: inicio, type: 'personal', shared: false };
+  if (!DEMO) {
+    const { error } = await conReintento(() => sb.from('calendar_events').insert(fila));
+    if (error) return avisaFallo(error, 'apuntar el plan');
+  } else eventos.push(fila);
+  planes.splice(i, 1);
+  if (DEMO) render(); else cargar();
 }
 
 // Kanban común: FileHub (stage/completed), EGStrategy (estado del proyecto) y tablero de los agentes (status).
@@ -824,6 +955,7 @@ function htmlCasa() {
 }
 
 function tituloVista() {
+  if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (vista === 'semana' || (vista === 'casa' && casaModo === 'semana')) {
     const l = masDias(cursor, -((cursor.getDay() + 6) % 7)), d = masDias(l, 6);
@@ -907,13 +1039,13 @@ function pintaEstado() {
 function render() {
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'kanban' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   $('titulo').textContent = tituloVista();
   $('turnoHoy').innerHTML = chipsTurno(HOY);
   const c = $('contenido');
   c.className = 'v-' + vista;
-  c.innerHTML = vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : htmlKanban();
+  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : htmlKanban();
   pintaStats(); pintaParte(); pintaEstado();
 }
 
@@ -1102,7 +1234,12 @@ $('hoja').addEventListener('click', e => {
 });
 
 // ── Interacción ────────────────────────────────────────────────────────────
-function cambiaVista(v) { vista = v; localStorage.setItem('fh_tab_vista', v); render(); }
+function cambiaVista(v) {
+  vista = v; localStorage.setItem('fh_tab_vista', v);
+  // El resumen es siempre de hoy: si estabas en otro mes, hay que volver a pedir sus datos.
+  if (v === 'hoy' && !DEMO && rangoMes(HOY).desde !== mesCargado) { cursor = new Date(HOY); cargar(); return; }
+  render();
+}
 $('segVista').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) cambiaVista(b.dataset.v); });
 $('filtroFuente').addEventListener('click', e => {
   const b = e.target.closest('button[data-f]');
@@ -1116,6 +1253,11 @@ $('stats').addEventListener('click', e => {
 });
 $('contenido').addEventListener('click', e => {
   const t = e.target;
+  if (t.closest('#encargarBtn')) return formEncargo();
+  const ap = t.closest('[data-apuntar]');
+  if (ap) return apuntarPlan(Number(ap.dataset.apuntar));
+  const iv = t.closest('[data-irvista]');
+  if (iv) return cambiaVista(iv.dataset.irvista);
   if (t.closest('#verSinFecha')) { verSinFecha = !verSinFecha; render(); return; }
   if (t.closest('#nuevaRutina')) return formRutina();
   if (t.closest('#nuevoGasto')) return formGasto();
@@ -1284,6 +1426,14 @@ function datosDemo() {
     { id: 'c10', kind: 'tarea', title: 'Recoger paquete en Correos', assignee: 'carlos', fecha: d(1), hora: '18:00', done: false },
   ];
   const gasto = (id, title, amount, category, paid_by, beneficiario, n) => ({ id, title, amount, category, paid_by, beneficiario, fecha: d(n), created_by: PERSONAS[paid_by] });
+  planes = [
+    { titulo: 'Concierto de jazz en Jamboree', fecha: d(2), hora: '21:00', lugar: 'Gòtic', precio: '15 €', url: 'https://ejemplo.test/jazz' },
+    { titulo: 'Mercado de Sant Antoni', fecha: d(3), hora: '', lugar: 'Sant Antoni', precio: 'gratis', url: 'https://ejemplo.test/mercado' },
+  ];
+  empleo = { fecha: d(0), contenido: { texto: '💼 Empleo e ingresos\n\n1. Medical Advisor IA · Empresa (Barcelona)\n   Encaje: alto. Por su doble perfil.\n   https://ejemplo.test/a\n\n2. Product Manager · Otra (remoto)\n   Encaje: medio. Le falta algo.\n   https://ejemplo.test/b\n' } };
+  proyectos = [{ id: 'p1', name: 'MedikAI' }, { id: 'p2', name: 'EGS TeK' }, { id: 'p3', name: 'Sin tareas' }];
+  tareasProy = [{ id: 'w1', project_id: 'p1', title: 'Apartado de las UBAs', due_date: d(1) }, { id: 'w2', project_id: 'p1', title: 'Repaso Santa Coloma', due_date: null }, { id: 'w3', project_id: 'p2', title: 'Grabar medicaciones', due_date: d(4) }];
+  encargos = [{ id: 'n1', agente: 'casa', titulo: 'Buscar fontanero', estado: 'pendiente' }];
   gastos = [
     gasto('g1', 'Compra súper', 64.3, 'comida', 'montse', 'ambos', 0),
     gasto('g2', 'Luz octubre', 58.2, 'luz', 'carlos', 'ambos', -2),
