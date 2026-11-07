@@ -199,6 +199,9 @@
   .compra-t { flex: 1; min-width: 0; line-height: 1.3; word-break: break-word; }
   .compra-t small { display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px; }
   .compra b { white-space: nowrap; }
+  .fila-borra { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--atr-fecha); font-size: 14px; cursor: pointer; }
+  .hoy-card .compra { margin: 0 0 6px; }
+  .hoy-card .compra .quien { margin-right: 5px; vertical-align: 1px; }
   .gastos-mes { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
   @media (max-width: 700px) { .finde { grid-template-columns: minmax(0, 1fr); height: auto; } }
 
@@ -566,6 +569,7 @@ const lunesHorario = () => { const dia = (HOY.getDay() + 6) % 7; return masDias(
 let partes = [], tablero = null, egs = null, panelFalta = false;
 // Casa (Carlos + Montse): gastos del piso (piso_horta_gastos) y rutinas/tareas de casa (casa_items).
 let gastos = [], casa = [];
+const hechasAhora = new Set(); // tareas de casa marcadas desde el Resumen: siguen a la vista, tachadas
 const COLS_CASA = 'id,kind,title,assignee,done,fecha,hora,fecha_fin,importe,lugar,categoria,prioridad,cada_dias,ultima_vez,datos,notas,created_at';
 let parteIdx = 0, verSinFecha = false, ultimaCarga = 0, cargando = false, errorCarga = '';
 
@@ -752,6 +756,18 @@ const filaEGS = t => `<div class="lfila" data-egs="${esc(t.id)}"><i class="tag e
   + `<span class="meta">${esc(t.proyecto)} · ${esc(t.estadoNombre)}</span></div>`;
 const filaCasa = t => `<div class="lfila${t.done ? ' hecha' : ''}" data-casa="${esc(t.id)}"><span class="pers ${t.assignee === 'montse' ? 'm' : t.assignee === 'ambos' ? 'a' : ''}">${t.assignee === 'ambos' ? 'C+M' : t.assignee === 'montse' ? 'M' : 'C'}</span>`
   + `<span>${esc(t.title)}</span><span class="meta">${t.hora ? t.hora.slice(0, 5) : t.fecha ? fechaCorta(t.fecha) : 'sin fecha'}</span></div>`;
+// Filas del Resumen con acciones a mano: ✓ (hecha / deshacer) y 🗑 (borrar); tocar el resto abre la ficha.
+const botonBorra = (attr, id, titulo) => `<button class="fila-borra" type="button" data-${attr}="${esc(id)}" aria-label="Borrar ${esc(titulo)}" title="Borrar">🗑</button>`;
+const filaHecho = ({ ok, abre, id, hecho, titulo, sub = '', pre = '', borra = '' }) => `<div class="compra${hecho ? ' hecha' : ''}" data-${abre}="${esc(id)}">`
+  + `<button class="compra-ok" type="button" data-${ok}="${esc(id)}" aria-label="${hecho ? 'Volver a pendiente' : 'Marcar como hecha'}">${hecho ? '↩' : '✓'}</button>`
+  + `<span class="compra-t">${pre}${esc(titulo)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${borra}</div>`;
+// Las RLS solo dejan borrar tus tareas; las compartidas de la otra persona se pueden completar, no borrar.
+const puedeBorrarFH = t => DEMO || t.user_id === uid;
+const filaFHAcc = t => filaHecho({ ok: 'fhok', abre: 'fh', id: t.id, hecho: t.completed, titulo: t.title, pre: badgeQuien(t),
+  sub: [CATEG[t.category] || t.category || '', t.priority === 'high' ? 'prioridad alta' : ''].filter(Boolean).join(' · '),
+  borra: puedeBorrarFH(t) ? botonBorra('fhborra', t.id, t.title) : '' });
+const subCasa = t => [PERSONAS[t.assignee] || '', t.fecha ? (t.fecha === HOY_S ? 'hoy' : fechaCorta(t.fecha)) : 'sin fecha', t.hora ? t.hora.slice(0, 5) : '', t.lugar || ''].filter(Boolean).join(' · ');
+const filaCasaAcc = t => filaHecho({ ok: 'cok', abre: 'casa', id: t.id, hecho: t.done, titulo: (t.categoria === 'paquete' ? '📦 ' : '') + t.title, sub: subCasa(t), borra: botonBorra('cborra', t.id, t.title) });
 function htmlDia() {
   const s = ymd(cursor), its = itemsDia(s);
   const ev = its.filter(i => i.k === 'ev' || (i.k === 'casa' && i.hora));
@@ -806,7 +822,7 @@ function htmlHoy() {
   const fh = tareasMes.filter(t => dueDe(t) === HOY_S && pasaCal(t)), eg = egsTareas().filter(t => t.vence === HOY_S);
   const cs = casa.filter(t => t.kind === 'tarea' && t.fecha === HOY_S && !t.hora);
   const atr = pendientes.filter(t => dueDe(t) && dueDe(t) < HOY_S).length + egsTareas().filter(t => t.vence && t.vence < HOY_S).length;
-  const tareasHoy = ((fh.length || eg.length || cs.length) ? cs.map(filaCasa).join('') + fh.map(filaFH).join('') + eg.map(filaEGS).join('') : '<div class="vacio">Nada que venza hoy.</div>')
+  const tareasHoy = ((fh.length || eg.length || cs.length) ? cs.map(filaCasaAcc).join('') + fh.map(filaFHAcc).join('') + eg.map(filaEGS).join('') : '<div class="vacio">Nada que venza hoy.</div>')
     + (atr ? `<button class="hoy-mas" data-irvista="kanban">⚠️ ${atr} atrasadas · ver en el kanban ›</button>` : '');
 
   const filasPlan = planes.slice(0, 6).map(p => `<div class="hoy-fila"><div><a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${esc(p.titulo)}</a>
@@ -851,7 +867,7 @@ function htmlHoy() {
   const pagador = p => p === 'montse' ? 'Montse' : 'Carlos';
   const verGastos = `<div class="gastos-saldo">${esc(saldoTexto)}</div>
     <div class="vacio">${esc(cap(fmt(HOY, { month: 'long' })))}: ${esc(eur(delMesG.reduce((s, g) => s + g.amount, 0)))} en ${delMesG.length} gasto${delMesG.length === 1 ? '' : 's'}</div>`
-    + sinAjustes.slice(0, 3).map(g => `<div class="hoy-fila"><div>${esc(g.title)}<small>${esc(fechaCorta((g.fecha || '').slice(0, 10)))} · pagó ${esc(pagador(g.paid_by))}</small></div><b>${esc(eur(g.amount))}</b></div>`).join('');
+    + sinAjustes.slice(0, 5).map(g => `<div class="compra" data-gasto="${esc(g.id)}"><span class="compra-t">${esc(g.title)}<small>${esc(fechaCorta((g.fecha || '').slice(0, 10)))} · pagó ${esc(pagador(g.paid_by))}${g.beneficiario !== 'ambos' ? ' · solo para ' + esc(PERSONAS[g.beneficiario]) : ''}</small></span><b>${esc(eur(g.amount))}</b>${botonBorra('gborra', g.id, g.title)}</div>`).join('');
   const botonesGastos = `<button class="btn" type="button" data-gastos>＋ Añadir</button><a class="btn" href="https://carlosgalera-a11y.github.io/gastos/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>`;
 
   // Casa: lo mismo que el panel de casa, en una tarjeta. Sin sesión de la pareja, casa viene vacío.
@@ -861,26 +877,32 @@ function htmlHoy() {
   const sumaF = l => eur(l.reduce((s, f) => s + (Number(f.importe) || 0), 0));
   const alquiler = facturasMes.filter(f => f.categoria === 'alquiler');
   const textoAlquiler = !alquiler.length ? 'sin apuntar' : alquiler.every(f => f.done) ? '✓ pagado' : 'por pagar';
-  const paquetes = casa.filter(i => i.kind === 'tarea' && i.categoria === 'paquete' && !i.done);
-  const tareasPend = casa.filter(i => i.kind === 'tarea' && i.categoria !== 'paquete' && !i.done);
+  // Tareas y paquetes: las pendientes, más las que acabas de marcar aquí (tachadas, por si te equivocas).
+  const pendCasa = casa.filter(i => i.kind === 'tarea' && !i.done);
+  const paquetes = pendCasa.filter(i => i.categoria === 'paquete');
+  const verTareas = casa.filter(i => i.kind === 'tarea' && (!i.done || hechasAhora.has(i.id)))
+    .sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || (a.hora || '99').localeCompare(b.hora || '99'));
   const compras = casa.filter(i => i.kind === 'compra' && !i.done && !i.datos?.grupo);
-  const quien = p => tareasPend.filter(i => i.assignee === p).length;
+  const quien = p => pendCasa.filter(i => i.assignee === p).length;
+  const urlCasa = `https://carlosgalera-a11y.github.io/casa/?volver=${SOLO_RESUMEN ? 'calendario' : 'tablet'}`;
+  const MAX_CASA = 8;
   const verCasa = `<div class="hoy-fila"><div>🧾 <b>${esc(cap(fmt(HOY, { month: 'long' })))}</b>: ${porPagar.length} por pagar (${esc(sumaF(porPagar))}) · ${pagadas.length} pagadas (${esc(sumaF(pagadas))})<small>🏠 Alquiler: ${esc(textoAlquiler)}</small></div></div>
-    <div class="hoy-fila"><div>🧹 <b>${tareasPend.length}</b> tarea${tareasPend.length === 1 ? "" : "s"}<small>Carlos ${quien('carlos')} · Montse ${quien('montse')} · los dos ${quien('ambos')}</small></div></div>
     <div class="hoy-fila"><div>🛒 <b>${compras.length}</b> compra${compras.length === 1 ? "" : "s"} pendiente${compras.length === 1 ? "" : "s"}${compras.length ? `<small>${esc(compras.slice(0, 3).map(i => i.title).join(' · '))}</small>` : ''}</div></div>
-    <div class="hoy-fila"><div>📦 <b>${paquetes.length}</b> paquete${paquetes.length === 1 ? "" : "s"} por recoger${paquetes.length ? `<small>${esc(paquetes.slice(0, 3).map(i => i.title + (i.lugar ? ' (' + i.lugar + ')' : '')).join(' · '))}</small>` : ''}</div></div>`;
-  const botonCasa = `<a class="btn" href="https://carlosgalera-a11y.github.io/casa/?volver=${SOLO_RESUMEN ? 'calendario' : 'tablet'}" target="_top" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>`;
+    <div class="hoy-fila"><div>🧹 <b>${pendCasa.length}</b> tarea${pendCasa.length === 1 ? "" : "s"} pendiente${pendCasa.length === 1 ? "" : "s"}<small>Carlos ${quien('carlos')} · Montse ${quien('montse')} · los dos ${quien('ambos')}${paquetes.length ? ` · 📦 ${paquetes.length} paquete${paquetes.length === 1 ? '' : 's'}` : ''}</small></div></div>`
+    + verTareas.slice(0, MAX_CASA).map(filaCasaAcc).join('')
+    + (verTareas.length > MAX_CASA ? `<a class="hoy-mas" href="${urlCasa}#tareas" target="_top" style="text-decoration:none">… y ${verTareas.length - MAX_CASA} más en Casa ›</a>` : '');
+  const botonCasa = `<button class="btn" type="button" data-ntcasa>＋ Tarea</button><a class="btn" href="${urlCasa}" target="_top" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>`;
 
   return `<div class="hoy">
     ${tarjetaHorario}
     ${tarjetaHoy('📅 Agenda de hoy', agenda)}
-    ${tarjetaHoy('✅ Tareas de hoy', tareasHoy)}
+    ${tarjetaHoy('✅ Tareas de hoy', tareasHoy, '<button class="btn" type="button" data-ntfh>＋ Tarea</button>')}
     ${tarjetaHoy('🤖 Agentes', verAg, botonEnc)}
     ${tarjetaHoy('🎭 Planes', verPlanes)}
     ${tarjetaHoy('💼 Empleo e ingresos', verEmpleo)}
     ${tarjetaHoy('🗂️ Proyectos', verProy, '<a class="btn" href="https://filehubworksplace.com/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>')}
     ${gastos.length ? tarjetaHoy('💶 Gastos del piso', verGastos, botonesGastos) : ''}
-    ${casa.length ? tarjetaHoy('🏠 Casa', verCasa, botonCasa) : ''}
+    ${casa.length || gastos.length ? tarjetaHoy('🏠 Casa', verCasa, botonCasa) : ''}
   </div>`;
 }
 function formEncargo() {
@@ -1256,6 +1278,7 @@ function hojaFH(id) {
       ${!t.completed && t.stage !== 'en-curso' ? `<button class="btn" data-acc="curso" data-id="${esc(t.id)}">▶ En curso</button>` : ''}
       ${t.completed || t.stage === 'en-curso' ? `<button class="btn" data-acc="hacer" data-id="${esc(t.id)}">↩ Por hacer</button>` : ''}
       ${!t.completed ? `<button class="btn prim" data-acc="hecha" data-id="${esc(t.id)}">✓ Hecha</button>` : ''}
+      ${puedeBorrarFH(t) ? `<button class="btn peligro" data-acc="borrar" data-id="${esc(t.id)}">🗑 Borrar</button>` : ''}
       <button class="btn" data-cerrar>Cerrar</button></div>`);
 }
 function hojaEGS(id) {
@@ -1276,6 +1299,17 @@ function hojaAG(id) {
     <div class="acc"><button class="btn" data-cerrar>Cerrar</button></div>`);
 }
 async function accionFH(id, acc) {
+  if (acc === 'borrar') {
+    const t = [...pendientes, ...hechasFH, ...tareasMes].find(x => String(x.id) === String(id));
+    if (!t || !confirm(`¿Borrar «${t.title}»?`)) return;
+    if (!DEMO) {
+      const { error } = await conReintento(() => sb.from('tasks').delete().eq('id', id));
+      if (error) return avisaFallo(error, 'borrar');
+    }
+    const queda = x => String(x.id) !== String(id);
+    pendientes = pendientes.filter(queda); hechasFH = hechasFH.filter(queda); tareasMes = tareasMes.filter(queda);
+    cierraHoja(); render(); return;
+  }
   const cambios = acc === 'hecha' ? { completed: true, stage: null } : acc === 'curso' ? { completed: false, stage: 'en-curso' } : { completed: false, stage: null };
   if (DEMO) {
     for (const t of [...pendientes, ...hechasFH, ...tareasMes]) if (String(t.id) === String(id)) Object.assign(t, cambios);
@@ -1345,6 +1379,34 @@ function formCompra() {
       <label>Para${opc('assignee', [['ambos', 'Los dos'], ['carlos', 'Carlos'], ['montse', 'Montse']], 'ambos')}</label>
     </div>
     <div class="acc"><button class="btn prim" data-guardar="compra">Guardar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
+  $('hojaIn').querySelector('[name="title"]').focus();
+}
+// Tarea del calendario (tabla tasks, la misma que calendario.html y el coordinador).
+function formTareaFH() {
+  const destinos = [['mio', 'Solo yo'], ['comun', '👥 Común'], ...((DEMO || uid === UID_CARLOS) ? [['montse', '👩 Calendario de Montse']] : [])];
+  abreHoja(`<span class="fuente" style="--c:var(--src-fh)">📅 Calendario</span><h3>Nueva tarea</h3>
+    <div class="form">
+      <label>Qué hay que hacer<input name="title" maxlength="300" placeholder="Llamar al banco, buscar casco para la bici…"></label>
+      <div class="fila"><label>Día<input name="fecha" type="date" value="${HOY_S}"></label>
+      <label>Categoría<select name="category">${Object.entries(CATEG).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label></div>
+      <label>Prioridad${opc('priority', [['high', 'Alta'], ['medium', 'Media'], ['low', 'Baja']], 'medium')}</label>
+      <label>Dónde se ve${opc('dest', destinos, 'mio')}</label>
+    </div>
+    <div class="acc"><button class="btn prim" data-guardar="tareafh">Guardar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
+  $('hojaIn').querySelector('[name="title"]').focus();
+}
+// Tarea de casa (casa_items kind 'tarea'; un paquete es una tarea con categoria 'paquete', como lo apunta el coordinador).
+function formTareaCasa() {
+  abreHoja(`<span class="fuente" style="--c:var(--area-otro)">🏠 Casa</span><h3>Nueva tarea de casa</h3>
+    <div class="form">
+      <label>Tipo${opc('tipo', [['tarea', '📌 Tarea'], ['paquete', '📦 Paquete por recoger']], 'tarea')}</label>
+      <label>Qué hay que hacer<input name="title" maxlength="300" placeholder="Bajar la basura, recoger el pedido de Amazon…"></label>
+      <label>Le toca a${opc('assignee', [['carlos', 'Carlos'], ['montse', 'Montse'], ['ambos', 'Los dos']], yoCasa())}</label>
+      <div class="fila"><label>Día (opcional)<input name="fecha" type="date" value="${HOY_S}"></label>
+      <label>Hora (opcional)<input name="hora" type="time"></label></div>
+      <label>Dónde (opcional)<input name="lugar" maxlength="120" placeholder="Correos, portería, taquilla…"></label>
+    </div>
+    <div class="acc"><button class="btn prim" data-guardar="tareacasa">Guardar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
   $('hojaIn').querySelector('[name="title"]').focus();
 }
 function hojaGasto(id) {
@@ -1418,6 +1480,37 @@ async function guardaCompra() {
   }
   cierraHoja(); render();
 }
+const fechaValida = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') ? s : null;
+async function guardaTareaFH() {
+  const title = campo('title');
+  if (!title) { alert('Escribe qué hay que hacer.'); return; }
+  const fecha = fechaValida(campo('fecha')), dest = elegido('dest') || 'mio';
+  const fila = { id: `task_tab_${Date.now()}`, user_id: uid, title, completed: false, category: campo('category') || 'personal',
+    priority: elegido('priority') || 'medium', due_date: fecha, shared: dest !== 'mio', ...(dest === 'montse' ? { para: 'montse' } : {}) };
+  if (DEMO) {
+    const t = { ...fila, user_id: UID_CARLOS, stage: null, para: fila.para || null };
+    pendientes.push(t); if (fecha) tareasMes.push(t);
+    cierraHoja(); render(); return;
+  }
+  const { error } = await conReintento(() => sb.from('tasks').insert(fila));
+  if (error) return avisaFallo(error, 'guardar');
+  cierraHoja();
+  await cargar();
+}
+async function guardaTareaCasa() {
+  const title = campo('title');
+  if (!title) { alert('Escribe qué hay que hacer.'); return; }
+  const hora = /^\d{2}:\d{2}/.test(campo('hora') || '') ? campo('hora').slice(0, 5) : null;
+  const nueva = { kind: 'tarea', title, assignee: elegido('assignee') || 'ambos', fecha: fechaValida(campo('fecha')), hora, lugar: campo('lugar') || null,
+    categoria: elegido('tipo') === 'paquete' ? 'paquete' : null, prioridad: 'media', created_by: emailSesion || null };
+  if (DEMO) casa.push({ id: 'c' + Date.now(), ...nueva, done: false, created_at: new Date().toISOString() });
+  else {
+    const { data, error } = await conReintento(() => sb.from('casa_items').insert(nueva).select(COLS_CASA).single());
+    if (error) { avisaFallo(error, 'guardar'); return; }
+    casa.push(data);
+  }
+  cierraHoja(); render();
+}
 async function guardaGasto() {
   const title = campo('title'), amount = Math.round(Number(String(campo('amount')).replace(',', '.')) * 100) / 100;
   if (!title) { alert('Escribe qué es el gasto.'); return; }
@@ -1446,7 +1539,10 @@ $('hoja').addEventListener('click', e => {
   const g = e.target.closest('[data-gacc]');
   if (g) return borraGasto(g.dataset.id);
   const s = e.target.closest('[data-guardar]');
-  if (s) return s.dataset.guardar === 'gasto' ? guardaGasto() : s.dataset.guardar === 'compra' ? guardaCompra() : guardaRutina(s.dataset.id);
+  if (s) {
+    const que = s.dataset.guardar;
+    return que === 'gasto' ? guardaGasto() : que === 'compra' ? guardaCompra() : que === 'tareafh' ? guardaTareaFH() : que === 'tareacasa' ? guardaTareaCasa() : guardaRutina(s.dataset.id);
+  }
 });
 
 // ── Interacción ────────────────────────────────────────────────────────────
@@ -1479,6 +1575,19 @@ $('contenido').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('#encargarBtn')) return formEncargo();
   if (t.closest('#nuevaCompra')) return formCompra();
+  if (t.closest('[data-ntfh]')) return formTareaFH();
+  if (t.closest('[data-ntcasa]')) return formTareaCasa();
+  // Botones ✓ y 🗑 de las filas: van antes que tocar la fila, que abre la ficha.
+  const gb = t.closest('[data-gborra]');
+  if (gb) return borraGasto(gb.dataset.gborra);
+  const fo = t.closest('[data-fhok]');
+  if (fo) { const x = [...pendientes, ...hechasFH, ...tareasMes].find(y => String(y.id) === fo.dataset.fhok); return x && accionFH(x.id, x.completed ? 'hacer' : 'hecha'); }
+  const fb = t.closest('[data-fhborra]');
+  if (fb) return accionFH(fb.dataset.fhborra, 'borrar');
+  const co = t.closest('[data-cok]');
+  if (co) { const r = casa.find(x => x.id === co.dataset.cok); if (!r) return; hechasAhora.add(r.id); return accionCasa(r.id, r.done ? 'pendiente' : 'hecha'); }
+  const cb = t.closest('[data-cborra]');
+  if (cb) return accionCasa(cb.dataset.cborra, 'borrar');
   const cv = t.closest('[data-cver]');
   if (cv) { compraVer = cv.dataset.cver; render(); return; }
   const cp = t.closest('[data-comprado]');
