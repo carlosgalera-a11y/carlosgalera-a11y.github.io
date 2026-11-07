@@ -21,6 +21,7 @@
     var pref = localStorage.getItem('fh_cal_tema') || 'auto';
     var oscuro = pref === 'dark' || (pref === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
+    if (new URLSearchParams(location.search).get('solo') === 'resumen') document.documentElement.classList.add('solo');
   })();
 </script>
 <style>
@@ -181,6 +182,13 @@
   .ficha.casa { background: color-mix(in srgb, var(--area-otro) 14%, transparent); border-left: 3px solid var(--area-otro); }
 
   /* ── Día ── */
+  /* ── Incrustada en calendario.html (?solo=resumen): sin cabecera ni lateral ── */
+  html.solo .top, html.solo .lateral, html.solo .vista-cab { display: none; }
+  html.solo .app { padding: 0; height: 100dvh; min-height: 0; }
+  html.solo .cuerpo { grid-template-columns: minmax(0, 1fr); height: 100%; }
+  html.solo .vista { height: 100%; padding: 2px; border: 0; box-shadow: none; background: transparent; }
+  html.solo, html.solo body { background: transparent; }
+
   /* ── Resumen: todo lo del día de un vistazo ── */
   .hoy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
   .hoy-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
@@ -503,8 +511,9 @@ function chipsTurno(d) {
 
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
-let vista = localStorage.getItem('fh_tab_resumen') ? (localStorage.getItem('fh_tab_vista') || 'hoy') : 'hoy';
-localStorage.setItem('fh_tab_resumen', '1');
+const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
+let vista = SOLO_RESUMEN || !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
+if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
 let cursor = new Date(HOY);
 let mesCargado = '';
@@ -1257,7 +1266,8 @@ $('contenido').addEventListener('click', e => {
   const ap = t.closest('[data-apuntar]');
   if (ap) return apuntarPlan(Number(ap.dataset.apuntar));
   const iv = t.closest('[data-irvista]');
-  if (iv) return cambiaVista(iv.dataset.irvista);
+  // Incrustada no hay pestañas para volver: el kanban se abre en la tablet completa.
+  if (iv) { if (SOLO_RESUMEN) window.open('/tablet.html', '_blank', 'noopener'); else cambiaVista(iv.dataset.irvista); return; }
   if (t.closest('#verSinFecha')) { verSinFecha = !verSinFecha; render(); return; }
   if (t.closest('#nuevaRutina')) return formRutina();
   if (t.closest('#nuevoGasto')) return formGasto();
@@ -1306,6 +1316,8 @@ $('temaBtn').onclick = () => {
   aplicaTema();
 };
 mqOscuro.addEventListener?.('change', aplicaTema);
+// Si se cambia el tema en el calendario que la incrusta, se aplica aquí también.
+addEventListener('storage', e => { if (e.key === 'fh_cal_tema') aplicaTema(); });
 aplicaTema();
 
 // ── Pantalla fija: reloj, pantalla siempre encendida y recarga sola ────────
@@ -1319,6 +1331,7 @@ reloj();
 setInterval(reloj, 10000);
 let bloqueo = null;
 async function despierta() {
+  if (SOLO_RESUMEN) return; // mantener la pantalla encendida es cosa de la tablet, no del calendario
   try { if ('wakeLock' in navigator && document.visibilityState === 'visible' && !bloqueo) { bloqueo = await navigator.wakeLock.request('screen'); bloqueo.addEventListener('release', () => { bloqueo = null; }); } } catch { /* sin permiso: la tablet se apagará según sus ajustes */ }
 }
 document.addEventListener('visibilitychange', () => {
