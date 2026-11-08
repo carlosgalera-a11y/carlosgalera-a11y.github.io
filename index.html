@@ -183,8 +183,12 @@
       /* Stats cards — 2 cols on small screens */
       .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
       
-      /* Fix charts overflowing */
-      .recharts-wrapper { max-width: 100% !important; }
+      /* Fix charts overflowing.
+         Excluye los gráficos dentro de ResponsiveContainer: en Recharts 3 el
+         contenedor envuelve el gráfico en un div de ancho 0 (overflow visible)
+         para medir, y «max-width: 100%» de ese 0 dejaba TODOS los gráficos
+         invisibles en el móvil. */
+      .recharts-wrapper:not(.recharts-responsive-container .recharts-wrapper) { max-width: 100% !important; }
       
       /* Fix modals */
       .fixed.inset-0 .max-w-lg { max-width: 95vw !important; margin: 0.5rem !important; }
@@ -251,7 +255,7 @@
     }
     #offline-banner.show { display: block; }
   </style>
-  <script type="module" crossorigin src="/assets/index-CmiCD9V-.js"></script>
+  <script type="module" crossorigin src="/assets/index-DX05g-Sk.js"></script>
 </head>
 <body class="bg-[#0b1326] text-[#F8FAFC] font-body selection:bg-indigo-500/30">
   <!-- Offline indicator -->
