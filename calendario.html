@@ -502,6 +502,8 @@
         <button data-v="dia">Día</button>
         <button data-v="resumen">Resumen</button>
         <button data-v="viajes">Viajes</button>
+        <button data-v="cuaderno">Cuaderno</button>
+        <button data-v="vuelos">Vuelos</button>
       </div>
       <div class="nav">
         <button id="prev" class="btn icono" title="Anterior">‹</button>
@@ -945,6 +947,9 @@ const fmt = (d, o) => d.toLocaleDateString('es-ES', o);
 // La vista Resumen vive en tablet.html: compartir esta sesión exige el mismo dominio. Dentro del Workspace
 // esta página corre en otro (su <base> sigue apuntando a FileHub), así que allí se ofrece abrirla aparte.
 const MISMO_DOMINIO = new URL(document.baseURI).origin === location.origin;
+// Vistas que viven en tablet.html y aquí se incrustan: Resumen, Cuaderno (viajes) y Vuelos.
+const INCRUSTADAS = { resumen: 'resumen', cuaderno: 'viajes', vuelos: 'vuelos' };
+const esIncrustada = () => Object.prototype.hasOwnProperty.call(INCRUSTADAS, modo);
 // La primera vez después de publicarla se abre en el Resumen; luego manda la última vista elegida.
 if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.setItem('fh_cal_resumen', '1'); modo = 'resumen'; }
 // El botón «← Resumen» del panel de casa vuelve aquí con ?vista=resumen, sea cual sea la última vista elegida.
@@ -971,6 +976,8 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 function tituloRango() {
   if (modo === 'resumen') return 'Resumen de hoy';
   if (modo === 'viajes') return 'Viajes';
+  if (modo === 'cuaderno') return 'Cuaderno de viaje';
+  if (modo === 'vuelos') return 'Vuelos';
   if (modo === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (modo === 'dia') return cap(fmt(cursor, { weekday: 'long', day: 'numeric', month: 'long' }));
   if (modo === 'semana') {
@@ -996,11 +1003,11 @@ async function render() {
   const { start, end } = rango();
   await Promise.all([cargarDatos(ymd(start), ymd(end)), cargarPlanes(), cargarViajes()]);
   pintaPlanesBtn();
-  document.body.classList.toggle('en-resumen', modo === 'resumen');
+  document.body.classList.toggle('en-resumen', esIncrustada());
   document.body.classList.toggle('en-viajes', modo === 'viajes');
-  $('vistaResumen').style.display = modo === 'resumen' ? '' : 'none';
+  $('vistaResumen').style.display = esIncrustada() ? '' : 'none';
   $('vistaViajes').style.display = modo === 'viajes' ? '' : 'none';
-  if (modo === 'resumen') { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaResumen(); }
+  if (esIncrustada()) { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaResumen(); }
   else if (modo === 'viajes') { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaViajes(); }
   else if (modo === 'mes') { $('vistaMes').style.display = ''; $('cols').style.display = 'none'; renderMes(start); }
   else { $('vistaMes').style.display = 'none'; $('cols').style.display = 'grid'; renderCols(); }
@@ -1145,22 +1152,23 @@ $('parteCard').addEventListener('toggle', () => {
 // ── Vista Resumen ──────────────────────────────────────────────────────────
 function ajustaResumen() {
   const f = $('resumenFrame');
-  if (f && modo === 'resumen') f.style.height = Math.max(480, window.innerHeight - f.getBoundingClientRect().top - 16) + 'px';
+  if (f && esIncrustada()) f.style.height = Math.max(480, window.innerHeight - f.getBoundingClientRect().top - 16) + 'px';
 }
 function pintaResumen() {
   const v = $('vistaResumen');
-  if (!uid) { v.innerHTML = '<p class="aviso-resumen">Inicia sesión para ver el resumen.</p>'; return; }
+  if (!uid) { v.innerHTML = '<p class="aviso-resumen">Inicia sesión para verlo.</p>'; return; }
   if (!MISMO_DOMINIO) {
     v.innerHTML = '<p class="aviso-resumen">El resumen se abre aparte: <a href="https://arditifilehub.com/calendario.html" target="_blank" rel="noopener">abrir en FileHub</a>.</p>';
     return;
   }
-  if (!$('resumenFrame')) {
-    v.innerHTML = '<iframe id="resumenFrame" title="Resumen de hoy" src="/tablet.html?solo=resumen" style="width:100%;border:0;display:block"></iframe>';
+  const solo = INCRUSTADAS[modo] || 'resumen', f = $('resumenFrame');
+  if (!f || f.dataset.solo !== solo) {
+    v.innerHTML = `<iframe id="resumenFrame" data-solo="${solo}" title="${tituloRango()}" src="/tablet.html?solo=${solo}" style="width:100%;border:0;display:block"></iframe>`;
   }
   ajustaResumen();
 }
 window.addEventListener('resize', ajustaResumen);
-$('recargarBtn').addEventListener('click', () => { const f = $('resumenFrame'); if (f && modo === 'resumen') f.contentWindow.location.reload(); });
+$('recargarBtn').addEventListener('click', () => { const f = $('resumenFrame'); if (f && esIncrustada()) f.contentWindow.location.reload(); });
 
 // ── Vista Viajes ───────────────────────────────────────────────────────────
 // Tablas viajes + viaje_items (supabase/viajes.sql). Cada viaje lleva dentro sus
@@ -1976,7 +1984,7 @@ $('segVista').addEventListener('click', e => {
   if (b) cambiaModo(b.dataset.v);
 });
 function mueve(dir) {
-  if (modo === 'resumen' || modo === 'viajes') return; // sin días que pasar
+  if (esIncrustada() || modo === 'viajes') return; // sin días que pasar
   if (modo === 'mes') cursor = new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1);
   else { cursor = new Date(cursor); cursor.setDate(cursor.getDate() + dir * (modo === 'semana' ? 7 : modo === 'tres' ? 3 : 1)); }
   render();

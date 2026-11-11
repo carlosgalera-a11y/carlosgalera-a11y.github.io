@@ -21,7 +21,9 @@
     var pref = localStorage.getItem('fh_cal_tema') || 'auto';
     var oscuro = pref === 'dark' || (pref === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
-    if (new URLSearchParams(location.search).get('solo') === 'resumen') document.documentElement.classList.add('solo');
+    // ?solo=resumen | viajes | vuelos → una sola vista, sin cabecera ni lateral (incrustada en calendario.html).
+    var solo = new URLSearchParams(location.search).get('solo');
+    if (solo === 'resumen' || solo === 'viajes' || solo === 'vuelos') document.documentElement.classList.add('solo');
   })();
 </script>
 <style>
@@ -619,7 +621,8 @@ function chipsTurno(d) {
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
 const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
-let vista = SOLO_RESUMEN || !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
+const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
+let vista = SOLO_RESUMEN ? SOLO_VISTA : !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
 if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
 // Calendario que se ve en Mes, Semana, Día y Fin de semana: todo, lo mío, lo común o lo de Montse.
