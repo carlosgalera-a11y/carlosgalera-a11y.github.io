@@ -319,8 +319,8 @@
         try {
           const reg = await navigator.serviceWorker.register(swBase + 'sw.js', { scope: swBase });
           console.log('[SW] Registered:', reg.scope);
-          // Force check for updates on every load in standalone mode
-          if (isStandalone) reg.update();
+          // Busca versión nueva en cada carga (PWA y navegador).
+          reg.update().catch(() => {});
 
           // Re-chequear updates aunque la pestaña lleve días abierta:
           // cada 30 min y cada vez que la app vuelve a primer plano.
@@ -329,8 +329,19 @@
             if (document.visibilityState === 'visible') reg.update().catch(() => {});
           });
 
-          // Banner «versión nueva»: el usuario decide cuándo aplicar (nunca
-          // recargamos solos — podría estar grabando una transcripción).
+          // Versión nueva:
+          //  · Recién abierta la app (primeros 20 s y sin haber tocado nada) se
+          //    aplica sola y recarga: no puede haber nada a medias.
+          //  · Si llega mientras la usas, sale el banner y decides tú (podrías
+          //    estar grabando una transcripción).
+          const abiertaEn = Date.now();
+          let tocada = false;
+          ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => { tocada = true; }, { once: true, capture: true }));
+          const aplicarSiRecienAbierta = (worker) => {
+            if (tocada || Date.now() - abiertaEn > 20000) return false;
+            worker.postMessage({ type: 'SKIP_WAITING' });
+            return true;
+          };
           const showUpdateBanner = (worker) => {
             if (document.getElementById('fh-update-banner')) return;
             const b = document.createElement('button');
@@ -341,13 +352,13 @@
             b.onclick = () => { b.disabled = true; b.textContent = 'Actualizando…'; worker.postMessage({ type: 'SKIP_WAITING' }); };
             document.body.appendChild(b);
           };
-          if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
+          if (reg.waiting && navigator.serviceWorker.controller && !aplicarSiRecienAbierta(reg.waiting)) showUpdateBanner(reg.waiting);
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  showUpdateBanner(newWorker);
+                  if (!aplicarSiRecienAbierta(newWorker)) showUpdateBanner(newWorker);
                 }
               });
             }
