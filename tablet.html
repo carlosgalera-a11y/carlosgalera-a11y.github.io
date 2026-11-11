@@ -1901,6 +1901,28 @@ document.addEventListener('visibilitychange', () => {
 document.addEventListener('pointerdown', despierta, { once: true });
 setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 5 * 60000);
 
+// ── Se actualiza sola: cada despliegue cambia CACHE_VERSION en sw.js. Si cambia
+// mientras el panel está abierto, se recarga con la versión nueva (salvo que haya
+// una ficha abierta o estés escribiendo; entonces lo intenta en la siguiente vuelta).
+let versionVista = null;
+async function miraVersion() {
+  if (DEMO || document.visibilityState !== 'visible') return;
+  try {
+    const txt = await (await fetch('/sw.js?v=' + Date.now(), { cache: 'no-store' })).text();
+    const v = (txt.match(/CACHE_VERSION\s*=\s*'([^']+)'/) || [])[1];
+    if (!v) return;
+    if (versionVista === null) { versionVista = v; return; }
+    if (v === versionVista) return;
+    const ocupado = $('hoja')?.classList.contains('on') || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+    if (ocupado) return;
+    await fetch(location.href, { cache: 'reload' }).catch(() => {});
+    location.reload();
+  } catch { /* sin conexión: se mira en la siguiente vuelta */ }
+}
+miraVersion();
+setInterval(miraVersion, 5 * 60000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') miraVersion(); });
+
 // ── Sesión (la misma que calendario.html) ──────────────────────────────────
 $('gbtn').onclick = async () => {
   const { error } = await sb.auth.signInWithOAuth({
