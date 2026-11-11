@@ -205,6 +205,76 @@
   .gastos-mes { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
   @media (max-width: 700px) { .finde { grid-template-columns: minmax(0, 1fr); height: auto; } }
 
+  /* ── Viajes (cuaderno) y Vuelos ── */
+  .vj-tira { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
+  .vj-sel { flex: none; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 8px 12px; cursor: pointer; text-align: left; }
+  .vj-sel.on { border-color: var(--indigo); box-shadow: inset 0 0 0 1px var(--indigo); background: var(--indigo-soft); }
+  .vj-sel .e { font-size: 22px; }
+  .vj-sel b { display: block; font-size: 14px; }
+  .vj-sel small { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .vj-portada { border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; background: linear-gradient(135deg, var(--indigo-soft), transparent 70%), var(--card); border: 1px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .vj-portada .e { font-size: 42px; line-height: 1; }
+  .vj-portada h3 { font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+  .vj-portada .sub { color: var(--muted); font-weight: 600; font-size: 13.5px; }
+  .vj-portada .notas { font-size: 13px; color: var(--muted); margin-top: 4px; max-width: 70ch; }
+  .vj-pills { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-left: auto; }
+  .vj-pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--seg-bg); white-space: nowrap; }
+  .vj-pill.aviso { background: var(--aviso-bg); color: var(--aviso-fg); }
+  .vj-pill.ok { background: var(--ev-fitness-bg); color: var(--ev-fitness-fg); }
+  .vj-dias { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; align-items: start; }
+  .vj-dia { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .vj-dia.hoy { border-color: var(--indigo); box-shadow: inset 0 0 0 1px var(--indigo); }
+  .vj-dia-cab { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--col-bg); }
+  .vj-dia-cab .n { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--card); font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 16px; flex: none; }
+  .vj-dia.hoy .vj-dia-cab .n { background: var(--indigo); color: #fff; }
+  .vj-dia-cab b { font-size: 14px; display: block; }
+  .vj-dia-cab small { color: var(--muted); font-size: 12px; }
+  .vj-lista { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .vj-it { display: flex; gap: 8px; align-items: flex-start; border-radius: 9px; padding: 7px 9px; font-size: 13px; line-height: 1.3; background: var(--col-bg); border-left: 3px solid var(--soft); }
+  .vj-it.Ver { border-left-color: var(--ev-personal-dot); }
+  .vj-it.Comer { border-left-color: var(--area-cocina); }
+  .vj-it.Moverse { border-left-color: var(--ev-trip-dot); }
+  .vj-it.Dormir { border-left-color: var(--ev-fitness-dot); }
+  .vj-it .h { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 38px; color: var(--muted); }
+  .vj-it .t { flex: 1; min-width: 0; word-break: break-word; }
+  .vj-it .t b { font-weight: 700; }
+  .vj-it .t small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+  .vj-it a.mapa { font-size: 11.5px; color: var(--indigo); font-weight: 600; text-decoration: none; }
+  .vj-sin { font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 5px; background: var(--aviso-bg); color: var(--aviso-fg); margin-left: 4px; white-space: nowrap; }
+  .vj-duermes { font-size: 12px; font-weight: 600; color: var(--ev-fitness-fg); background: var(--ev-fitness-bg); border-radius: 8px; padding: 6px 9px; }
+  .vj-pend { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; cursor: pointer; }
+  .vj-pend:first-of-type { border-top: 0; }
+  .vj-pend .c { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--soft); display: grid; place-items: center; flex: none; font-size: 12px; }
+  .vj-pend.hecho { color: var(--soft); text-decoration: line-through; }
+  .vj-pend.hecho .c { background: var(--ev-fitness-dot); border-color: var(--ev-fitness-dot); color: #fff; }
+  .vj-arriba { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-bottom: 10px; }
+  .vj-caja { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+  .vj-caja h4 { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 6px; }
+  .vu-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; align-items: start; }
+  .vu { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--ev-trip-dot) 12%, transparent), transparent 60%); }
+  .vu.prox { border-color: var(--ev-trip-dot); }
+  .vu-cab { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; font-weight: 700; color: var(--muted); }
+  .vu-cab .cuenta { background: var(--ev-trip-bg); color: var(--ev-trip-fg); padding: 3px 9px; border-radius: 999px; }
+  .vu-ruta { display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; }
+  .vu-ruta .ap { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 30px; line-height: 1; }
+  .vu-ruta .ap small { display: block; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .vu-ruta .linea { flex: 1; border-top: 2px dashed var(--ev-trip-dot); opacity: .7; }
+  .vu-ruta .ap:last-child { text-align: right; }
+  .vu-datos { display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; }
+  .vu-datos span { background: var(--seg-bg); border-radius: 7px; padding: 3px 8px; font-weight: 600; }
+  .vu-salida { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; border-radius: 10px; padding: 10px 12px; background: var(--col-bg); }
+  .vu-salida small { display: block; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .vu-salida b { font-family: 'Hanken Grotesk', sans-serif; font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .vu-salida .casa b { color: var(--ev-fitness-fg); }
+  .vu-salida .det { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); }
+  .vu-billetes { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+  .vu-billete { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 9px; padding: 5px 6px 5px 10px; font-size: 13px; background: var(--card); }
+  .vu-billete span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vu-billete .btn { height: 32px; min-width: 32px; padding: 0 10px; font-size: 13px; }
+  .vu-sinbillete { font-size: 12px; color: var(--aviso-fg); background: var(--aviso-bg); border-radius: 8px; padding: 6px 9px; margin-top: 10px; }
+  .vj-editar { font-size: 12.5px; font-weight: 700; color: var(--indigo); text-decoration: none; white-space: nowrap; }
+  @media (max-width: 700px) { .vj-arriba { grid-template-columns: 1fr; } }
+
   /* ── Incrustada en calendario.html (?solo=resumen): sin cabecera ni lateral ── */
   html.solo .top, html.solo .lateral, html.solo .vista-cab { display: none; }
   html.solo .app { padding: 0; height: 100dvh; min-height: 0; }
@@ -416,7 +486,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -569,6 +639,8 @@ const lunesHorario = () => { const dia = (HOY.getDay() + 6) % 7; return masDias(
 let partes = [], tablero = null, egs = null, panelFalta = false;
 // Casa (Carlos + Montse): gastos del piso (piso_horta_gastos) y rutinas/tareas de casa (casa_items).
 let gastos = [], casa = [];
+// Viajes (tablas viajes + viaje_items) y vuelos: los mismos de los apartados Viajes y Vuelos de FileHub.
+let viajes = [], vuelos = [], viajeSel = localStorage.getItem('fh_tab_viaje') || '';
 const hechasAhora = new Set(); // tareas de casa marcadas desde el Resumen: siguen a la vista, tachadas
 const nuevasAhora = new Set(); // tareas de casa añadidas desde el Resumen: salen arriba, aunque haya muchas más antiguas
 const COLS_CASA = 'id,kind,title,assignee,done,fecha,hora,fecha_fin,importe,lugar,categoria,prioridad,cada_dias,ultima_vez,datos,notas,created_at';
@@ -637,7 +709,7 @@ async function cargar() {
       const { desde, hasta } = rangoMes(cursor);
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage,para';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
-      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho] = await Promise.all([
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -657,6 +729,9 @@ async function cargar() {
         conReintento(() => sb.from('agente_encargos').select('id,agente,titulo,estado,created_at').order('created_at', { ascending: false }).limit(8)),
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date').like('id', 'horario%')
           .gte('start_date', ymd(lunesHorario())).lt('start_date', ymd(masDias(lunesHorario(), 7))).order('start_date')),
+        conReintento(() => sb.from('viajes').select('id,user_id,titulo,emoji,fecha_inicio,fecha_fin,notas,shared,viaje_items(id,tipo,titulo,fecha,fecha_fin,hora,lugar,importe,estado,localizador,url,notas,hecho)')
+          .gte('fecha_fin', HOY_S).order('fecha_inicio')),
+        conReintento(() => sb.from('vuelos').select('*').gte('fecha', ymd(masDias(HOY, -1))).order('fecha').order('hora_salida', { nullsFirst: false })),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -683,6 +758,9 @@ async function cargar() {
       tareasProy = wt.data || [];
       encargos = en.data || [];
       horario = ho.data || [];
+      // Si aún no existen las tablas (migración sin aplicar), estas dos pestañas salen vacías.
+      viajes = vj.data || [];
+      vuelos = (vu.data || []).map(v => ({ ...v, billetes: Array.isArray(v.billetes) ? v.billetes : [] }));
       mesCargado = desde;
     }
     errorCarga = '';
@@ -1158,7 +1236,135 @@ function htmlFinde() {
   return `<div class="finde">${col(sab)}${col(masDias(sab, 1))}</div>`;
 }
 
+// ── Viajes: cuaderno del viaje elegido, un día por tarjeta ──────────────────
+const TIPO_VJ = {
+  hotel: { ico: '🏨', g: 'Dormir' }, vuelo: { ico: '✈️', g: 'Moverse' }, tren: { ico: '🚄', g: 'Moverse' },
+  actividad: { ico: '🎟️', g: 'Ver' }, plan: { ico: '📍', g: 'Ver' }, comida: { ico: '🍽️', g: 'Comer' }, pendiente: { ico: '☑️', g: 'Pendiente' },
+};
+const ES_RES_VJ = t => ['hotel', 'vuelo', 'tren', 'actividad'].includes(t);
+const hm = t => (t ? String(t).slice(0, 5) : '');
+const diasEntreS = (a, b) => Math.round((deYmd(b) - deYmd(a)) / 86400000);
+const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const vivosVj = v => (v.viaje_items || []).filter(i => i.estado !== 'cancelada');
+const duermeVj = (v, d) => vivosVj(v).filter(i => i.tipo === 'hotel' && i.fecha && i.fecha_fin && i.fecha <= d && d < i.fecha_fin);
+const vuelosDe = v => vuelos.filter(f => f.viaje_id === v.id || (!f.viaje_id && f.fecha >= ymd(masDias(deYmd(v.fecha_inicio), -1)) && f.fecha <= v.fecha_fin));
+function cuentaVj(v) {
+  if (HOY_S < v.fecha_inicio) { const n = diasEntreS(HOY_S, v.fecha_inicio); return n === 1 ? 'Mañana' : `Faltan ${n} días`; }
+  return `Día ${diasEntreS(v.fecha_inicio, HOY_S) + 1} de ${diasEntreS(v.fecha_inicio, v.fecha_fin) + 1}`;
+}
+// A qué hora estar en el aeropuerto y salir de casa (igual que el apartado Vuelos de FileHub).
+const TRAYECTO_VU = { BCN: 45, RMU: 45, ALC: 50, OVD: 45, MAD: 50, VLC: 35, AGP: 35, SVQ: 30, PMI: 30, NRT: 90, HND: 45, KIX: 75, ITM: 40, NGO: 60 };
+function salidaVu(f) {
+  if (!f.hora_salida) return null;
+  const ant = { nacional: [75, 105], schengen: [90, 120], internacional: [180, 180] }[f.ambito || 'nacional'][f.maleta_facturada ? 1 : 0];
+  const tray = f.trayecto_min ?? TRAYECTO_VU[String(f.origen || '').toUpperCase()] ?? 60;
+  const [h, m] = hm(f.hora_salida).split(':').map(Number);
+  const menos = x => { let t = h * 60 + m - x; const antes = t < 0; t = ((t % 1440) + 1440) % 1440; return { h: `${pad(Math.floor(t / 60))}:${pad(t % 60)}`, antes }; };
+  return { aero: menos(ant).h, casa: menos(ant + tray + 15), ant, tray };
+}
+const minTxt = n => { const h = Math.floor(n / 60), m = n % 60; return h && m ? `${h} h ${m} min` : h ? `${h} h` : `${m} min`; };
+function cuentaVu(f) {
+  const n = diasEntreS(HOY_S, f.fecha);
+  if (n < 0) return 'Volado';
+  if (n === 0) {
+    if (!f.hora_salida) return 'Hoy';
+    const min = Math.round((new Date(`${f.fecha}T${hm(f.hora_salida)}:00`) - Date.now()) / 60000);
+    return min > 0 ? `Hoy, sale en ${minTxt(min)}` : 'Hoy (ya ha salido)';
+  }
+  return n === 1 ? 'Mañana' : `En ${n} días`;
+}
+function filaVj(hora, ico, grupo, titulo, lugar, notas, sinReservar) {
+  return `<div class="vj-it ${grupo}"><span class="h">${hora || ico}</span><div class="t">${hora ? ico + ' ' : ''}<b>${esc(titulo)}</b>${sinReservar ? '<span class="vj-sin">Sin reservar</span>' : ''}
+    ${notas ? `<small>${esc(notas)}</small>` : ''}${lugar ? `<small><a class="mapa" href="${mapa(lugar)}" target="_blank" rel="noopener noreferrer">📍 ${esc(lugar)}</a></small>` : ''}</div></div>`;
+}
+function htmlViajes() {
+  if (!viajes.length) return `<div class="vacio">No hay viajes por delante. Créalos en FileHub → <a class="vj-editar" href="/#viajes" target="_blank" rel="noopener">Viajes</a>.</div>`;
+  const v = viajes.find(x => x.id === viajeSel) || viajes[0];
+  const tira = viajes.length > 1 ? `<div class="vj-tira">${viajes.map(x => `<button class="vj-sel${x.id === v.id ? ' on' : ''}" data-vjsel="${esc(x.id)}"><span class="e">${esc(x.emoji || '🧳')}</span><span><b>${esc(x.titulo)}</b><small>${esc(cuentaVj(x))}</small></span></button>`).join('')}</div>` : '';
+  const dias = Array.from({ length: diasEntreS(v.fecha_inicio, v.fecha_fin) + 1 }, (_, i) => ymd(masDias(deYmd(v.fecha_inicio), i)));
+  const susVuelos = vuelosDe(v);
+  const reservas = vivosVj(v).filter(i => ES_RES_VJ(i.tipo));
+  const total = reservas.reduce((s, i) => s + (Number(i.importe) || 0), 0);
+  const sinNoche = dias.slice(0, -1).filter(d => !duermeVj(v, d).length);
+  const sinVuelos = !susVuelos.length && !vivosVj(v).some(i => i.tipo === 'vuelo');
+  const pend = (v.viaje_items || []).filter(i => i.tipo === 'pendiente').sort((a, b) => Number(a.hecho) - Number(b.hecho));
+  const pills = [
+    `<span class="vj-pill">${dias.length} días</span>`,
+    total ? `<span class="vj-pill">💶 ${total.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €</span>` : '',
+    sinVuelos ? '<span class="vj-pill aviso">✈️ Sin vuelos</span>' : `<span class="vj-pill ok">✈️ ${susVuelos.length} vuelo${susVuelos.length === 1 ? '' : 's'}</span>`,
+    sinNoche.length ? `<span class="vj-pill aviso">🛏️ ${sinNoche.length} noche${sinNoche.length === 1 ? '' : 's'} sin alojamiento</span>` : '',
+    v.shared ? '<span class="vj-pill">👥 Compartido</span>' : '',
+    '<a class="vj-editar" href="/#viajes" target="_blank" rel="noopener">Editar en FileHub ↗</a>',
+  ].join('');
+  const portada = `<div class="vj-portada"><span class="e">${esc(v.emoji || '🧳')}</span><div><h3>${esc(v.titulo)}</h3>
+    <div class="sub">${esc(fechaCorta(v.fecha_inicio))} → ${esc(fechaCorta(v.fecha_fin))} · ${esc(cuentaVj(v))}</div>
+    ${v.notas ? `<div class="notas">${esc(v.notas)}</div>` : ''}</div><div class="vj-pills">${pills}</div></div>`;
+  const cajaVuelos = `<div class="vj-caja"><h4>✈️ Vuelos</h4>${susVuelos.length ? susVuelos.map(f => {
+      const s = salidaVu(f);
+      return `<div class="hoy-fila"><div><b>${esc(f.origen)} → ${esc(f.destino)}</b> · ${esc(fechaCorta(f.fecha))}${f.hora_salida ? ' · ' + hm(f.hora_salida) : ''}
+        <small>${s ? `🏠 Sal de casa a las <b>${s.casa.h}</b>${s.casa.antes ? ' (el día antes)' : ''} · aeropuerto ${s.aero}` : 'Falta la hora de salida'}${f.billetes.length ? ` · ${f.billetes.length} billete${f.billetes.length === 1 ? '' : 's'}` : ' · sin billete'}</small></div></div>`;
+    }).join('') : '<div class="vacio">Sin vuelos apuntados. Añádelos en FileHub → Vuelos.</div>'}</div>`;
+  const cajaPend = `<div class="vj-caja"><h4>☑️ Pendientes · ${pend.filter(p => !p.hecho).length}</h4>${pend.length ? pend.map(p => `<div class="vj-pend${p.hecho ? ' hecho' : ''}" data-vjpend="${esc(p.id)}"><span class="c">${p.hecho ? '✓' : ''}</span><span>${esc(p.titulo)}</span></div>`).join('') : '<div class="vacio">Nada pendiente.</div>'}</div>`;
+  const dia = (d, n) => {
+    const ent = vivosVj(v).filter(i => i.tipo === 'hotel' && i.fecha === d), sal = vivosVj(v).filter(i => i.tipo === 'hotel' && i.fecha_fin === d);
+    const cosas = vivosVj(v).filter(i => i.fecha === d && i.tipo !== 'hotel' && i.tipo !== 'pendiente');
+    const orden = i => i.hora ? hm(i.hora) : (i.tipo === 'tren' || i.tipo === 'vuelo' ? '00:00' : '99');
+    const filas = [
+      ...sal.map(h => ({ o: '!', html: filaVj('', '🏨', 'Dormir', `Salida · ${h.titulo}`, h.lugar, '') })),
+      ...susVuelos.filter(f => f.fecha === d).map(f => { const s = salidaVu(f); return { o: hm(f.hora_salida) || '00:00', html: filaVj(hm(f.hora_salida), '✈️', 'Moverse', `${f.origen} → ${f.destino}${f.numero ? ' · ' + f.numero : ''}`, '', s ? `🏠 Sal de casa a las ${s.casa.h}` : '') }; }),
+      ...cosas.map(i => ({ o: orden(i), html: filaVj(hm(i.hora), (TIPO_VJ[i.tipo] || TIPO_VJ.plan).ico, (TIPO_VJ[i.tipo] || TIPO_VJ.plan).g, i.titulo, i.lugar, i.notas, i.estado === 'pendiente' && ES_RES_VJ(i.tipo)) })),
+      ...ent.map(h => ({ o: '~', html: filaVj('', '🏨', 'Dormir', `Entrada · ${h.titulo}`, h.lugar, '') })),
+    ].sort((a, b) => (a.o < b.o ? -1 : a.o > b.o ? 1 : 0)); // ! (salidas) < horas < ~ (entradas)
+    const duerme = duermeVj(v, d);
+    const ciudad = (duerme[0] || ent[0])?.lugar || '';
+    return `<div class="vj-dia${d === HOY_S ? ' hoy' : ''}"><div class="vj-dia-cab"><span class="n">${n}</span><div><b>${esc(cap(fmt(deYmd(d), { weekday: 'long', day: 'numeric', month: 'short' })).replace('.', ''))}</b>${ciudad ? `<small>📍 ${esc(ciudad)}</small>` : ''}</div></div>
+      <div class="vj-lista">${filas.map(x => x.html).join('') || '<div class="vacio">Día libre.</div>'}${duerme.length ? `<div class="vj-duermes">🛏️ Duermes en ${esc(duerme.map(h => h.titulo).join(' / '))}</div>` : ''}</div></div>`;
+  };
+  return tira + portada + `<div class="vj-arriba">${cajaVuelos}${cajaPend}</div><div class="vj-dias">${dias.map((d, i) => dia(d, i + 1)).join('')}</div>`;
+}
+
+// ── Vuelos: próximos vuelos con la hora de salir de casa y los billetes ─────
+function htmlVuelos() {
+  const lista = vuelos.filter(f => f.fecha >= HOY_S);
+  if (!lista.length) return `<div class="vacio">No hay vuelos por delante. Añádelos (con el billete) en FileHub → <a class="vj-editar" href="/#flights" target="_blank" rel="noopener">Vuelos</a>.</div>`;
+  const viajeDe = id => viajes.find(v => v.id === id);
+  return `<div class="vu-lista">${lista.map((f, i) => {
+    const s = salidaVu(f), vj = viajeDe(f.viaje_id);
+    const datos = [f.aerolinea && f.numero ? `${f.aerolinea} · ${f.numero}` : f.aerolinea || f.numero, f.localizador && `Loc. ${f.localizador}`, f.terminal && `Terminal ${f.terminal}`, f.asiento && `Asiento ${f.asiento}`, f.maleta_facturada ? '🧳 Maleta facturada' : '🎒 Solo mano'].filter(Boolean);
+    return `<div class="vu${i === 0 ? ' prox' : ''}">
+      <div class="vu-cab"><span class="cuenta">${esc(cuentaVu(f))}</span><span>${esc(cap(fmt(deYmd(f.fecha), { weekday: 'long', day: 'numeric', month: 'long' })))}</span>${vj ? `<span>· ${esc(vj.emoji || '🧳')} ${esc(vj.titulo)}</span>` : ''}</div>
+      <div class="vu-ruta"><div class="ap">${esc(f.origen)}<small>${hm(f.hora_salida) || '--:--'}</small></div><div class="linea"></div><span>✈️</span><div class="linea"></div><div class="ap">${esc(f.destino)}<small>${hm(f.hora_llegada) || '--:--'}${f.llega_dia_siguiente ? ' +1' : ''}</small></div></div>
+      <div class="vu-datos">${datos.map(x => `<span>${esc(x)}</span>`).join('')}</div>
+      ${s ? `<div class="vu-salida"><div class="casa"><small>🏠 Sal de casa</small><b>${s.casa.h}</b>${s.casa.antes ? '<small>el día antes</small>' : ''}</div><div><small>🕒 En el aeropuerto</small><b>${s.aero}</b></div>
+        <div class="det">${minTxt(s.ant)} antes de la salida · trayecto ${minTxt(s.tray)} + 15 min de margen</div></div>` : '<div class="vu-sinbillete">Falta la hora de salida para calcular cuándo salir.</div>'}
+      ${f.billetes.length ? `<div class="vu-billetes">${f.billetes.map((b, j) => `<div class="vu-billete"><span>${b.mime === 'application/pdf' ? '📄' : '🖼️'} ${esc(b.nombre)}</span>
+        <button class="btn" data-billete="${esc(f.id)}" data-j="${j}" data-modo="ver">Ver</button><button class="btn" data-billete="${esc(f.id)}" data-j="${j}" data-modo="bajar" title="Descargar">⬇</button></div>`).join('')}</div>`
+        : '<div class="vu-sinbillete">Sin billete subido: súbelo en FileHub → Vuelos.</div>'}
+    </div>`;
+  }).join('')}</div>`;
+}
+async function abreBillete(id, j, modo) {
+  const f = vuelos.find(x => x.id === id), b = f?.billetes?.[j];
+  if (!b) return;
+  const w = modo === 'ver' ? window.open('', '_blank') : null;
+  const { data, error } = await sb.storage.from('files').createSignedUrl(b.path, 600, modo === 'bajar' ? { download: b.nombre } : undefined);
+  if (error || !data?.signedUrl) { w?.close(); alert('No se pudo abrir el billete: ' + (error?.message || 'sin enlace')); return; }
+  if (modo === 'ver') { if (w) w.location.href = data.signedUrl; else location.href = data.signedUrl; return; }
+  const a = document.createElement('a'); a.href = data.signedUrl; a.download = b.nombre; document.body.appendChild(a); a.click(); a.remove();
+}
+async function marcaPendViaje(id) {
+  const v = viajes.find(x => (x.viaje_items || []).some(i => i.id === id));
+  if (!v) return;
+  const it = v.viaje_items.find(i => i.id === id);
+  it.hecho = !it.hecho; render();
+  if (DEMO) return;
+  const { error } = await conReintento(() => sb.from('viaje_items').update({ hecho: it.hecho }).eq('id', id));
+  if (error) { it.hecho = !it.hecho; render(); alert('No se pudo marcar: ' + error.message); }
+}
+
 function tituloVista() {
+  if (vista === 'viajes') return 'Viajes';
+  if (vista === 'vuelos') return 'Vuelos';
   if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (vista === 'semana' || (vista === 'casa' && casaModo === 'semana')) {
@@ -1249,7 +1455,7 @@ function pintaEstado() {
 function render() {
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
   $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
@@ -1261,7 +1467,7 @@ function render() {
   $('turnoHoy').innerHTML = chipsTurno(HOY);
   const c = $('contenido');
   c.className = 'v-' + vista;
-  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : htmlKanban();
+  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : htmlKanban();
   pintaStats(); pintaParte(); pintaEstado();
 }
 
@@ -1576,6 +1782,12 @@ $('stats').addEventListener('click', e => {
 });
 $('contenido').addEventListener('click', e => {
   const t = e.target;
+  const vs = t.closest('[data-vjsel]');
+  if (vs) { viajeSel = vs.dataset.vjsel; localStorage.setItem('fh_tab_viaje', viajeSel); render(); return; }
+  const vp = t.closest('[data-vjpend]');
+  if (vp) return marcaPendViaje(vp.dataset.vjpend);
+  const bi = t.closest('[data-billete]');
+  if (bi) return abreBillete(bi.dataset.billete, Number(bi.dataset.j), bi.dataset.modo);
   if (t.closest('#encargarBtn')) return formEncargo();
   if (t.closest('#nuevaCompra')) return formCompra();
   if (t.closest('[data-ntfh]')) return formTareaFH();
@@ -1718,6 +1930,16 @@ sb.auth.onAuthStateChange((_ev, session) => {
 // ── Datos de ejemplo (?demo) ───────────────────────────────────────────────
 function datosDemo() {
   const d = n => ymd(masDias(HOY, n)), yo = UID_CARLOS;
+  const it = (tipo, titulo, n, extra = {}) => ({ id: 'vi' + Math.random().toString(36).slice(2, 8), tipo, titulo, fecha: n === null ? null : d(n), fecha_fin: null, hora: null, lugar: null, importe: null, estado: 'confirmada', localizador: null, url: null, notas: null, hecho: false, ...extra });
+  viajes = [{ id: 'vj1', user_id: yo, titulo: 'Escapada de ejemplo', emoji: '🏔️', fecha_inicio: d(2), fecha_fin: d(4), notas: 'Viaje de prueba del modo demo.', shared: true, viaje_items: [
+    it('hotel', 'Hotel del centro', 2, { fecha_fin: d(4), lugar: 'Centro', importe: 180 }),
+    it('plan', 'Paseo por el casco antiguo', 2, { hora: '18:00', lugar: 'Plaza Mayor' }),
+    it('comida', 'Cena típica', 2, { hora: '21:00', lugar: 'Calle de los bares', notas: 'Mejor reservar.' }),
+    it('plan', 'Museo', 3, { hora: '10:30', lugar: 'Museo de la ciudad' }),
+    it('tren', 'Tren de vuelta', 4, { estado: 'pendiente' }),
+    it('pendiente', 'Reservar la cena', null), it('pendiente', 'Cargar el móvil', null, { hecho: true }),
+  ] }];
+  vuelos = [{ id: 'vu1', viaje_id: 'vj1', origen: 'BCN', destino: 'MAD', fecha: d(2), hora_salida: '16:45:00', hora_llegada: '18:05:00', llega_dia_siguiente: false, aerolinea: 'Aerolínea', numero: 'XX123', localizador: 'ABC123', terminal: 'T1', asiento: null, ambito: 'nacional', maleta_facturada: false, trayecto_min: null, billetes: [{ path: 'demo', nombre: 'tarjeta-embarque.pdf', mime: 'application/pdf', size: 1 }] }];
   const ta = (id, title, n, extra = {}) => ({ id, title, due_date: n === null ? null : d(n), completed: false, category: 'personal', priority: 'medium', user_id: yo, shared: false, stage: null, ...extra });
   eventos = [
     { id: 'e1', title: 'Reunión de equipo', start_date: d(0) + 'T09:00', type: 'work' },
