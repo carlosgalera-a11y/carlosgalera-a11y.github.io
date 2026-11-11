@@ -494,7 +494,7 @@
         <button class="btn" id="adelante" aria-label="Siguiente">›</button>
       </div>
       <button class="btn" id="temaBtn" title="Tema"></button>
-      <button class="btn" id="recargarBtn" title="Recargar datos">⟳</button>
+      <button class="btn" id="recargarBtn" title="Recargar la página (trae la última versión)">⟳</button>
       <button class="btn" id="pantallaBtn" title="Pantalla completa">⛶</button>
     </div>
   </header>
@@ -1837,7 +1837,19 @@ $('adelante').onclick = () => mueve(1);
 $('hoyBtn').onclick = () => irA(new Date(HOY));
 $('parteAnt').onclick = () => { parteIdx++; pintaParte(); };
 $('parteSig').onclick = () => { parteIdx--; pintaParte(); };
-$('recargarBtn').onclick = () => cargar();
+// ⟳ recarga la página entera con la última versión: pide de nuevo el HTML saltándose
+// la caché del navegador, activa el service worker nuevo si lo hay y recarga.
+$('recargarBtn').onclick = async () => {
+  const b = $('recargarBtn');
+  b.disabled = true; b.textContent = '…';
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration?.();
+    await reg?.update?.().catch(() => {});
+    reg?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    await fetch(location.href, { cache: 'reload' }).catch(() => {});
+  } catch {}
+  location.reload();
+};
 $('pantallaBtn').onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen?.();
   else document.documentElement.requestFullscreen?.().catch(() => {});
