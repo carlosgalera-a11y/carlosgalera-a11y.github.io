@@ -970,6 +970,8 @@ const esIncrustada = () => Object.prototype.hasOwnProperty.call(INCRUSTADAS, mod
 if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.setItem('fh_cal_resumen', '1'); modo = 'resumen'; }
 // El botón «← Resumen» del panel de casa vuelve aquí con ?vista=resumen, sea cual sea la última vista elegida.
 if (MISMO_DOMINIO && new URLSearchParams(location.search).get('vista') === 'resumen') modo = 'resumen';
+// Enlace directo a los podcasts: calendario.html?vista=podcast
+if (new URLSearchParams(location.search).get('vista') === 'podcast') modo = 'podcast';
 
 function rango() {
   if (modo === 'mes') {
@@ -1013,9 +1015,20 @@ function tituloRango() {
     : `${cursor.getDate()} ${m1} – ${fin.getDate()} ${m2}`;
 }
 
+// En móvil la fila de pestañas no cabe: la elegida se trae a la vista (solo se mueve la fila, no la página).
+function traePestana() {
+  const seg = $('segVista'), activa = seg.querySelector('button.on');
+  if (!activa) return;
+  const s = seg.getBoundingClientRect(), r = activa.getBoundingClientRect();
+  if (r.left < s.left) seg.scrollLeft -= s.left - r.left + 8;
+  else if (r.right > s.right) seg.scrollLeft += r.right - s.right + 8;
+}
+document.fonts?.ready.then(traePestana); // al cargar la tipografía cambian los anchos
+
 async function render() {
   pintaFiltro();
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === modo));
+  traePestana();
   $('rangoTitulo').textContent = tituloRango();
   const { start, end } = rango();
   await Promise.all([cargarDatos(ymd(start), ymd(end)), cargarPlanes(), cargarViajes(), modo === 'podcast' ? cargarPodcasts() : null]);
