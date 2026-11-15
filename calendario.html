@@ -302,6 +302,20 @@
   body.en-viajes #parteCard, body.en-viajes #ultimasCard, body.en-viajes #notasCard, body.en-viajes .leyenda,
   body.en-viajes #prev, body.en-viajes #next, body.en-viajes #hoyBtn { display: none !important; }
   #vistaViajes { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  /* ── Vista Podcast: los episodios de «Mis podcasts» (tabla podcasts_ia) con su reproductor ── */
+  body.en-podcast #parteCard, body.en-podcast #ultimasCard, body.en-podcast #notasCard, body.en-podcast .leyenda,
+  body.en-podcast #prev, body.en-podcast #next, body.en-podcast #hoyBtn { display: none !important; }
+  #vistaPodcast { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .pod-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .pod-card.prox { border-color: var(--ev-trip-fg); background: linear-gradient(135deg, var(--ev-trip-bg), var(--card) 70%); }
+  .pod-cab { display: flex; align-items: flex-start; gap: 12px; }
+  .pod-ico { flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--ev-trip-bg); display: flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; }
+  .pod-t { font-family: 'Hanken Grotesk', 'Inter', sans-serif; font-size: 16.5px; font-weight: 800; line-height: 1.2; }
+  .pod-sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .pod-card audio { width: 100%; height: 40px; }
+  .pod-estado { font-size: 12.5px; color: var(--aviso-fg); background: var(--aviso-bg); border: 1px solid var(--aviso-line); border-radius: 10px; padding: 8px 11px; }
+  .pod-guion summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .pod-guion p { font-size: 13px; white-space: pre-wrap; margin-top: 8px; line-height: 1.5; max-height: 260px; overflow: auto; }
   .vj-cab { display: flex; align-items: center; gap: 10px; }
   .vj-cab h2 { font-size: 18px; flex: 1; }
   .vj-aviso, .vj-vacio { font-size: 13px; color: var(--muted); padding: 14px 4px; }
@@ -504,6 +518,7 @@
         <button data-v="viajes">Viajes</button>
         <button data-v="cuaderno">Cuaderno</button>
         <button data-v="vuelos">Vuelos</button>
+        <button data-v="podcast">Podcast</button>
       </div>
       <div class="nav">
         <button id="prev" class="btn icono" title="Anterior">‹</button>
@@ -563,6 +578,7 @@
 
   <div id="vistaResumen" style="display:none"></div>
   <div id="vistaViajes" style="display:none"></div>
+  <div id="vistaPodcast" style="display:none"></div>
 
   <div id="vistaMes">
     <!-- Un ÚNICO grid: los días de la semana (L–D) son las 7 primeras celdas,
@@ -978,6 +994,7 @@ function tituloRango() {
   if (modo === 'viajes') return 'Viajes';
   if (modo === 'cuaderno') return 'Cuaderno de viaje';
   if (modo === 'vuelos') return 'Vuelos';
+  if (modo === 'podcast') return 'Podcast';
   if (modo === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (modo === 'dia') return cap(fmt(cursor, { weekday: 'long', day: 'numeric', month: 'long' }));
   if (modo === 'semana') {
@@ -1001,14 +1018,17 @@ async function render() {
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === modo));
   $('rangoTitulo').textContent = tituloRango();
   const { start, end } = rango();
-  await Promise.all([cargarDatos(ymd(start), ymd(end)), cargarPlanes(), cargarViajes()]);
+  await Promise.all([cargarDatos(ymd(start), ymd(end)), cargarPlanes(), cargarViajes(), modo === 'podcast' ? cargarPodcasts() : null]);
   pintaPlanesBtn();
   document.body.classList.toggle('en-resumen', esIncrustada());
   document.body.classList.toggle('en-viajes', modo === 'viajes');
+  document.body.classList.toggle('en-podcast', modo === 'podcast');
   $('vistaResumen').style.display = esIncrustada() ? '' : 'none';
   $('vistaViajes').style.display = modo === 'viajes' ? '' : 'none';
+  $('vistaPodcast').style.display = modo === 'podcast' ? '' : 'none';
   if (esIncrustada()) { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaResumen(); }
   else if (modo === 'viajes') { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaViajes(); }
+  else if (modo === 'podcast') { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaPodcast(); }
   else if (modo === 'mes') { $('vistaMes').style.display = ''; $('cols').style.display = 'none'; renderMes(start); }
   else { $('vistaMes').style.display = 'none'; $('cols').style.display = 'grid'; renderCols(); }
   pintaUltimas();
@@ -1169,6 +1189,45 @@ function pintaResumen() {
 }
 window.addEventListener('resize', ajustaResumen);
 $('recargarBtn').addEventListener('click', () => { const f = $('resumenFrame'); if (f && esIncrustada()) f.contentWindow.location.reload(); });
+
+// ── Vista Podcast ──────────────────────────────────────────────────────────
+// Los episodios de «Mis podcasts» de FileHub (tabla podcasts_ia, supabase/podcasts_ia.sql).
+// El mp3 vive en el bucket público podcasts-pub, así que el <audio> lo reproduce sin credenciales.
+// Si un guion sigue «pendiente» es que el workflow podcast-tts aún no le ha puesto voz.
+let podcasts = [], podcastsError = null;
+async function cargarPodcasts() {
+  if (!uid) { podcasts = []; podcastsError = null; return; }
+  const { data, error } = await sb.from('podcasts_ia')
+    .select('id,titulo,fuente,formato,estado,error,audio_url,guion,created_at')
+    .order('created_at', { ascending: false });
+  podcastsError = error || null;
+  podcasts = error ? [] : (data || []);
+}
+function tarjetaPodcast(p, i) {
+  const fecha = fISO(p.created_at.slice(0, 10));
+  const sub = [
+    cap(fmt(fecha, { day: 'numeric', month: 'short', year: 'numeric' })).replace('.', ''),
+    p.formato === 'dialogo' ? 'Dos voces' : 'Una voz',
+    p.fuente === 'pdf' ? 'De un PDF' : '',
+  ].filter(Boolean).join(' · ');
+  const cuerpo = p.estado === 'listo' && p.audio_url
+    ? `<audio controls preload="metadata" src="${esc(p.audio_url)}"></audio>`
+    : p.estado === 'error'
+      ? `<div class="pod-estado">⚠️ No se pudo generar el audio: ${esc(p.error || 'error')}</div>`
+      : '<div class="pod-estado">⏳ Poniéndole voz… el audio aparece aquí en cuanto esté (suele tardar menos de media hora).</div>';
+  const guion = p.guion ? `<details class="pod-guion"><summary>Ver el guion</summary><p>${esc(p.guion)}</p></details>` : '';
+  return `<div class="pod-card${i === 0 && p.estado === 'listo' ? ' prox' : ''}">
+    <div class="pod-cab"><span class="pod-ico">🎙️</span><div><div class="pod-t">${esc(p.titulo)}</div><div class="pod-sub">${esc(sub)}</div></div></div>
+    ${cuerpo}${guion}</div>`;
+}
+function pintaPodcast() {
+  const el = $('vistaPodcast');
+  if (!uid) { el.innerHTML = '<p class="vj-aviso">Inicia sesión para ver tus podcasts.</p>'; return; }
+  if (podcastsError) { el.innerHTML = `<p class="vj-aviso">No se han podido leer los podcasts: ${esc(msgFallo(podcastsError))}</p>`; return; }
+  el.innerHTML = `<div class="vj-cab"><h2>🎙️ Podcast</h2><a class="btn" href="/#podcasts" target="_blank" rel="noopener">Crear uno en FileHub ↗</a></div>`
+    + (podcasts.length ? podcasts.map(tarjetaPodcast).join('')
+      : '<div class="vj-vacio">Todavía no hay ningún episodio. Se crean en FileHub → <b>Podcasts IA</b> a partir de un tema o de un PDF.</div>');
+}
 
 // ── Vista Viajes ───────────────────────────────────────────────────────────
 // Tablas viajes + viaje_items (supabase/viajes.sql). Cada viaje lleva dentro sus
@@ -1984,7 +2043,7 @@ $('segVista').addEventListener('click', e => {
   if (b) cambiaModo(b.dataset.v);
 });
 function mueve(dir) {
-  if (esIncrustada() || modo === 'viajes') return; // sin días que pasar
+  if (esIncrustada() || modo === 'viajes' || modo === 'podcast') return; // sin días que pasar
   if (modo === 'mes') cursor = new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1);
   else { cursor = new Date(cursor); cursor.setDate(cursor.getDate() + dir * (modo === 'semana' ? 7 : modo === 'tres' ? 3 : 1)); }
   render();
