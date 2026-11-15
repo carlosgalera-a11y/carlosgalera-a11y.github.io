@@ -970,8 +970,8 @@ const esIncrustada = () => Object.prototype.hasOwnProperty.call(INCRUSTADAS, mod
 if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.setItem('fh_cal_resumen', '1'); modo = 'resumen'; }
 // El botón «← Resumen» del panel de casa vuelve aquí con ?vista=resumen, sea cual sea la última vista elegida.
 if (MISMO_DOMINIO && new URLSearchParams(location.search).get('vista') === 'resumen') modo = 'resumen';
-// Enlace directo a los podcasts: calendario.html?vista=podcast
-if (new URLSearchParams(location.search).get('vista') === 'podcast') modo = 'podcast';
+// Enlaces directos: calendario.html?vista=podcast y calendario.html?vista=viajes
+if (['podcast', 'viajes'].includes(new URLSearchParams(location.search).get('vista'))) modo = new URLSearchParams(location.search).get('vista');
 
 function rango() {
   if (modo === 'mes') {
@@ -1208,6 +1208,14 @@ $('recargarBtn').addEventListener('click', () => { const f = $('resumenFrame'); 
 // El mp3 vive en el bucket público podcasts-pub, así que el <audio> lo reproduce sin credenciales.
 // Si un guion sigue «pendiente» es que el workflow podcast-tts aún no le ha puesto voz.
 let podcasts = [], podcastsError = null;
+// La página se repinta al volver a la app. Un audio empezado se conserva (el mismo nodo se
+// vuelve a colocar en el mismo paso) y sigue sonando por donde iba.
+function pintaSinCortar(el, html) {
+  const oyendo = [...el.querySelectorAll('audio')].filter(a => a.currentTime > 0 && !a.ended);
+  el.innerHTML = html;
+  for (const a of oyendo) [...el.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
+}
+const esAudio = url => /^https?:\/\/\S+\.(mp3|m4a|ogg|wav)(\?|$)/i.test(url || '');
 async function cargarPodcasts() {
   if (!uid) { podcasts = []; podcastsError = null; return; }
   const { data, error } = await sb.from('podcasts_ia')
@@ -1237,12 +1245,9 @@ function pintaPodcast() {
   const el = $('vistaPodcast');
   if (!uid) { el.innerHTML = '<p class="vj-aviso">Inicia sesión para ver tus podcasts.</p>'; return; }
   if (podcastsError) { el.innerHTML = `<p class="vj-aviso">No se han podido leer los podcasts: ${esc(msgFallo(podcastsError))}</p>`; return; }
-  // La página se repinta al volver a la app: un audio empezado se conserva y sigue por donde iba.
-  const oyendo = [...el.querySelectorAll('audio')].filter(a => a.currentTime > 0 && !a.ended);
-  el.innerHTML = `<div class="vj-cab"><h2>🎙️ Podcast</h2><a class="btn" href="/#podcasts" target="_blank" rel="noopener">Crear uno en FileHub ↗</a></div>`
+  pintaSinCortar(el, `<div class="vj-cab"><h2>🎙️ Podcast</h2><a class="btn" href="/#podcasts" target="_blank" rel="noopener">Crear uno en FileHub ↗</a></div>`
     + (podcasts.length ? podcasts.map(tarjetaPodcast).join('')
-      : '<div class="vj-vacio">Todavía no hay ningún episodio. Se crean en FileHub → <b>Podcasts IA</b> a partir de un tema o de un PDF.</div>');
-  for (const a of oyendo) [...el.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
+      : '<div class="vj-vacio">Todavía no hay ningún episodio. Se crean en FileHub → <b>Podcasts IA</b> a partir de un tema o de un PDF.</div>'));
 }
 
 // ── Vista Viajes ───────────────────────────────────────────────────────────
@@ -1357,7 +1362,7 @@ function pintaViajes() {
   if (!uid) { el.innerHTML = '<p class="vj-aviso">Inicia sesión para ver tus viajes.</p>'; return; }
   if (viajesError) { el.innerHTML = `<p class="vj-aviso">No se han podido leer los viajes: ${esc(msgFallo(viajesError))}</p>`; return; }
   const v = viajes.find(x => x.id === viajeAbierto);
-  el.innerHTML = v ? htmlViaje(v) : htmlListaViajes();
+  pintaSinCortar(el, v ? htmlViaje(v) : htmlListaViajes());
 }
 
 function htmlListaViajes() {
@@ -1376,6 +1381,7 @@ function tarjetaViaje(v) {
     nRes ? `${nRes} reserva${nRes > 1 ? 's' : ''}` : '',
     tot ? eur(tot) : '',
     pend ? `${pend} pendiente${pend > 1 ? 's' : ''}` : '',
+    podcastsDe(v).length ? '🎧 Podcast' : '',
   ].filter(Boolean).join(' · ');
   const cuenta = e.tipo === 'futuro' ? `<b>${e.n}</b>${e.n === 1 ? 'día' : 'días'}` : esc(e.txt);
   return `<button type="button" class="vj-card${e.tipo === 'pasado' ? ' pasado' : ''}" data-vjabre="${esc(v.id)}">
@@ -1389,8 +1395,11 @@ function htmlViaje(v) {
   const e = estadoViaje(v), noches = diaN(v.fecha_fin) - diaN(v.fecha_inicio), tot = totalViaje(v);
   const nAloj = vivos(v).filter(i => i.tipo === 'hotel').length;
   const pend = v.viaje_items.filter(i => i.tipo === 'pendiente' && !i.hecho).length;
+  const pods = podcastsDe(v);
+  if (vjTab === 'podcast' && !pods.length) vjTab = 'itinerario';
   const pestanas = [['itinerario', '🗓️ Itinerario'], ['reservas', '🧾 Reservas'], ['pendientes', `☑️ Pendientes${pend ? ` (${pend})` : ''}`]];
-  const cuerpo = vjTab === 'reservas' ? htmlReservas(v) : vjTab === 'pendientes' ? htmlPendientes(v) : htmlItinerario(v);
+  if (pods.length) pestanas.push(['podcast', '🎧 Podcast']); // solo si el viaje tiene alguno
+  const cuerpo = vjTab === 'reservas' ? htmlReservas(v) : vjTab === 'pendientes' ? htmlPendientes(v) : vjTab === 'podcast' ? htmlPodcastViaje(v) : htmlItinerario(v);
   return `<div class="vj-cab"><button type="button" class="btn" data-vjlista>‹ Todos los viajes</button></div>
   <section class="vj-hero">
     <div class="vj-hero-top">
@@ -1409,6 +1418,14 @@ function htmlViaje(v) {
   </section>
   <div class="tabs vj-tabs">${pestanas.map(([k, t]) => `<button type="button" data-vjtab="${k}" class="${vjTab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
   ${cuerpo}`;
+}
+
+// El podcast de un viaje es un plan suyo cuya url es un audio (p. ej. un episodio de «Mis podcasts»).
+const podcastsDe = v => vivos(v).filter(i => esAudio(i.url)).sort((a, b) => (a.fecha || '9').localeCompare(b.fecha || '9') || porHora(a, b));
+function htmlPodcastViaje(v) {
+  return podcastsDe(v).map(i => `<div class="pod-card prox">
+    <div class="pod-cab"><span class="pod-ico">🎧</span><div><div class="pod-t">${esc(i.titulo.replace(/^🎧\s*(Podcast:\s*)?/i, ''))}</div>${i.notas ? `<div class="pod-sub">${esc(i.notas)}</div>` : ''}</div></div>
+    <audio controls preload="metadata" src="${esc(i.url)}"></audio></div>`).join('');
 }
 
 // Noches sin alojamiento, noches con dos y reservas sin confirmar.
