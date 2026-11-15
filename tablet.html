@@ -242,7 +242,11 @@
   .vj-it .t b { font-weight: 700; }
   .vj-it .t small { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
   .vj-it a.mapa { font-size: 11.5px; color: var(--indigo); font-weight: 600; text-decoration: none; }
-  .vj-it audio { display: block; width: 100%; max-width: 420px; height: 36px; margin-top: 6px; }
+  .vj-pod { margin-bottom: 10px; background: linear-gradient(135deg, var(--indigo-soft), transparent 70%), var(--card); }
+  .vj-pod b { display: block; font-size: 14px; }
+  .vj-pod small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .vj-pod audio { display: block; width: 100%; height: 40px; margin-top: 8px; }
+  .vj-pod .vj-pod-it + .vj-pod-it { margin-top: 12px; }
   .vj-sin { font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 5px; background: var(--aviso-bg); color: var(--aviso-fg); margin-left: 4px; white-space: nowrap; }
   .vj-duermes { font-size: 12px; font-weight: 600; color: var(--ev-fitness-fg); background: var(--ev-fitness-bg); border-radius: 8px; padding: 6px 9px; }
   .vj-pend { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; cursor: pointer; }
@@ -1277,12 +1281,12 @@ function cuentaVu(f) {
   }
   return n === 1 ? 'Mañana' : `En ${n} días`;
 }
-// url: un enlace al plan o reserva; si es un audio (p. ej. un podcast de «Mis podcasts») se reproduce aquí mismo.
+// Un plan cuya url es un audio (p. ej. un podcast de «Mis podcasts») es «el podcast del viaje»:
+// se escucha en la caja de arriba del cuaderno. En la fila del día solo se enlazan las demás url.
+const esAudioVj = url => /^https?:\/\/\S+\.(mp3|m4a|ogg|wav)(\?|$)/i.test(url || '');
 function filaVj(hora, ico, grupo, titulo, lugar, notas, sinReservar, url) {
-  const esUrl = /^https?:\/\//i.test(url || '');
-  const extra = !esUrl ? '' : /\.(mp3|m4a|ogg|wav)(\?|$)/i.test(url)
-    ? `<audio controls preload="metadata" src="${esc(url)}"></audio>`
-    : `<small><a class="mapa" href="${esc(url)}" target="_blank" rel="noopener noreferrer">🔗 Abrir enlace</a></small>`;
+  const extra = /^https?:\/\//i.test(url || '') && !esAudioVj(url)
+    ? `<small><a class="mapa" href="${esc(url)}" target="_blank" rel="noopener noreferrer">🔗 Abrir enlace</a></small>` : '';
   return `<div class="vj-it ${grupo}"><span class="h">${hora || ico}</span><div class="t">${hora ? ico + ' ' : ''}<b>${esc(titulo)}</b>${sinReservar ? '<span class="vj-sin">Sin reservar</span>' : ''}
     ${notas ? `<small>${esc(notas)}</small>` : ''}${lugar ? `<small><a class="mapa" href="${mapa(lugar)}" target="_blank" rel="noopener noreferrer">📍 ${esc(lugar)}</a></small>` : ''}${extra}</div></div>`;
 }
@@ -1313,6 +1317,9 @@ function htmlViajes() {
       return `<div class="hoy-fila"><div><b>${esc(f.origen)} → ${esc(f.destino)}</b> · ${esc(fechaCorta(f.fecha))}${f.hora_salida ? ' · ' + hm(f.hora_salida) : ''}
         <small>${s ? `🏠 Sal de casa a las <b>${s.casa.h}</b>${s.casa.antes ? ' (el día antes)' : ''} · aeropuerto ${s.aero}` : 'Falta la hora de salida'}${f.billetes.length ? ` · ${f.billetes.length} billete${f.billetes.length === 1 ? '' : 's'}` : ' · sin billete'}</small></div></div>`;
     }).join('') : '<div class="vacio">Sin vuelos apuntados. Añádelos en FileHub → Vuelos.</div>'}</div>`;
+  const audios = vivosVj(v).filter(i => esAudioVj(i.url));
+  const cajaPod = audios.length ? `<div class="vj-caja vj-pod"><h4>🎧 Podcast del viaje</h4>${audios.map(i => `<div class="vj-pod-it"><b>${esc(i.titulo.replace(/^🎧\s*(Podcast:\s*)?/i, ''))}</b>
+    ${i.notas ? `<small>${esc(i.notas)}</small>` : ''}<audio controls preload="metadata" src="${esc(i.url)}"></audio></div>`).join('')}</div>` : '';
   const cajaPend = `<div class="vj-caja"><h4>☑️ Pendientes · ${pend.filter(p => !p.hecho).length}</h4>${pend.length ? pend.map(p => `<div class="vj-pend${p.hecho ? ' hecho' : ''}" data-vjpend="${esc(p.id)}"><span class="c">${p.hecho ? '✓' : ''}</span><span>${esc(p.titulo)}</span></div>`).join('') : '<div class="vacio">Nada pendiente.</div>'}</div>`;
   const dia = (d, n) => {
     const ent = vivosVj(v).filter(i => i.tipo === 'hotel' && i.fecha === d), sal = vivosVj(v).filter(i => i.tipo === 'hotel' && i.fecha_fin === d);
@@ -1329,7 +1336,7 @@ function htmlViajes() {
     return `<div class="vj-dia${d === HOY_S ? ' hoy' : ''}"><div class="vj-dia-cab"><span class="n">${n}</span><div><b>${esc(cap(fmt(deYmd(d), { weekday: 'long', day: 'numeric', month: 'short' })).replace('.', ''))}</b>${ciudad ? `<small>📍 ${esc(ciudad)}</small>` : ''}</div></div>
       <div class="vj-lista">${filas.map(x => x.html).join('') || '<div class="vacio">Día libre.</div>'}${duerme.length ? `<div class="vj-duermes">🛏️ Duermes en ${esc(duerme.map(h => h.titulo).join(' / '))}</div>` : ''}</div></div>`;
   };
-  return tira + portada + `<div class="vj-arriba">${cajaVuelos}${cajaPend}</div><div class="vj-dias">${dias.map((d, i) => dia(d, i + 1)).join('')}</div>`;
+  return tira + cajaPod + portada + `<div class="vj-arriba">${cajaVuelos}${cajaPend}</div><div class="vj-dias">${dias.map((d, i) => dia(d, i + 1)).join('')}</div>`;
 }
 
 // ── Vuelos: próximos vuelos con la hora de salir de casa y los billetes ─────
@@ -1476,7 +1483,11 @@ function render() {
   $('turnoHoy').innerHTML = chipsTurno(HOY);
   const c = $('contenido');
   c.className = 'v-' + vista;
+  // El panel se repinta solo (cada 5 min y al volver a la app). Un audio empezado se conserva tal cual:
+  // se quita y se vuelve a poner en el mismo paso, así sigue sonando por donde iba.
+  const oyendo = [...c.querySelectorAll('audio')].filter(a => a.currentTime > 0 && !a.ended);
   c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : htmlKanban();
+  for (const a of oyendo) [...c.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
   pintaStats(); pintaParte(); pintaEstado();
 }
 
@@ -1919,7 +1930,8 @@ async function miraVersion() {
     if (!v) return;
     if (versionVista === null) { versionVista = v; return; }
     if (v === versionVista) return;
-    const ocupado = $('hoja')?.classList.contains('on') || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+    const ocupado = $('hoja')?.classList.contains('on') || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')
+      || [...document.querySelectorAll('audio')].some(a => !a.paused && !a.ended);
     if (ocupado) return;
     await fetch(location.href, { cache: 'reload' }).catch(() => {});
     location.reload();

@@ -1224,9 +1224,12 @@ function pintaPodcast() {
   const el = $('vistaPodcast');
   if (!uid) { el.innerHTML = '<p class="vj-aviso">Inicia sesión para ver tus podcasts.</p>'; return; }
   if (podcastsError) { el.innerHTML = `<p class="vj-aviso">No se han podido leer los podcasts: ${esc(msgFallo(podcastsError))}</p>`; return; }
+  // La página se repinta al volver a la app: un audio empezado se conserva y sigue por donde iba.
+  const oyendo = [...el.querySelectorAll('audio')].filter(a => a.currentTime > 0 && !a.ended);
   el.innerHTML = `<div class="vj-cab"><h2>🎙️ Podcast</h2><a class="btn" href="/#podcasts" target="_blank" rel="noopener">Crear uno en FileHub ↗</a></div>`
     + (podcasts.length ? podcasts.map(tarjetaPodcast).join('')
       : '<div class="vj-vacio">Todavía no hay ningún episodio. Se crean en FileHub → <b>Podcasts IA</b> a partir de un tema o de un PDF.</div>');
+  for (const a of oyendo) [...el.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
 }
 
 // ── Vista Viajes ───────────────────────────────────────────────────────────
