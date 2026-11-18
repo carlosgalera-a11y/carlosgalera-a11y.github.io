@@ -686,6 +686,9 @@ let cursor = new Date(HOY);
 let mesCargado = '';
 // FileHub: eventos y tareas del mes visible, pendientes (kanban) y hechas hace poco.
 let eventos = [], tareasMes = [], pendientes = [], hechasFH = [];
+// Tareas EGS hechas en los últimos 30 días (la tabla no guarda cuándo se marcó: cuenta la fecha de la tarea,
+// o la de alta si no tiene fecha).
+let hechasEGS = [];
 // Resumen: planes del agente de ocio y empleo (los sube el PC), proyectos del Workspace y encargos a agentes.
 let planes = [], empleo = null, proyectos = [], tareasProy = [], encargos = [], horario = [];
 // Horario de la consulta, apuntado como eventos con id «horario_AAAA-MM-DD». Se enseña la semana en curso;
@@ -765,7 +768,8 @@ async function cargar() {
       const { desde, hasta } = rangoMes(cursor);
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage,para';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
-      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu] = await Promise.all([
+      const hace30 = ymd(masDias(HOY, -30));
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -788,6 +792,8 @@ async function cargar() {
         conReintento(() => sb.from('viajes').select('id,user_id,titulo,emoji,fecha_inicio,fecha_fin,notas,shared,viaje_items(id,tipo,titulo,fecha,fecha_fin,hora,lugar,importe,estado,localizador,url,notas,hecho)')
           .gte('fecha_fin', HOY_S).order('fecha_inicio')),
         conReintento(() => sb.from('vuelos').select('*').gte('fecha', ymd(masDias(HOY, -1))).order('fecha').order('hora_salida', { nullsFirst: false })),
+        conReintento(() => sb.from('tasks').select(cols + ',created_at').eq('user_id', uid).eq('completed', true).ilike('title', 'EGS%')
+          .or(`due_date.gte.${hace30},and(due_date.is.null,created_at.gte.${hace30})`).order('due_date', { ascending: false, nullsFirst: true }).limit(200)),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -795,6 +801,7 @@ async function cargar() {
       tareasMes = ta.data || [];
       pendientes = (pe.data || []).filter(t => (!dueDe(t) || dueDe(t) >= ATRAS_DESDE) && (soyMontse() || t.para !== 'montse'));
       hechasFH = he.data || [];
+      hechasEGS = (eh.data || []).filter(esEGS);
       // Si la tabla aún no existe (migración panel_tablet sin aplicar), el resto del panel funciona igual.
       panelFalta = !!pt.error;
       const filas = pt.data || [];
@@ -1432,7 +1439,7 @@ function tarjetaEGS(t) {
 }
 function htmlEgs() {
   if (!DEMO && uid && uid !== UID_CARLOS) return '<div class="vacio">Las tareas de EGS son de Carlos.</div>';
-  const ab = pendientes.filter(esEGS), hechas = hechasFH.filter(esEGS);
+  const ab = pendientes.filter(esEGS), hechas = DEMO ? hechasFH.filter(esEGS) : hechasEGS;
   const orden = (a, b) => (dueDe(a) || '9999').localeCompare(dueDe(b) || '9999') || (PRIO_ORDEN[a.priority] ?? 1) - (PRIO_ORDEN[b.priority] ?? 1);
   const enSemana = ymd(masDias(HOY, 6));
   const cols = [
@@ -1452,14 +1459,14 @@ function htmlEgs() {
       <div class="eg-kpi verde"><b>${curso}</b><small>en curso</small></div>
       <button class="eg-nueva" data-ntegs type="button">＋ Nueva tarea EGS</button>
     </div>
-    ${hechas.length ? `<div class="eg-barra" title="${hechas.length} hechas en los últimos 7 días"><i style="width:${pct}%"></i></div>` : ''}
+    ${hechas.length ? `<div class="eg-barra" title="${hechas.length} hechas en los últimos 30 días"><i style="width:${pct}%"></i></div>` : ''}
     <div class="eg-cols">${cols.map(c => `<div class="eg-col ${c.cls}"><h3>${c.t}<span class="n">${c.l.length}</span></h3>
       ${c.l.sort(orden).map(tarjetaEGS).join('') || '<div class="vacio">Nada aquí.</div>'}</div>`).join('')}</div>
     <div class="eg-abajo">
       <section class="hoy-card"><h4>🧭 En EGStrategy, asignadas a ti</h4>${asig.length ? asig.slice(0, 12).map(filaEGS).join('')
         : `<div class="vacio">${egs_ok() ? 'Nada asignado en EGStrategy.' : 'El PC aún no ha subido las tareas de EGStrategy.'}</div>`}</section>
-      <section class="hoy-card"><h4>✅ Hechas estos días</h4>${hechas.length ? hechas.slice(0, 8).map(t => `<div class="hoy-fila" data-fh="${esc(t.id)}" style="cursor:pointer"><div class="eg-hecha">${esc(textoEGS(t))}</div></div>`).join('')
-        : '<div class="vacio">Ninguna en los últimos 7 días.</div>'}</section>
+      <section class="hoy-card"><h4>✅ Hechas en los últimos 30 días · ${hechas.length}</h4>${hechas.length ? hechas.slice(0, 40).map(t => `<div class="hoy-fila" data-fh="${esc(t.id)}" style="cursor:pointer"><div class="eg-hecha">${esc(textoEGS(t))}</div></div>`).join('')
+        : '<div class="vacio">Ninguna en los últimos 30 días.</div>'}</section>
     </div>`;
 }
 const egs_ok = () => !!egs?.contenido?.ok;
@@ -1621,7 +1628,7 @@ function render() {
 const abreHoja = html => { $('hojaIn').innerHTML = html; $('hoja').classList.add('on'); };
 const cierraHoja = () => $('hoja').classList.remove('on');
 function hojaFH(id) {
-  const t = [...pendientes, ...hechasFH, ...tareasMes].find(x => String(x.id) === String(id));
+  const t = [...pendientes, ...hechasFH, ...tareasMes, ...hechasEGS].find(x => String(x.id) === String(id));
   if (!t) return;
   const est = t.completed ? 'Hecha' : t.stage === 'en-curso' ? 'En curso' : 'Por hacer';
   abreHoja(`<span class="fuente" style="--c:var(--src-fh)">FileHub</span><h3>${esc(t.title)}</h3>
@@ -1653,14 +1660,14 @@ function hojaAG(id) {
 }
 async function accionFH(id, acc) {
   if (acc === 'borrar') {
-    const t = [...pendientes, ...hechasFH, ...tareasMes].find(x => String(x.id) === String(id));
+    const t = [...pendientes, ...hechasFH, ...tareasMes, ...hechasEGS].find(x => String(x.id) === String(id));
     if (!t || !confirm(`¿Borrar «${t.title}»?`)) return;
     if (!DEMO) {
       const { error } = await conReintento(() => sb.from('tasks').delete().eq('id', id));
       if (error) return avisaFallo(error, 'borrar');
     }
     const queda = x => String(x.id) !== String(id);
-    pendientes = pendientes.filter(queda); hechasFH = hechasFH.filter(queda); tareasMes = tareasMes.filter(queda);
+    pendientes = pendientes.filter(queda); hechasFH = hechasFH.filter(queda); tareasMes = tareasMes.filter(queda); hechasEGS = hechasEGS.filter(queda);
     cierraHoja(); render(); return;
   }
   const cambios = acc === 'hecha' ? { completed: true, stage: null } : acc === 'curso' ? { completed: false, stage: 'en-curso' } : { completed: false, stage: null };
@@ -1943,7 +1950,7 @@ $('contenido').addEventListener('click', e => {
   const gb = t.closest('[data-gborra]');
   if (gb) return borraGasto(gb.dataset.gborra);
   const fo = t.closest('[data-fhok]');
-  if (fo) { const x = [...pendientes, ...hechasFH, ...tareasMes].find(y => String(y.id) === fo.dataset.fhok); return x && accionFH(x.id, x.completed ? 'hacer' : 'hecha'); }
+  if (fo) { const x = [...pendientes, ...hechasFH, ...tareasMes, ...hechasEGS].find(y => String(y.id) === fo.dataset.fhok); return x && accionFH(x.id, x.completed ? 'hacer' : 'hecha'); }
   const fb = t.closest('[data-fhborra]');
   if (fb) return accionFH(fb.dataset.fhborra, 'borrar');
   const co = t.closest('[data-cok]');
