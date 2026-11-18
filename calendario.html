@@ -518,6 +518,7 @@
         <button data-v="viajes">Viajes</button>
         <button data-v="cuaderno">Cuaderno</button>
         <button data-v="vuelos">Vuelos</button>
+        <button data-v="egs">Tareas EGS</button>
         <button data-v="podcast">Podcast</button>
       </div>
       <div class="nav">
@@ -983,7 +984,7 @@ const fmt = (d, o) => d.toLocaleDateString('es-ES', o);
 // esta página corre en otro (su <base> sigue apuntando a FileHub), así que allí se ofrece abrirla aparte.
 const MISMO_DOMINIO = new URL(document.baseURI).origin === location.origin;
 // Vistas que viven en tablet.html y aquí se incrustan: Resumen, Cuaderno (viajes) y Vuelos.
-const INCRUSTADAS = { resumen: 'resumen', cuaderno: 'viajes', vuelos: 'vuelos' };
+const INCRUSTADAS = { resumen: 'resumen', cuaderno: 'viajes', vuelos: 'vuelos', egs: 'egs' };
 const esIncrustada = () => Object.prototype.hasOwnProperty.call(INCRUSTADAS, modo);
 // La primera vez después de publicarla se abre en el Resumen; luego manda la última vista elegida.
 if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.setItem('fh_cal_resumen', '1'); modo = 'resumen'; }
@@ -1015,6 +1016,7 @@ function tituloRango() {
   if (modo === 'viajes') return 'Viajes';
   if (modo === 'cuaderno') return 'Cuaderno de viaje';
   if (modo === 'vuelos') return 'Vuelos';
+  if (modo === 'egs') return 'Tareas EGS';
   if (modo === 'podcast') return 'Podcast';
   if (modo === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (modo === 'dia') return cap(fmt(cursor, { weekday: 'long', day: 'numeric', month: 'long' }));

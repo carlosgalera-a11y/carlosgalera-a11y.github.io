@@ -23,7 +23,7 @@
     document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
     // ?solo=resumen | viajes | vuelos → una sola vista, sin cabecera ni lateral (incrustada en calendario.html).
     var solo = new URLSearchParams(location.search).get('solo');
-    if (solo === 'resumen' || solo === 'viajes' || solo === 'vuelos') document.documentElement.classList.add('solo');
+    if (solo === 'resumen' || solo === 'viajes' || solo === 'vuelos' || solo === 'egs') document.documentElement.classList.add('solo');
   })();
 </script>
 <style>
@@ -281,6 +281,33 @@
   .vu-sinbillete { font-size: 12px; color: var(--aviso-fg); background: var(--aviso-bg); border-radius: 8px; padding: 6px 9px; margin-top: 10px; }
   .vj-editar { font-size: 12.5px; font-weight: 700; color: var(--indigo); text-decoration: none; white-space: nowrap; }
   @media (max-width: 700px) { .vj-arriba { grid-template-columns: 1fr; } }
+  /* Tareas EGS: las tareas de FileHub que empiezan por «EGS ·» (las apunta Carlos, Claude o el coordinador) */
+  .eg-arriba { display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap; margin-bottom: 12px; }
+  .eg-kpi { flex: 1 1 120px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--card); min-width: 0; }
+  .eg-kpi b { display: block; font-family: 'Hanken Grotesk', sans-serif; font-size: 28px; line-height: 1.05; }
+  .eg-kpi small { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .eg-kpi.rojo b { color: var(--prio-high); } .eg-kpi.ambar b { color: var(--prio-medium); } .eg-kpi.verde b { color: var(--src-egs); }
+  .eg-nueva { flex: 1 1 170px; border: 1.5px dashed var(--src-egs); color: var(--src-egs); background: var(--src-egs-bg); border-radius: 12px; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; min-height: 64px; }
+  .eg-barra { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin: -4px 0 14px; }
+  .eg-barra i { display: block; height: 100%; background: var(--src-egs); border-radius: 99px; }
+  .eg-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; align-items: start; }
+  .eg-col { background: var(--col-bg); border-radius: 12px; padding: 10px; min-width: 0; }
+  .eg-col h3 { margin: 0 0 8px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .eg-col h3 .n { margin-left: auto; font-size: 12px; color: var(--muted); background: var(--card); border-radius: 999px; padding: 1px 8px; }
+  .eg-col.atr h3 { color: var(--prio-high); }
+  .eg-t { display: flex; gap: 8px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--c, var(--prio-low)); border-radius: 10px; padding: 8px 8px 8px 10px; margin-bottom: 7px; cursor: pointer; }
+  .eg-t .tx { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.3; word-break: break-word; }
+  .eg-t .tema { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--src-egs); background: var(--src-egs-bg); border-radius: 6px; padding: 1px 6px; margin-bottom: 3px; }
+  .eg-t .m { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+  .eg-t .m .venc { color: var(--atr-fecha); font-weight: 700; }
+  .eg-t .m .curso { color: var(--indigo); font-weight: 700; }
+  .eg-ok { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--src-egs); background: var(--card); color: var(--src-egs); font-size: 16px; font-weight: 800; cursor: pointer; }
+  .eg-ok:hover { background: var(--src-egs-bg); }
+  .eg-abajo { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 10px; margin-top: 12px; }
+  .eg-abajo .hoy-card h4 { margin: 0 0 4px; font-size: 13px; }
+  .eg-hecha { text-decoration: line-through; color: var(--muted); }
+  @media (max-width: 1000px) { .eg-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 700px) { .eg-cols, .eg-abajo { grid-template-columns: minmax(0, 1fr); } }
 
   /* ── Incrustada en calendario.html (?solo=resumen): sin cabecera ni lateral ── */
   html.solo .top, html.solo .lateral, html.solo .vista-cab { display: none; }
@@ -493,7 +520,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -643,7 +670,7 @@ function chipsTurno(d) {
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
 const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
-const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
+const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
 let vista = SOLO_RESUMEN ? SOLO_VISTA : !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
 if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
@@ -1380,6 +1407,79 @@ function htmlVuelos() {
     </div>`;
   }).join('')}</div>`;
 }
+// ── Tareas EGS: las tareas de FileHub que empiezan por «EGS ·» (las apunta Carlos aquí, Claude o el
+// coordinador de Hermes por Telegram) y, debajo, lo que EGStrategy te tiene asignado (lo sube el PC).
+const esEGS = t => /^EGS\s*·/i.test(t.title || '') || String(t.id || '').startsWith('task_egs');
+const textoEGS = t => String(t.title || '').replace(/^EGS\s*·\s*/i, '');
+// «Marcapasos: revisar el vídeo 3» → tema «Marcapasos» y el resto como texto.
+function temaEGS(txt) {
+  const m = /^([^:·]{2,32}):\s+(.+)$/s.exec(txt);
+  return m ? { tema: m[1].trim(), txt: m[2] } : { tema: '', txt };
+}
+const PRIO_ORDEN = { high: 0, medium: 1, low: 2 };
+function tarjetaEGS(t) {
+  const { tema, txt } = temaEGS(textoEGS(t)), f = dueDe(t), venc = f && f < HOY_S;
+  const cuando = !f ? 'sin fecha' : f === HOY_S ? 'hoy' : venc ? `venció ${fechaCorta(f)} · hace ${diasEntre(f, HOY_S)} d` : fechaCorta(f);
+  return `<div class="eg-t" data-fh="${esc(t.id)}" style="--c:${PRIO[t.priority] || PRIO.low}">
+    <div class="tx">${tema ? `<span class="tema">${esc(tema)}</span><br>` : ''}${esc(txt)}
+      <div class="m"><span class="${venc ? 'venc' : ''}">${esc(cuando)}</span>${t.stage === 'en-curso' ? '<span class="curso">▶ en curso</span>' : ''}
+      <span>prioridad ${({ high: 'alta', medium: 'media', low: 'baja' })[t.priority] || 'media'}</span></div></div>
+    <button class="eg-ok" data-fhok="${esc(t.id)}" title="Marcar como hecha" aria-label="Marcar como hecha">✓</button></div>`;
+}
+function htmlEgs() {
+  if (!DEMO && uid && uid !== UID_CARLOS) return '<div class="vacio">Las tareas de EGS son de Carlos.</div>';
+  const ab = pendientes.filter(esEGS), hechas = hechasFH.filter(esEGS);
+  const orden = (a, b) => (dueDe(a) || '9999').localeCompare(dueDe(b) || '9999') || (PRIO_ORDEN[a.priority] ?? 1) - (PRIO_ORDEN[b.priority] ?? 1);
+  const enSemana = ymd(masDias(HOY, 6));
+  const cols = [
+    { cls: 'atr', t: '🔴 Vencidas', l: ab.filter(t => dueDe(t) && dueDe(t) < HOY_S) },
+    { cls: '', t: '📅 Hoy y esta semana', l: ab.filter(t => dueDe(t) && dueDe(t) >= HOY_S && dueDe(t) <= enSemana) },
+    { cls: '', t: '🗓️ Más adelante', l: ab.filter(t => dueDe(t) && dueDe(t) > enSemana) },
+    { cls: '', t: '⏳ Sin fecha', l: ab.filter(t => !dueDe(t)) },
+  ];
+  const venc = cols[0].l.length, alta = ab.filter(t => t.priority === 'high').length, curso = ab.filter(t => t.stage === 'en-curso').length;
+  const pct = ab.length + hechas.length ? Math.round(hechas.length / (ab.length + hechas.length) * 100) : 0;
+  const asig = egsTareas().slice().sort((a, b) => (a.vence || '9999').localeCompare(b.vence || '9999'));
+  const filaEGS = t => `<div class="hoy-fila" data-egs="${esc(t.id)}" style="cursor:pointer"><div>${esc(t.texto)}<small>${esc(t.proyecto)} · ${esc(t.estadoNombre)}${t.vence ? ' · ' + (t.vence < HOY_S ? 'venció ' : '') + fechaCorta(t.vence) : ''}</small></div></div>`;
+  return `<div class="eg-arriba">
+      <div class="eg-kpi"><b>${ab.length}</b><small>abiertas</small></div>
+      <div class="eg-kpi rojo"><b>${venc}</b><small>vencidas</small></div>
+      <div class="eg-kpi ambar"><b>${alta}</b><small>prioridad alta</small></div>
+      <div class="eg-kpi verde"><b>${curso}</b><small>en curso</small></div>
+      <button class="eg-nueva" data-ntegs type="button">＋ Nueva tarea EGS</button>
+    </div>
+    ${hechas.length ? `<div class="eg-barra" title="${hechas.length} hechas en los últimos 7 días"><i style="width:${pct}%"></i></div>` : ''}
+    <div class="eg-cols">${cols.map(c => `<div class="eg-col ${c.cls}"><h3>${c.t}<span class="n">${c.l.length}</span></h3>
+      ${c.l.sort(orden).map(tarjetaEGS).join('') || '<div class="vacio">Nada aquí.</div>'}</div>`).join('')}</div>
+    <div class="eg-abajo">
+      <section class="hoy-card"><h4>🧭 En EGStrategy, asignadas a ti</h4>${asig.length ? asig.slice(0, 12).map(filaEGS).join('')
+        : `<div class="vacio">${egs_ok() ? 'Nada asignado en EGStrategy.' : 'El PC aún no ha subido las tareas de EGStrategy.'}</div>`}</section>
+      <section class="hoy-card"><h4>✅ Hechas estos días</h4>${hechas.length ? hechas.slice(0, 8).map(t => `<div class="hoy-fila" data-fh="${esc(t.id)}" style="cursor:pointer"><div class="eg-hecha">${esc(textoEGS(t))}</div></div>`).join('')
+        : '<div class="vacio">Ninguna en los últimos 7 días.</div>'}</section>
+    </div>`;
+}
+const egs_ok = () => !!egs?.contenido?.ok;
+function formTareaEGS() {
+  abreHoja(`<span class="fuente" style="--c:var(--src-egs)">EGS</span><h3>Nueva tarea EGS</h3>
+    <div class="form">
+      <label>Qué hay que hacer<input name="title" maxlength="300" placeholder="Curso: lo que haya que hacer (lo de antes de «:» sale como tema)"></label>
+      <div class="fila"><label>Para cuándo<input name="fecha" type="date"></label></div>
+      <label>Prioridad${opc('priority', [['high', 'Alta'], ['medium', 'Media'], ['low', 'Baja']], 'medium')}</label>
+    </div>
+    <div class="acc"><button class="btn prim" data-guardar="tareaegs">Guardar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
+  $('hojaIn').querySelector('[name="title"]').focus();
+}
+async function guardaTareaEGS() {
+  const txt = (campo('title') || '').replace(/^EGS\s*·\s*/i, '');
+  if (!txt) { alert('Escribe qué hay que hacer.'); return; }
+  const fila = { id: `task_egs_${Date.now()}`, user_id: uid, title: 'EGS · ' + txt, completed: false, category: 'work',
+    priority: elegido('priority') || 'medium', due_date: fechaValida(campo('fecha')), shared: false };
+  if (DEMO) { pendientes.push({ ...fila, user_id: UID_CARLOS, stage: null, para: null }); cierraHoja(); render(); return; }
+  const { error } = await conReintento(() => sb.from('tasks').insert(fila));
+  if (error) return avisaFallo(error, 'guardar');
+  cierraHoja();
+  await cargar();
+}
 async function abreBillete(id, j, modo) {
   const f = vuelos.find(x => x.id === id), b = f?.billetes?.[j];
   if (!b) return;
@@ -1402,6 +1502,7 @@ async function marcaPendViaje(id) {
 function tituloVista() {
   if (vista === 'viajes') return 'Viajes';
   if (vista === 'vuelos') return 'Vuelos';
+  if (vista === 'egs') return 'Tareas EGS';
   if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (vista === 'semana' || (vista === 'casa' && casaModo === 'semana')) {
@@ -1492,7 +1593,7 @@ function pintaEstado() {
 function render() {
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
   $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
@@ -1507,7 +1608,7 @@ function render() {
   // El panel se repinta solo (cada 5 min y al volver a la app). Un audio empezado se conserva tal cual:
   // se quita y se vuelve a poner en el mismo paso, así sigue sonando por donde iba.
   const oyendo = [...c.querySelectorAll('audio')].filter(a => a.currentTime > 0 && !a.ended);
-  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : htmlKanban();
+  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
   for (const a of oyendo) [...c.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
   pintaStats(); pintaParte(); pintaEstado();
 }
@@ -1791,7 +1892,7 @@ $('hoja').addEventListener('click', e => {
   const s = e.target.closest('[data-guardar]');
   if (s) {
     const que = s.dataset.guardar;
-    return que === 'gasto' ? guardaGasto() : que === 'compra' ? guardaCompra() : que === 'tareafh' ? guardaTareaFH() : que === 'tareacasa' ? guardaTareaCasa() : guardaRutina(s.dataset.id);
+    return que === 'gasto' ? guardaGasto() : que === 'compra' ? guardaCompra() : que === 'tareafh' ? guardaTareaFH() : que === 'tareaegs' ? guardaTareaEGS() : que === 'tareacasa' ? guardaTareaCasa() : guardaRutina(s.dataset.id);
   }
 });
 
@@ -1832,6 +1933,7 @@ $('contenido').addEventListener('click', e => {
   if (t.closest('#encargarBtn')) return formEncargo();
   if (t.closest('#nuevaCompra')) return formCompra();
   if (t.closest('[data-ntfh]')) return formTareaFH();
+  if (t.closest('[data-ntegs]')) return formTareaEGS();
   if (t.closest('[data-ntcasa]')) return formTareaCasa();
   // Botones ✓ y 🗑 de las filas: van antes que tocar la fila, que abre la ficha.
   const gb = t.closest('[data-gborra]');
@@ -2036,8 +2138,14 @@ function datosDemo() {
     ta('f5', 'Revisar seguro hogar', 6, { category: 'finance', priority: 'low' }),
     ta('f6', 'Ordenar fotos del verano', null),
     ta('f7', 'Leer artículo pendiente', null),
+    ta('g1', 'EGS · Curso A: revisar formato del módulo 2', -3, { category: 'work', priority: 'high' }),
+    ta('g2', 'EGS · Curso B: grabar el vídeo de introducción', 0, { category: 'work', stage: 'en-curso' }),
+    ta('g3', 'EGS · Preparar la reunión de seguimiento', 2, { category: 'work', priority: 'high' }),
+    ta('g4', 'EGS · Curso C: actualizar el temario', 12, { category: 'work' }),
+    ta('g5', 'EGS · Revisar facturas de herramientas', null, { category: 'work', priority: 'low' }),
   ];
-  hechasFH = [ta('f8', 'Pagar recibo comunidad', -1, { completed: true, category: 'finance' })];
+  hechasFH = [ta('f8', 'Pagar recibo comunidad', -1, { completed: true, category: 'finance' }),
+    ta('g6', 'EGS · Curso A: subir la versión final', -1, { completed: true, category: 'work' })];
   tareasMes = [...pendientes, ...hechasFH];
   const ahora = new Date().toISOString();
   egs = { updated_at: ahora, contenido: { ok: true, tareas: [
