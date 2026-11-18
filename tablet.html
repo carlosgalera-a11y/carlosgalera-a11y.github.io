@@ -591,6 +591,8 @@ const T = {
   URG_T: { label: 'URGENCIAS 13–20', bg: 'var(--t-urg-bg)', fg: 'var(--t-urg-fg)' },
   AG_M:  { label: 'AGENDA 8–15',     bg: 'var(--t-agm-bg)', fg: 'var(--t-agm-fg)' },
   AG_T:  { label: 'AGENDA 13–20',    bg: 'var(--t-agt-bg)', fg: 'var(--t-agt-fg)' },
+  URG_M: { label: 'URGENCIAS 8–15',  bg: 'var(--t-urg-bg)', fg: 'var(--t-urg-fg)' },
+  DOBLE: { label: 'MAÑANA Y TARDE 8–20', bg: 'linear-gradient(90deg, var(--t-agm-bg) 50%, var(--t-agt-bg) 50%)', fg: 'var(--t-agm-fg)' },
 };
 const EGSTEK = { label: '💻 EGS TEK 8:30–12', bg: 'var(--t-egs-bg)', fg: 'var(--t-egs-fg)' };
 function isoWeek(d) {
@@ -602,8 +604,23 @@ function isoWeek(d) {
 }
 // El botón «Viernes» del calendario lo guarda en este navegador; aquí solo se lee.
 const vierPar = localStorage.getItem('fh_cal_viernes_even') || 'M';
+// Cambios apuntados: un evento «horario_AAAA-MM-DD» (la hoja semanal del centro o un aviso de la dirección)
+// manda sobre la regla fija. undefined = ese día no hay nada apuntado; null = ese día no vas al centro.
+const NO_VA_AL_CENTRO = /formaci|festiv|vacaci|no vas|permiso/i;
+function turnoApuntado(d, lista) {
+  const ev = (lista || []).find(e => e.id === 'horario_' + ymd(d));
+  if (!ev) return undefined;
+  if (NO_VA_AL_CENTRO.test(ev.title || '')) return null;
+  if ((ev.start_date || '').length < 16) return undefined;
+  const ini = Number(ev.start_date.slice(11, 13)), fin = Number((ev.end_date || '').slice(11, 13)) || ini;
+  if (ini < 12 && fin >= 18) return T.DOBLE;
+  if (ini >= 12) return /murg|urgenc/i.test(ev.title || '') ? T.URG_T : T.AG_T;
+  return /^\W*\s*(urgencias|murg)/i.test(ev.title || '') ? T.URG_M : T.AG_M;
+}
 function turnoDe(d) {
   if (!DEMO && uid && uid !== UID_CARLOS) return null;
+  const a = turnoApuntado(d, horario.concat(eventos));
+  if (a !== undefined) return a;
   const dow = d.getDay();
   if (dow === 1) return T.URG_T;
   if (dow === 2 || dow === 4) return T.AG_M;
@@ -941,8 +958,12 @@ function htmlHoy() {
   const diaHorario = e => {
     const d = (e.start_date || '').slice(0, 10), ini = (e.start_date || '').slice(11, 13), fin = (e.end_date || '').slice(11, 13);
     const t = /urgenc/i.test(e.title) ? 'urg' : Number(ini) < 13 ? 'agm' : 'agt';
+    // Formación, festivo o permiso: ese día no se va al centro, aunque el evento tenga horas.
+    const hora = NO_VA_AL_CENTRO.test(e.title || '')
+      ? '<span class="h" style="background:var(--line);color:var(--ink)">No vas</span>'
+      : `<span class="h" style="background:var(--t-${t}-bg);color:var(--t-${t}-fg)">${esc(String(Number(ini)))}–${esc(String(Number(fin)))} h</span>`;
     return `<div class="horario-dia${d === HOY_S ? ' es-hoy' : d < HOY_S ? ' pasado' : ''}"><b>${esc(fechaCorta(d))}</b>
-      <span class="h" style="background:var(--t-${t}-bg);color:var(--t-${t}-fg)">${esc(String(Number(ini)))}–${esc(String(Number(fin)))} h</span>
+      ${hora}
       <span class="q">${esc(String(e.title).replace(/^🩺\s*/, ''))}</span></div>`;
   };
   const tarjetaHorario = horario.length ? `<section class="hoy-card horario"><div class="hoy-cab"><h4>🩺 Mi horario · semana del ${esc(fechaCorta((horario[0].start_date || '').slice(0, 10)))}</h4></div><div class="horario-dias">${horario.map(diaHorario).join('')}</div></section>` : '';
@@ -2062,11 +2083,11 @@ function datosDemo() {
   encargos = [{ id: 'n1', agente: 'casa', titulo: 'Buscar fontanero', estado: 'pendiente' }];
   const lh = lunesHorario(), dh = n => ymd(masDias(lh, n));
   horario = [
-    { id: 'horario_a', title: '🩺 Urgencias (MURG)', start_date: dh(0) + 'T13:00', end_date: dh(0) + 'T20:00' },
-    { id: 'horario_b', title: '🩺 Agenda: 1/2 M18 + 1/2 M11', start_date: dh(1) + 'T08:00', end_date: dh(1) + 'T15:00' },
-    { id: 'horario_c', title: '🩺 Agenda M11', start_date: dh(2) + 'T13:00', end_date: dh(2) + 'T20:00' },
-    { id: 'horario_d', title: '🩺 Agenda M11', start_date: dh(3) + 'T08:00', end_date: dh(3) + 'T15:00' },
-    { id: 'horario_e', title: '🩺 Agenda D M11', start_date: dh(4) + 'T08:00', end_date: dh(4) + 'T15:00' },
+    { id: 'horario_' + dh(0), title: '🩺 Urgencias (MURG)', start_date: dh(0) + 'T13:00', end_date: dh(0) + 'T20:00' },
+    { id: 'horario_' + dh(1), title: '🩺 Agenda: 1/2 M18 + 1/2 M11', start_date: dh(1) + 'T08:00', end_date: dh(1) + 'T15:00' },
+    { id: 'horario_' + dh(2), title: '🩺 Agenda M11', start_date: dh(2) + 'T13:00', end_date: dh(2) + 'T20:00' },
+    { id: 'horario_' + dh(3), title: '🩺 Agenda mañana + doblas por la tarde', start_date: dh(3) + 'T08:00', end_date: dh(3) + 'T20:00' },
+    { id: 'horario_' + dh(4), title: '📚 Formación · no vas al centro', start_date: dh(4) + 'T08:00', end_date: dh(4) + 'T15:00' },
   ];
   gastos = [
     gasto('g1', 'Compra súper', 64.3, 'comida', 'montse', 'ambos', 0),

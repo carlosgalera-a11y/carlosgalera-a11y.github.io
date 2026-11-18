@@ -775,6 +775,8 @@ const T = {
   URG_T: { label: 'URGENCIAS 13–20', bg: 'var(--t-urg-bg)', fg: 'var(--t-urg-fg)' },
   AG_M:  { label: 'AGENDA 8–15',     bg: 'var(--t-agm-bg)', fg: 'var(--t-agm-fg)' },
   AG_T:  { label: 'AGENDA 13–20',    bg: 'var(--t-agt-bg)', fg: 'var(--t-agt-fg)' },
+  URG_M: { label: 'URGENCIAS 8–15',  bg: 'var(--t-urg-bg)', fg: 'var(--t-urg-fg)' },
+  DOBLE: { label: 'MAÑANA Y TARDE 8–20', bg: 'linear-gradient(90deg, var(--t-agm-bg) 50%, var(--t-agt-bg) 50%)', fg: 'var(--t-agm-fg)' },
 };
 function isoWeek(d) {
   const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -785,8 +787,25 @@ function isoWeek(d) {
 }
 // 'M' = en semanas ISO PARES el viernes es de mañana; 'T' = de tarde.
 let vierPar = localStorage.getItem('fh_cal_viernes_even') || 'M';
+// Cambios apuntados: un evento «horario_AAAA-MM-DD» (la hoja semanal del centro o un aviso de la dirección)
+// manda sobre la regla fija. undefined = ese día no hay nada apuntado; null = ese día no vas al centro.
+const NO_VA_AL_CENTRO = /formaci|festiv|vacaci|no vas|permiso/i;
+function turnoApuntado(d, lista) {
+  const ev = (lista || []).find(e => e.id === 'horario_' + ymd(d));
+  if (!ev) return undefined;
+  if (NO_VA_AL_CENTRO.test(ev.title || '')) return null;
+  if ((ev.start_date || '').length < 16) return undefined;
+  const ini = Number(ev.start_date.slice(11, 13)), fin = Number((ev.end_date || '').slice(11, 13)) || ini;
+  if (ini < 12 && fin >= 18) return T.DOBLE;
+  if (ini >= 12) return /murg|urgenc/i.test(ev.title || '') ? T.URG_T : T.AG_T;
+  return /^\W*\s*(urgencias|murg)/i.test(ev.title || '') ? T.URG_M : T.AG_M;
+}
 // Los turnos del centro son de Carlos: con sesión de otra persona no se pintan.
-function turnoDe(d) { return (uid && uid !== UID_CARLOS) ? null : turnoDeCarlos(d); }
+function turnoDe(d, lista = eventos) {
+  if (uid && uid !== UID_CARLOS) return null;
+  const a = turnoApuntado(d, lista);
+  return a !== undefined ? a : turnoDeCarlos(d);
+}
 function turnoDeCarlos(d) {
   const dow = d.getDay(); // 0=D 1=L...
   if (dow === 1) return T.URG_T;
@@ -819,7 +838,7 @@ function pintaViernesBtn() {
   document.querySelectorAll('.chip-turno').forEach(c => c.style.display = conTurnos ? '' : 'none');
   $('viernesBtn').style.display = conTurnos ? '' : 'none';
   if (!conTurnos) return;
-  const t = turnoDe(proximoViernes());
+  const t = turnoDeCarlos(proximoViernes());
   $('viernesBtn').textContent = `🔄 Este viernes: ${t === T.AG_M ? 'mañana 8–15' : 'tarde 13–20'}`;
 }
 $('viernesBtn').onclick = () => {
@@ -1062,7 +1081,7 @@ async function leerParte() {
   const manana = diasDesdeHoy(1);
   const sinMontse = q => uid === UID_MONTSE ? q : q.is('para', null);
   const [ev, ta, atr] = await Promise.all([
-    sinMontse(sb.from('calendar_events').select('title,start_date,end_date').or(miasOComunes))
+    sinMontse(sb.from('calendar_events').select('id,title,start_date,end_date').or(miasOComunes))
       .gte('start_date', diasDesdeHoy(-60)).lt('start_date', manana).order('start_date'),
     sinMontse(sb.from('tasks').select('title,priority').or(miasOComunes))
       .eq('completed', false).gte('due_date', HOY_S).lt('due_date', manana),
@@ -1095,10 +1114,11 @@ async function leerParte() {
 
   const tas = (ta.data || []).slice().sort((a, b) => Number(b.priority === 'high') - Number(a.priority === 'high'));
   const festivo = evs.some(e => /\bfestivo\b/i.test(e.titulo));
-  return { evs, tas, atrasadas: atr.count || 0, turno: festivo ? null : turnoVisible(HOY) };
+  return { evs, tas, atrasadas: atr.count || 0, turno: festivo ? null : turnoVisible(HOY, ev.data) };
 }
 
-const VOZ_TURNO = t => t === T.URG_T ? 'urgencias de 13 a 20' : t === T.AG_M ? 'agenda de 8 a 15' : 'agenda de 13 a 20';
+const VOZ_TURNO = t => t === T.URG_T ? 'urgencias de 13 a 20' : t === T.URG_M ? 'urgencias de 8 a 15'
+  : t === T.DOBLE ? 'mañana y tarde en el centro, de 8 a 20' : t === T.AG_M ? 'agenda de 8 a 15' : 'agenda de 13 a 20';
 function textoVozParte({ evs, tas, atrasadas, turno }, fecha) {
   const h = new Date().getHours();
   const saludo = h < 14 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
@@ -1323,9 +1343,9 @@ function estadoViaje(v) {
 // En el calendario
 const viajesDelDia = f => viajes.filter(v => pasaFiltro(v) && v.fecha_inicio <= f && f <= v.fecha_fin);
 // Los turnos del centro son de Carlos: en los días de un viaje suyo no se pintan.
-function turnoVisible(d) {
+function turnoVisible(d, lista = eventos) {
   const f = ymd(d);
-  return viajes.some(v => v.user_id === uid && v.fecha_inicio <= f && f <= v.fecha_fin) ? null : turnoDe(d);
+  return viajes.some(v => v.user_id === uid && v.fecha_inicio <= f && f <= v.fecha_fin) ? null : turnoDe(d, lista);
 }
 const chipsViajeMes = f => viajesDelDia(f).map(v =>
   `<span class="ev viaje" data-viaje="${esc(v.id)}" title="${esc(v.titulo)}: toca para abrir el viaje"><span class="t">${esc(v.emoji || '✈️')} ${esc(v.titulo)}</span></span>`).join('');
