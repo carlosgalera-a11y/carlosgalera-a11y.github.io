@@ -87,14 +87,15 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.4;
     overflow: hidden; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
-    /* Un enlace o código muy largo (p. ej. una URL de Google en el parte) se parte en líneas: si no, ensancha
-       la página y la tablet la encoge entera para que quepa. */
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
   h1, h2, h3, h4, .reloj b, .num, .stat .n { font-family: 'Hanken Grotesk', 'Inter', sans-serif; }
   button { font-family: inherit; color: inherit; }
   .app {
     height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px;
+    /* Columna del ancho de la pantalla: sin esto crece hasta el contenido más ancho (las pestañas, un enlace
+       largo) y el navegador del móvil o la tablet encoge toda la página para que quepa. */
+    grid-template-columns: minmax(0, 1fr);
     padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
   }
 
@@ -104,11 +105,14 @@
   .reloj b { font-size: 36px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
   .reloj span { color: var(--muted); font-weight: 600; font-size: 15px; white-space: nowrap; }
   .turnos-hoy { display: flex; gap: 6px; flex-wrap: wrap; }
-  .top .der { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .seg { display: inline-flex; background: var(--seg-bg); border-radius: 12px; padding: 3px; gap: 2px; }
+  .top .der { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  /* Pestañas en una sola fila: si no caben (móvil, o la tablet con muchas), se desliza de lado. */
+  .seg { display: inline-flex; background: var(--seg-bg); border-radius: 12px; padding: 3px; gap: 2px; max-width: 100%; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .seg::-webkit-scrollbar { display: none; }
+  @media (max-width: 700px) { .top .der { margin-left: 0; width: 100%; } .seg { width: 100%; } .reloj b { font-size: 30px; } }
   .seg button {
     border: none; background: transparent; color: var(--muted); font-weight: 600; font-size: 14px;
-    padding: 8px 14px; border-radius: 9px; cursor: pointer;
+    padding: 8px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap; flex: none;
   }
   .seg button.on { background: var(--seg-on); color: var(--ink); box-shadow: 0 1px 3px rgba(15,23,42,.12); }
   .btn {
@@ -394,7 +398,10 @@
   .parte-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); font-weight: 600; }
   .parte-nav button { border: none; background: var(--seg-bg); border-radius: 8px; width: 30px; height: 30px; font-size: 16px; cursor: pointer; }
   .parte-nav button:disabled { opacity: .35; }
-  .md { overflow: auto; flex: 1; min-height: 0; min-width: 0; font-size: 14px; line-height: 1.5; }
+  /* Un enlace o código muy largo (p. ej. una URL de Google en el parte) se parte en líneas: si no, ensancha la
+     página y la tablet la encoge entera. Solo en el texto libre: en botones y pestañas partiría letra a letra. */
+  .md { overflow: auto; flex: 1; min-height: 0; min-width: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+  .pie, #estado { overflow-wrap: anywhere; min-width: 0; }
   .md a, .md code { word-break: break-all; }
   .md p { margin-bottom: 8px; }
   .md ul { margin: 0 0 8px 18px; }
@@ -505,6 +512,12 @@
     .cuerpo { grid-template-columns: 1fr; }
     .vista { height: 72vh; }
     .parte { max-height: 70vh; }
+  }
+  /* En el móvil, Tareas EGS, Viajes y Vuelos ocupan su alto natural y se desplaza la página entera,
+     sin una caja con su propio desplazamiento dentro. */
+  @media (max-width: 700px) {
+    .vista:has(> #contenido.v-egs), .vista:has(> #contenido.v-viajes), .vista:has(> #contenido.v-vuelos) { height: auto; }
+    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos { overflow: visible; }
   }
   @media (max-width: 700px) {
     .kanban { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
@@ -1603,6 +1616,8 @@ function pintaEstado() {
 
 function render() {
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
+  // La pestaña activa, a la vista aunque la fila se deslice (móvil).
+  document.querySelector('#segVista button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
   $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
@@ -2073,6 +2088,16 @@ async function miraVersion() {
 }
 miraVersion();
 setInterval(miraVersion, 5 * 60000);
+// Recarga a distancia: una orden «recargar» por el canal fh-panel-control (la manda Claude tras publicar)
+// recarga el panel al momento, sin esperar la vuelta de 5 min. Si hay una ficha abierta o estás escribiendo,
+// lo vuelve a intentar a los 30 s. No lleva datos: solo recarga.
+async function recargaCuandoPuedas() {
+  const ocupado = $('hoja')?.classList.contains('on') || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+  if (ocupado) { setTimeout(recargaCuandoPuedas, 30000); return; }
+  await fetch(location.href, { cache: 'reload' }).catch(() => {});
+  location.reload();
+}
+sb.channel('fh-panel-control').on('broadcast', { event: 'recargar' }, () => recargaCuandoPuedas()).subscribe();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') miraVersion(); });
 
 // ── Sesión (la misma que calendario.html) ──────────────────────────────────
