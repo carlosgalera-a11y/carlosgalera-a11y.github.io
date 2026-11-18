@@ -2444,6 +2444,17 @@ $('lbtn').onclick = async () => {
   if (error) { alert('No se pudo entrar: ' + error.message); return; }
   location.reload();
 };
+// Al instante: si cambia una tarea o un evento (desde Telegram, WhatsApp, la app u otra pantalla), se vuelve
+// a cargar a los 2 s. Las RLS deciden qué cambios llegan a esta sesión.
+let canalCambios = null, esperaCambios = null;
+function escuchaCambios(alCambiar) {
+  if (canalCambios || !uid) return;
+  const aviso = () => { clearTimeout(esperaCambios); esperaCambios = setTimeout(() => { if (document.visibilityState === 'visible') alCambiar(); }, 2000); };
+  canalCambios = sb.channel('fh-cambios-' + location.pathname)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, aviso)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, aviso)
+    .subscribe();
+}
 function aplicaSesion(session) {
   const nuevo = session?.user?.id || null;
   if (nuevo === uid) return;
@@ -2453,6 +2464,7 @@ function aplicaSesion(session) {
   pintaViernesBtn();
   render();
   revisionSemanal();
+  escuchaCambios(recargar);
 }
 // Al volver de Google, SIGNED_IN llega en cuanto el SDK procesa el hash.
 sb.auth.onAuthStateChange((_ev, session) => {
@@ -2467,6 +2479,7 @@ sb.auth.onAuthStateChange((_ev, session) => {
   pintaViernesBtn();
   await render();
   revisionSemanal();
+  escuchaCambios(recargar);
 })();
 </script>
 
