@@ -306,33 +306,6 @@
   body.en-podcast #parteCard, body.en-podcast #ultimasCard, body.en-podcast #notasCard, body.en-podcast .leyenda,
   body.en-podcast #prev, body.en-podcast #next, body.en-podcast #hoyBtn { display: none !important; }
   #vistaPodcast { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-  /* ── Vista Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado) ── */
-  body.en-proyectos #parteCard, body.en-proyectos #ultimasCard, body.en-proyectos #notasCard, body.en-proyectos .leyenda,
-  body.en-proyectos #prev, body.en-proyectos #next, body.en-proyectos #hoyBtn { display: none !important; }
-  #vistaProyectos { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-  .pr-subir { background: var(--card); border: 1.5px dashed var(--line); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-  .pr-subir.encima { border-color: var(--indigo); background: color-mix(in srgb, var(--indigo) 8%, var(--card)); }
-  .pr-subir .t { font-size: 14px; font-weight: 700; }
-  .pr-subir .fila { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .pr-subir input[type=text], .pr-subir textarea { flex: 1 1 200px; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-family: inherit; background: var(--input-bg); color: var(--ink); }
-  .pr-subir textarea { flex: none; width: 100%; resize: vertical; }
-  .pr-subir .ayuda { font-size: 12px; color: var(--muted); }
-  #prMsg { font-size: 12.5px; color: var(--muted); }
-  #prMsg:empty { display: none; }
-  #prMsg.mal { color: var(--red); }
-  .pr-grupo { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-  .pr-grupo > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; }
-  .pr-grupo > summary::-webkit-details-marker { display: none; }
-  .pr-grupo > summary .n { font-family: 'Hanken Grotesk', 'Inter', sans-serif; font-size: 16.5px; font-weight: 800; flex: 1; min-width: 0; overflow-wrap: anywhere; }
-  .pr-grupo > summary .c { font-size: 12px; color: var(--muted); }
-  .pr-doc { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
-  .pr-doc .ico { flex: none; width: 38px; height: 38px; border-radius: 10px; background: var(--ev-trip-bg); display: flex; align-items: center; justify-content: center; font-size: 20px; }
-  .pr-doc .txt { flex: 1; min-width: 0; }
-  .pr-doc .tt { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
-  .pr-doc .sub { font-size: 12px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
-  .pr-doc .notas { font-size: 12.5px; color: var(--ink); margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .pr-doc .ops { display: flex; gap: 6px; flex: none; }
-  @media (max-width: 520px) { .pr-doc { flex-wrap: wrap; } .pr-doc .ops { width: 100%; justify-content: flex-end; } }
   .pod-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
   .pod-card.prox { border-color: var(--ev-trip-fg); background: linear-gradient(135deg, var(--ev-trip-bg), var(--card) 70%); }
   .pod-cab { display: flex; align-items: flex-start; gap: 12px; }
@@ -542,12 +515,13 @@
         <button data-v="tres">3 días</button>
         <button data-v="dia">Día</button>
         <button data-v="resumen">Resumen</button>
+        <button data-v="cap">Pendientes CAP</button>
+        <button data-v="proyectos">Proyectos</button>
         <button data-v="viajes">Viajes</button>
         <button data-v="cuaderno">Cuaderno</button>
         <button data-v="vuelos">Vuelos</button>
         <button data-v="egs">Tareas EGS</button>
         <button data-v="podcast">Podcast</button>
-        <button data-v="proyectos">Proyectos</button>
       </div>
       <div class="nav">
         <button id="prev" class="btn icono" title="Anterior">‹</button>
@@ -608,7 +582,6 @@
   <div id="vistaResumen" style="display:none"></div>
   <div id="vistaViajes" style="display:none"></div>
   <div id="vistaPodcast" style="display:none"></div>
-  <div id="vistaProyectos" style="display:none"></div>
 
   <div id="vistaMes">
     <!-- Un ÚNICO grid: los días de la semana (L–D) son las 7 primeras celdas,
@@ -1013,14 +986,15 @@ const fmt = (d, o) => d.toLocaleDateString('es-ES', o);
 // esta página corre en otro (su <base> sigue apuntando a FileHub), así que allí se ofrece abrirla aparte.
 const MISMO_DOMINIO = new URL(document.baseURI).origin === location.origin;
 // Vistas que viven en tablet.html y aquí se incrustan: Resumen, Cuaderno (viajes) y Vuelos.
-const INCRUSTADAS = { resumen: 'resumen', cuaderno: 'viajes', vuelos: 'vuelos', egs: 'egs' };
+// Pendientes CAP y Proyectos también: así se ven igual aquí, en la tablet y en el móvil.
+const INCRUSTADAS = { resumen: 'resumen', cuaderno: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos' };
 const esIncrustada = () => Object.prototype.hasOwnProperty.call(INCRUSTADAS, modo);
 // La primera vez después de publicarla se abre en el Resumen; luego manda la última vista elegida.
 if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.setItem('fh_cal_resumen', '1'); modo = 'resumen'; }
 // El botón «← Resumen» del panel de casa vuelve aquí con ?vista=resumen, sea cual sea la última vista elegida.
 if (MISMO_DOMINIO && new URLSearchParams(location.search).get('vista') === 'resumen') modo = 'resumen';
-// Enlaces directos: calendario.html?vista=podcast, ?vista=viajes y ?vista=proyectos
-if (['podcast', 'viajes', 'proyectos'].includes(new URLSearchParams(location.search).get('vista'))) modo = new URLSearchParams(location.search).get('vista');
+// Enlaces directos: calendario.html?vista=podcast, viajes, cap o proyectos
+if (['podcast', 'viajes', 'cap', 'proyectos'].includes(new URLSearchParams(location.search).get('vista'))) modo = new URLSearchParams(location.search).get('vista');
 
 function rango() {
   if (modo === 'mes') {
@@ -1046,8 +1020,9 @@ function tituloRango() {
   if (modo === 'cuaderno') return 'Cuaderno de viaje';
   if (modo === 'vuelos') return 'Vuelos';
   if (modo === 'egs') return 'Tareas EGS';
-  if (modo === 'podcast') return 'Podcast';
+  if (modo === 'cap') return 'Pendientes CAP';
   if (modo === 'proyectos') return 'Proyectos';
+  if (modo === 'podcast') return 'Podcast';
   if (modo === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (modo === 'dia') return cap(fmt(cursor, { weekday: 'long', day: 'numeric', month: 'long' }));
   if (modo === 'semana') {
@@ -1082,20 +1057,17 @@ async function render() {
   traePestana();
   $('rangoTitulo').textContent = tituloRango();
   const { start, end } = rango();
-  await Promise.all([cargarDatos(ymd(start), ymd(end)), cargarPlanes(), cargarViajes(), modo === 'podcast' ? cargarPodcasts() : null, modo === 'proyectos' ? cargarProyectos() : null]);
+  await Promise.all([cargarDatos(ymd(start), ymd(end)), cargarPlanes(), cargarViajes(), modo === 'podcast' ? cargarPodcasts() : null]);
   pintaPlanesBtn();
   document.body.classList.toggle('en-resumen', esIncrustada());
   document.body.classList.toggle('en-viajes', modo === 'viajes');
   document.body.classList.toggle('en-podcast', modo === 'podcast');
-  document.body.classList.toggle('en-proyectos', modo === 'proyectos');
   $('vistaResumen').style.display = esIncrustada() ? '' : 'none';
   $('vistaViajes').style.display = modo === 'viajes' ? '' : 'none';
   $('vistaPodcast').style.display = modo === 'podcast' ? '' : 'none';
-  $('vistaProyectos').style.display = modo === 'proyectos' ? '' : 'none';
   if (esIncrustada()) { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaResumen(); }
   else if (modo === 'viajes') { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaViajes(); }
   else if (modo === 'podcast') { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaPodcast(); }
-  else if (modo === 'proyectos') { $('vistaMes').style.display = 'none'; $('cols').style.display = 'none'; pintaProyectos(); }
   else if (modo === 'mes') { $('vistaMes').style.display = ''; $('cols').style.display = 'none'; renderMes(start); }
   else { $('vistaMes').style.display = 'none'; $('cols').style.display = 'grid'; renderCols(); }
   pintaUltimas();
@@ -1304,157 +1276,6 @@ function pintaPodcast() {
     + (podcasts.length ? podcasts.map(tarjetaPodcast).join('')
       : '<div class="vj-vacio">Todavía no hay ningún episodio. Se crean en FileHub → <b>Podcasts IA</b> a partir de un tema o de un PDF.</div>'));
 }
-
-// ── Vista Proyectos ────────────────────────────────────────────────────────
-// Documentos propios (PDF, Word, presentaciones, imágenes…) agrupados por proyecto.
-// Tabla proyectos_docs + bucket PRIVADO «proyectos» (supabase/proyectos_docs.sql): cada archivo
-// va en la carpeta <uid>/ y solo su dueño lo ve. Se abre con un enlace firmado que dura una hora.
-const PR_BUCKET = 'proyectos', PR_MAX = 50 * 1024 * 1024;
-let proyDocs = [], proyError = null, proySubiendo = false, proyBorrar = null;
-const proyAbiertos = new Set((() => { try { return JSON.parse(localStorage.getItem('fh_cal_proy_abiertos') || '[]'); } catch { return []; } })());
-const guardaAbiertos = () => { try { localStorage.setItem('fh_cal_proy_abiertos', JSON.stringify([...proyAbiertos])); } catch {} };
-async function cargarProyectos() {
-  if (!uid) { proyDocs = []; proyError = null; return; }
-  const { data, error } = await sb.from('proyectos_docs')
-    .select('id,proyecto,titulo,ruta,nombre_archivo,tipo,tamano,notas,created_at')
-    .order('created_at', { ascending: false });
-  proyError = error || null;
-  proyDocs = error ? [] : (data || []);
-}
-const tamanoLegible = b => b == null ? '' : b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
-function icoDoc(d) {
-  const n = (d.nombre_archivo || d.ruta || '').toLowerCase(), t = d.tipo || '';
-  if (n.endsWith('.pdf') || t === 'application/pdf') return '📕';
-  if (/\.(pptx?|key|odp)$/.test(n)) return '📊';
-  if (/\.(xlsx?|csv|ods|numbers)$/.test(n)) return '📈';
-  if (/\.(docx?|odt|rtf|pages|txt|md)$/.test(n)) return '📄';
-  if (t.startsWith('image/')) return '🖼️';
-  if (t.startsWith('audio/')) return '🎧';
-  if (t.startsWith('video/')) return '🎬';
-  return '📎';
-}
-// Del nombre del archivo a un título legible: «Cinco-ideas-para-el-SMS.pdf» → «Cinco ideas para el SMS».
-const tituloDeArchivo = n => n.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim() || n;
-// Nombre seguro para la ruta del bucket (sin acentos, espacios ni símbolos raros).
-const nombreSeguro = n => n.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').slice(-90) || 'archivo';
-function proyectosAgrupados() {
-  const g = new Map();
-  for (const d of proyDocs) { if (!g.has(d.proyecto)) g.set(d.proyecto, []); g.get(d.proyecto).push(d); }
-  return [...g.entries()]; // los documentos vienen del más reciente al más antiguo: el proyecto con lo último va primero
-}
-function htmlDoc(d) {
-  const fecha = cap(fmt(new Date(d.created_at), { day: 'numeric', month: 'short', year: 'numeric' })).replace('.', '');
-  const sub = [fecha, tamanoLegible(d.tamano)].filter(Boolean).join(' · ');
-  const ops = proyBorrar === d.id
-    ? '<button class="btn" data-pr="borrar-si" style="color:var(--red)">Sí, borrar</button><button class="btn" data-pr="borrar-no">No</button>'
-    : '<button class="btn primary" data-pr="abrir">Abrir</button><button class="btn icono" data-pr="bajar" title="Descargar" aria-label="Descargar">⬇</button><button class="btn icono" data-pr="borrar" title="Borrar" aria-label="Borrar">🗑</button>';
-  return `<div class="pr-doc" data-id="${esc(d.id)}">
-    <span class="ico">${icoDoc(d)}</span>
-    <div class="txt"><div class="tt">${esc(d.titulo)}</div><div class="sub">${esc(sub)}</div>${d.notas ? `<div class="notas">${esc(d.notas)}</div>` : ''}</div>
-    <div class="ops">${ops}</div>
-  </div>`;
-}
-function pintaProyectos() {
-  const el = $('vistaProyectos');
-  if (!uid) { el.innerHTML = '<p class="vj-aviso">Inicia sesión para ver tus proyectos.</p>'; return; }
-  if (proyError) { el.innerHTML = `<p class="vj-aviso">No se han podido leer los proyectos: ${esc(msgFallo(proyError))}</p>`; return; }
-  // Lo que se esté escribiendo en el formulario no se pierde al repintar.
-  const prev = { p: $('prProyecto')?.value ?? '', n: $('prNotas')?.value ?? '', m: $('prMsg')?.textContent ?? '', mal: $('prMsg')?.className === 'mal' };
-  const grupos = proyectosAgrupados();
-  el.innerHTML = `<div class="vj-cab"><h2>🗂️ Proyectos</h2></div>
-    <div class="pr-subir" id="prZona">
-      <div class="t">Subir documentos</div>
-      <div class="fila">
-        <input type="text" id="prProyecto" list="prLista" maxlength="80" placeholder="Proyecto (escribe uno nuevo o elige)" value="${esc(prev.p)}">
-        <datalist id="prLista">${grupos.map(([p]) => `<option value="${esc(p)}"></option>`).join('')}</datalist>
-        <button class="btn primary" id="prElegir" type="button"${proySubiendo ? ' disabled' : ''}>📎 Elegir archivos…</button>
-        <input type="file" id="prArchivo" multiple hidden>
-      </div>
-      <textarea id="prNotas" rows="2" placeholder="Notas (opcional): qué es, qué falta por completar…">${esc(prev.n)}</textarea>
-      <div class="ayuda">También puedes arrastrar los archivos aquí. Hasta 50 MB cada uno. Solo los ves tú.</div>
-      <div id="prMsg" class="${prev.mal ? 'mal' : ''}">${esc(prev.m)}</div>
-    </div>`
-    + (grupos.length ? grupos.map(([p, docs]) => `<details class="pr-grupo" data-proy="${esc(p)}"${proyAbiertos.has(p) || grupos.length === 1 ? ' open' : ''}>
-        <summary><span class="n">📁 ${esc(p)}</span><span class="c">${docs.length} ${docs.length === 1 ? 'documento' : 'documentos'}</span></summary>
-        ${docs.map(htmlDoc).join('')}
-      </details>`).join('')
-      : '<div class="vj-vacio">Todavía no hay documentos. Escribe el nombre del proyecto y elige los archivos.</div>');
-}
-function prMsg(txt, mal) { const m = $('prMsg'); if (m) { m.textContent = txt; m.className = mal ? 'mal' : ''; } }
-async function subirProyecto(files) {
-  if (proySubiendo || !files?.length) return;
-  const proyecto = ($('prProyecto')?.value || '').trim();
-  if (!proyecto) { prMsg('Escribe primero el nombre del proyecto.', true); $('prProyecto')?.focus(); return; }
-  const notas = ($('prNotas')?.value || '').trim() || null;
-  const fallos = files.filter(f => f.size > PR_MAX).map(f => `${f.name} (pasa de 50 MB)`);
-  const lista = files.filter(f => f.size <= PR_MAX);
-  proySubiendo = true;
-  if ($('prElegir')) $('prElegir').disabled = true;
-  let ok = 0;
-  for (const [i, f] of lista.entries()) {
-    prMsg(`Subiendo ${i + 1} de ${lista.length}: ${f.name}…`);
-    const ruta = `${uid}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}-${nombreSeguro(f.name)}`;
-    const up = await sb.storage.from(PR_BUCKET).upload(ruta, f, { contentType: f.type || 'application/octet-stream', upsert: false });
-    if (up.error) { fallos.push(`${f.name}: ${msgFallo(up.error)}`); continue; }
-    const { error } = await sb.from('proyectos_docs').insert({ user_id: uid, proyecto, titulo: tituloDeArchivo(f.name).slice(0, 200), ruta, nombre_archivo: f.name, tipo: f.type || null, tamano: f.size, notas });
-    if (error) { await sb.storage.from(PR_BUCKET).remove([ruta]); fallos.push(`${f.name}: ${msgFallo(error)}`); continue; }
-    ok++;
-  }
-  proySubiendo = false;
-  if (ok) { proyAbiertos.add(proyecto); guardaAbiertos(); if ($('prNotas')) $('prNotas').value = ''; }
-  await cargarProyectos();
-  pintaProyectos();
-  prMsg(fallos.length ? `Subidos ${ok}. No se pudo: ${fallos.join(' · ')}` : `✔ ${ok === 1 ? 'Subido' : `Subidos ${ok}`} a «${proyecto}».`, fallos.length > 0);
-}
-async function abrirDoc(d, descargar) {
-  // La pestaña se abre ya: si se abre después de esperar la respuesta, el móvil la bloquea.
-  const w = descargar ? null : window.open('', '_blank');
-  const { data, error } = await sb.storage.from(PR_BUCKET).createSignedUrl(d.ruta, 3600, descargar ? { download: d.nombre_archivo || true } : undefined);
-  if (error || !data?.signedUrl) { w?.close(); prMsg(`No se pudo abrir «${d.titulo}»: ${msgFallo(error || {})}`, true); return; }
-  if (w) w.location.href = data.signedUrl; else location.href = data.signedUrl;
-}
-async function borrarDoc(d) {
-  const { error } = await sb.from('proyectos_docs').delete().eq('id', d.id);
-  if (error) { prMsg(`No se pudo borrar: ${msgFallo(error)}`, true); return; }
-  await sb.storage.from(PR_BUCKET).remove([d.ruta]);
-  proyBorrar = null;
-  await cargarProyectos();
-  pintaProyectos();
-  prMsg(`Borrado «${d.titulo}».`);
-}
-$('vistaProyectos').addEventListener('click', e => {
-  if (e.target.closest('#prElegir')) { $('prArchivo').click(); return; }
-  const b = e.target.closest('button[data-pr]');
-  const d = b && proyDocs.find(x => x.id === b.closest('.pr-doc')?.dataset.id);
-  if (!d) return;
-  const acc = b.dataset.pr;
-  if (acc === 'abrir') abrirDoc(d, false);
-  else if (acc === 'bajar') abrirDoc(d, true);
-  else if (acc === 'borrar') { proyBorrar = d.id; pintaProyectos(); }
-  else if (acc === 'borrar-no') { proyBorrar = null; pintaProyectos(); }
-  else if (acc === 'borrar-si') borrarDoc(d);
-});
-$('vistaProyectos').addEventListener('change', e => {
-  if (e.target.id !== 'prArchivo') return;
-  const fs = [...e.target.files]; e.target.value = '';
-  subirProyecto(fs);
-});
-$('vistaProyectos').addEventListener('toggle', e => {
-  const g = e.target.closest?.('details.pr-grupo');
-  if (!g) return;
-  if (g.open) proyAbiertos.add(g.dataset.proy); else proyAbiertos.delete(g.dataset.proy);
-  guardaAbiertos();
-}, true);
-for (const ev of ['dragenter', 'dragover']) $('vistaProyectos').addEventListener(ev, e => {
-  const z = e.target.closest('#prZona'); if (!z) return;
-  e.preventDefault(); z.classList.add('encima');
-});
-$('vistaProyectos').addEventListener('dragleave', e => { const z = e.target.closest('#prZona'); if (z && !z.contains(e.relatedTarget)) z.classList.remove('encima'); });
-$('vistaProyectos').addEventListener('drop', e => {
-  const z = e.target.closest('#prZona'); if (!z) return;
-  e.preventDefault(); z.classList.remove('encima');
-  subirProyecto([...(e.dataTransfer?.files || [])]);
-});
 
 // ── Vista Viajes ───────────────────────────────────────────────────────────
 // Tablas viajes + viaje_items (supabase/viajes.sql). Cada viaje lleva dentro sus

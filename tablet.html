@@ -23,7 +23,7 @@
     document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
     // ?solo=resumen | viajes | vuelos → una sola vista, sin cabecera ni lateral (incrustada en calendario.html).
     var solo = new URLSearchParams(location.search).get('solo');
-    if (solo === 'resumen' || solo === 'viajes' || solo === 'vuelos' || solo === 'egs') document.documentElement.classList.add('solo');
+    if (['resumen', 'viajes', 'vuelos', 'egs', 'cap', 'proyectos'].includes(solo)) document.documentElement.classList.add('solo');
   })();
 </script>
 <style>
@@ -316,6 +316,53 @@
   @media (max-width: 1000px) { .eg-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 700px) { .eg-cols, .eg-abajo { grid-template-columns: minmax(0, 1fr); } }
 
+  /* Pendientes CAP: lista propia de la consulta (nombre + qué hacer), tabla cap_pendientes */
+  .cap-nueva { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto auto; gap: 8px; margin-bottom: 10px; }
+  .cap-nueva input, .pr-subir input[type=text] { min-width: 0; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 16px; font-family: inherit; }
+  .cap-nueva input:focus-visible, .pr-subir input:focus-visible { outline: 2px solid var(--indigo); outline-offset: 1px; }
+  .cap-nueva .btn { height: auto; min-height: 44px; font-weight: 800; }
+  .cap-kpis { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 0 2px 10px; }
+  .cap-kpis b { font-family: 'Hanken Grotesk', sans-serif; font-size: 20px; color: var(--ink); }
+  .cap-kpis .rojo b { color: var(--prio-high); }
+  .cap-kpis .priv { margin-left: auto; font-size: 12px; }
+  .cap-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 8px; align-items: start; }
+  .cap-fila { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--indigo); border-radius: 10px; padding: 9px 10px; cursor: pointer; min-width: 0; }
+  .cap-fila.venc { border-left-color: var(--prio-high); }
+  .cap-fila .tx { flex: 1; min-width: 0; font-size: 14.5px; line-height: 1.35; overflow-wrap: anywhere; }
+  .cap-fila .tx b { display: block; font-size: 15px; }
+  .cap-fila .m { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+  .cap-fila .m .rojo { color: var(--atr-fecha); font-weight: 700; }
+  .cap-fila .eg-ok { border-color: var(--indigo); color: var(--indigo); }
+  .cap-fila.hecha .tx { text-decoration: line-through; color: var(--muted); }
+  .cap-hechas { margin-top: 14px; }
+  .cap-hechas summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--muted); padding: 6px 2px; }
+  .cap-hechas .cap-fila { margin-top: 6px; }
+  @media (max-width: 700px) { .cap-nueva { grid-template-columns: minmax(0, 1fr) auto; } .cap-nueva input[name=tarea] { grid-column: 1 / -1; grid-row: 2; } .cap-nueva input[name=nombre] { grid-column: 1 / -1; } }
+  /* Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado «proyectos») */
+  .pr-subir { border: 1.5px dashed var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; margin-bottom: 12px; }
+  .pr-subir.encima { border-color: var(--indigo); background: var(--indigo-soft); }
+  .pr-subir .fila { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pr-subir .fila input { flex: 1 1 220px; }
+  .pr-subir .fila .btn { min-height: 44px; font-weight: 800; flex: 0 0 auto; }
+  .pr-subir .ayuda { font-size: 12px; color: var(--muted); }
+  .pr-msg { font-size: 13px; color: var(--muted); }
+  .pr-msg.mal { color: var(--atr-fecha); }
+  .pr-grupo { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; background: var(--card); }
+  .pr-grupo > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; min-height: 32px; }
+  .pr-grupo > summary::-webkit-details-marker { display: none; }
+  .pr-grupo > summary .n { font-family: 'Hanken Grotesk', sans-serif; font-size: 16px; font-weight: 800; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .pr-grupo > summary .c { font-size: 12px; color: var(--muted); }
+  .pr-doc { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .pr-grupo > summary + .pr-doc { margin-top: 8px; }
+  .pr-doc .ico { flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--indigo-soft); display: flex; align-items: center; justify-content: center; font-size: 21px; }
+  .pr-doc .txt { flex: 1; min-width: 0; }
+  .pr-doc .tt { font-size: 14.5px; font-weight: 700; overflow-wrap: anywhere; }
+  .pr-doc .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .pr-doc .notas { font-size: 12.5px; margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .pr-doc .ops { display: flex; gap: 6px; flex: none; }
+  .pr-doc .ops .btn { min-height: 40px; }
+  @media (max-width: 560px) { .pr-doc { flex-wrap: wrap; } .pr-doc .ops { width: 100%; justify-content: flex-end; } }
+
   /* ── Incrustada en calendario.html (?solo=resumen): sin cabecera ni lateral ── */
   html.solo .top, html.solo .lateral, html.solo .vista-cab { display: none; }
   html.solo .app { padding: 0; height: 100dvh; min-height: 0; }
@@ -516,8 +563,9 @@
   /* En el móvil, Tareas EGS, Viajes y Vuelos ocupan su alto natural y se desplaza la página entera,
      sin una caja con su propio desplazamiento dentro. */
   @media (max-width: 700px) {
-    .vista:has(> #contenido.v-egs), .vista:has(> #contenido.v-viajes), .vista:has(> #contenido.v-vuelos) { height: auto; }
-    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos { overflow: visible; }
+    .vista:has(> #contenido.v-egs), .vista:has(> #contenido.v-viajes), .vista:has(> #contenido.v-vuelos),
+    .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos) { height: auto; }
+    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos, #contenido.v-cap, #contenido.v-proyectos { overflow: visible; }
   }
   @media (max-width: 700px) {
     .kanban { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
@@ -537,7 +585,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -687,7 +735,7 @@ function chipsTurno(d) {
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
 const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
-const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
+const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
 let vista = SOLO_RESUMEN ? SOLO_VISTA : !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
 if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
@@ -702,6 +750,9 @@ let eventos = [], tareasMes = [], pendientes = [], hechasFH = [];
 // Tareas EGS hechas en los últimos 30 días (la tabla no guarda cuándo se marcó: cuenta la fecha de la tarea,
 // o la de alta si no tiene fecha).
 let hechasEGS = [];
+// Pendientes CAP (cap_pendientes: abiertas y hechas en 30 días) y documentos de Proyectos (proyectos_docs).
+// Si falta la tabla (migración sin aplicar), solo esas pestañas lo dicen; el resto del panel sigue igual.
+let capItems = [], capFalta = false, prDocs = [], prFalta = false;
 // Resumen: planes del agente de ocio y empleo (los sube el PC), proyectos del Workspace y encargos a agentes.
 let planes = [], empleo = null, proyectos = [], tareasProy = [], encargos = [], horario = [];
 // Horario de la consulta, apuntado como eventos con id «horario_AAAA-MM-DD». Se enseña la semana en curso;
@@ -782,7 +833,7 @@ async function cargar() {
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage,para';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
       const hace30 = ymd(masDias(HOY, -30));
-      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh] = await Promise.all([
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh, cp, pd] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -807,6 +858,10 @@ async function cargar() {
         conReintento(() => sb.from('vuelos').select('*').gte('fecha', ymd(masDias(HOY, -1))).order('fecha').order('hora_salida', { nullsFirst: false })),
         conReintento(() => sb.from('tasks').select(cols + ',created_at').eq('user_id', uid).eq('completed', true).ilike('title', 'EGS%')
           .or(`due_date.gte.${hace30},and(due_date.is.null,created_at.gte.${hace30})`).order('due_date', { ascending: false, nullsFirst: true }).limit(200)),
+        conReintento(() => sb.from('cap_pendientes').select('id,nombre,tarea,fecha,hecho,hecho_at,created_at').eq('user_id', uid)
+          .or(`hecho.eq.false,hecho_at.gte.${masDias(HOY, -30).toISOString()}`).order('created_at').limit(500)),
+        conReintento(() => sb.from('proyectos_docs').select('id,proyecto,titulo,ruta,nombre_archivo,tipo,tamano,notas,created_at')
+          .eq('user_id', uid).order('created_at', { ascending: false }).limit(500)),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -815,6 +870,8 @@ async function cargar() {
       pendientes = (pe.data || []).filter(t => (!dueDe(t) || dueDe(t) >= ATRAS_DESDE) && (soyMontse() || t.para !== 'montse'));
       hechasFH = he.data || [];
       hechasEGS = (eh.data || []).filter(esEGS);
+      capFalta = !!cp.error && !esRedFallo(cp.error.message); if (!cp.error) capItems = cp.data || [];
+      prFalta = !!pd.error && !esRedFallo(pd.error.message); if (!pd.error) prDocs = pd.data || [];
       // Si la tabla aún no existe (migración panel_tablet sin aplicar), el resto del panel funciona igual.
       panelFalta = !!pt.error;
       const filas = pt.data || [];
@@ -1523,10 +1580,196 @@ async function marcaPendViaje(id) {
   if (error) { it.hecho = !it.hecho; render(); alert('No se pudo marcar: ' + error.message); }
 }
 
+// ── Pendientes CAP: lista propia de la consulta (tabla cap_pendientes) ──────────────────────
+// Un nombre (a quién se refiere) y qué hay que hacer, con fecha si la tiene. Tabla aparte de
+// «tasks»: ningún agente ni asistente la lee. Se apunta desde la tablet, el móvil o calendario.html.
+function filaCap(p) {
+  const venc = !p.hecho && p.fecha && p.fecha < HOY_S;
+  const cuando = !p.fecha ? '' : p.fecha === HOY_S ? 'hoy' : venc ? `venció ${fechaCorta(p.fecha)}` : fechaCorta(p.fecha);
+  const alta = cap(fmt(new Date(p.created_at), { day: 'numeric', month: 'short' })).replace('.', '');
+  return `<div class="cap-fila${p.hecho ? ' hecha' : ''}${venc ? ' venc' : ''}" data-cap="${esc(p.id)}">
+    <button class="eg-ok" data-capok="${esc(p.id)}" title="${p.hecho ? 'Volver a pendiente' : 'Marcar como hecha'}" aria-label="${p.hecho ? 'Volver a pendiente' : 'Marcar como hecha'}">${p.hecho ? '↩' : '✓'}</button>
+    <div class="tx">${p.nombre ? `<b>${esc(p.nombre)}</b>` : ''}<span>${esc(p.tarea)}</span>
+      <div class="m">${cuando ? `<span class="${venc ? 'rojo' : ''}">📅 ${esc(cuando)}</span>` : ''}<span>apuntado ${esc(alta)}</span></div></div>
+  </div>`;
+}
+function htmlCap() {
+  if (capFalta) return '<div class="vacio">Falta crear la tabla de Pendientes CAP en Supabase.</div>';
+  const ab = capItems.filter(p => !p.hecho).sort((a, b) => (a.fecha || '9999').localeCompare(b.fecha || '9999') || a.created_at.localeCompare(b.created_at));
+  const hechas = capItems.filter(p => p.hecho).sort((a, b) => (b.hecho_at || '').localeCompare(a.hecho_at || ''));
+  const venc = ab.filter(p => p.fecha && p.fecha < HOY_S).length;
+  return `<form class="cap-nueva" id="capForm" autocomplete="off">
+      <input name="nombre" id="capNombre" maxlength="120" placeholder="Nombre (opcional)" enterkeyhint="next">
+      <input name="tarea" id="capTarea" maxlength="500" placeholder="Qué hay que hacer" enterkeyhint="done">
+      <input name="fecha" id="capFecha" type="date" title="Para cuándo (opcional)" aria-label="Para cuándo (opcional)">
+      <button class="btn prim" type="submit">＋ Añadir</button>
+    </form>
+    <div class="cap-kpis"><span><b>${ab.length}</b> ${ab.length === 1 ? 'pendiente' : 'pendientes'}</span>${venc ? `<span class="rojo"><b>${venc}</b> ${venc === 1 ? 'vencida' : 'vencidas'}</span>` : ''}<span class="priv">🔒 Solo lo ves tú</span></div>
+    <div class="cap-lista">${ab.length ? ab.map(filaCap).join('') : '<div class="vacio">Nada pendiente. Apunta arriba un nombre y lo que haya que hacer.</div>'}</div>
+    ${hechas.length ? `<details class="cap-hechas"><summary>✅ Hechas en los últimos 30 días · ${hechas.length}</summary>${hechas.map(filaCap).join('')}</details>` : ''}`;
+}
+async function anadeCap() {
+  const tarea = $('capTarea')?.value.trim(), nombre = $('capNombre')?.value.trim() || null, fecha = fechaValida($('capFecha')?.value);
+  if (!tarea) { $('capTarea')?.focus(); return; }
+  const fila = { user_id: uid, nombre, tarea, fecha };
+  if (DEMO) { capItems.push({ ...fila, id: 'demo' + Date.now(), hecho: false, created_at: new Date().toISOString() }); }
+  else {
+    const { data, error } = await conReintento(() => sb.from('cap_pendientes').insert(fila).select().single());
+    if (error) return avisaFallo(error, 'apuntar');
+    capItems.push(data);
+  }
+  for (const id of ['capNombre', 'capTarea', 'capFecha']) if ($(id)) $(id).value = '';
+  render();
+  $('capNombre')?.focus();
+}
+async function marcaCap(id) {
+  const p = capItems.find(x => x.id === id);
+  if (!p) return;
+  const cambio = { hecho: !p.hecho, hecho_at: p.hecho ? null : new Date().toISOString() };
+  Object.assign(p, cambio); render();
+  if (!(await escribe('cap_pendientes', q => q.update(cambio).eq('id', id), 'marcar'))) { p.hecho = !p.hecho; render(); }
+}
+function hojaCap(id) {
+  const p = capItems.find(x => x.id === id);
+  if (!p) return;
+  abreHoja(`<span class="fuente" style="--c:var(--indigo)">Pendientes CAP</span><h3>Editar pendiente</h3>
+    <div class="form">
+      <label>Nombre<input name="nombre" maxlength="120" value="${esc(p.nombre || '')}"></label>
+      <label>Qué hay que hacer<input name="tarea" maxlength="500" value="${esc(p.tarea)}"></label>
+      <div class="fila"><label>Para cuándo<input name="fecha" type="date" value="${esc(p.fecha || '')}"></label></div>
+    </div>
+    <div class="acc"><button class="btn prim" data-guardar="cap" data-id="${esc(p.id)}">Guardar</button>
+      <button class="btn peligro" data-capborra="${esc(p.id)}">🗑 Borrar</button><button class="btn" data-cerrar>Cancelar</button></div>`);
+}
+async function guardaCap(id) {
+  const p = capItems.find(x => x.id === id);
+  if (!p) return;
+  const cambio = { nombre: campo('nombre') || null, tarea: campo('tarea'), fecha: fechaValida(campo('fecha')) };
+  if (!cambio.tarea) { alert('Escribe qué hay que hacer.'); return; }
+  if (!(await escribe('cap_pendientes', q => q.update(cambio).eq('id', id), 'guardar'))) return;
+  Object.assign(p, cambio); cierraHoja(); render();
+}
+async function borraCap(id) {
+  const p = capItems.find(x => x.id === id);
+  if (!p || !confirm(`¿Borrar «${p.nombre ? p.nombre + ': ' : ''}${p.tarea}»?`)) return;
+  if (!(await escribe('cap_pendientes', q => q.delete().eq('id', id), 'borrar'))) return;
+  capItems = capItems.filter(x => x.id !== id);
+  cierraHoja(); render();
+}
+
+// ── Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado) ──
+// Cada archivo va en proyectos/<uid>/… y solo su dueño lo ve. Se abre con un enlace firmado de una hora.
+const PR_BUCKET = 'proyectos', PR_MAX = 50 * 1024 * 1024;
+let prSubiendo = false, prMensaje = '', prMal = false;
+const prAbiertos = new Set((() => { try { return JSON.parse(localStorage.getItem('fh_tab_proy_abiertos') || '[]'); } catch { return []; } })());
+const guardaPrAbiertos = () => { try { localStorage.setItem('fh_tab_proy_abiertos', JSON.stringify([...prAbiertos])); } catch {} };
+const tamanoLegible = b => b == null ? '' : b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
+function icoDoc(d) {
+  const n = (d.nombre_archivo || d.ruta || '').toLowerCase(), t = d.tipo || '';
+  if (n.endsWith('.pdf') || t === 'application/pdf') return '📕';
+  if (/\.(pptx?|key|odp)$/.test(n)) return '📊';
+  if (/\.(xlsx?|csv|ods|numbers)$/.test(n)) return '📈';
+  if (/\.(docx?|odt|rtf|pages|txt|md)$/.test(n)) return '📄';
+  if (t.startsWith('image/')) return '🖼️';
+  if (t.startsWith('audio/')) return '🎧';
+  if (t.startsWith('video/')) return '🎬';
+  return '📎';
+}
+// «Cinco-ideas-para-el-SMS.pdf» → «Cinco ideas para el SMS».
+const tituloDeArchivo = n => n.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim() || n;
+const nombreSeguro = n => n.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').slice(-90) || 'archivo';
+function htmlDocPr(d) {
+  const fecha = cap(fmt(new Date(d.created_at), { day: 'numeric', month: 'short', year: 'numeric' })).replace('.', '');
+  return `<div class="pr-doc" data-prdoc="${esc(d.id)}">
+    <span class="ico">${icoDoc(d)}</span>
+    <div class="txt"><div class="tt">${esc(d.titulo)}</div><div class="sub">${esc([fecha, tamanoLegible(d.tamano)].filter(Boolean).join(' · '))}</div>${d.notas ? `<div class="notas">${esc(d.notas)}</div>` : ''}</div>
+    <div class="ops"><button class="btn prim" data-pracc="abrir">Abrir</button><button class="btn" data-pracc="bajar" title="Descargar" aria-label="Descargar">⬇</button><button class="btn" data-pracc="borrar" title="Borrar" aria-label="Borrar">🗑</button></div>
+  </div>`;
+}
+function htmlProyectos() {
+  if (prFalta) return '<div class="vacio">Falta crear el apartado de Proyectos en Supabase.</div>';
+  const g = new Map();
+  for (const d of prDocs) { if (!g.has(d.proyecto)) g.set(d.proyecto, []); g.get(d.proyecto).push(d); }
+  const grupos = [...g.entries()]; // del documento más reciente al más antiguo: el proyecto con lo último, primero
+  return `<div class="pr-subir" id="prZona">
+      <div class="fila">
+        <input type="text" id="prProyecto" list="prLista" maxlength="80" placeholder="Proyecto (nuevo o uno de la lista)">
+        <datalist id="prLista">${grupos.map(([p]) => `<option value="${esc(p)}"></option>`).join('')}</datalist>
+        <button class="btn prim" id="prElegir" type="button"${prSubiendo ? ' disabled' : ''}>📎 Subir archivos</button>
+        <input type="file" id="prArchivo" multiple hidden>
+      </div>
+      <input type="text" id="prNotas" maxlength="500" placeholder="Notas (opcional): qué es, qué falta…">
+      <div class="ayuda">PDF, Word, presentaciones, fotos… hasta 50 MB cada uno. 🔒 Solo los ves tú.</div>
+      ${prMensaje ? `<div class="pr-msg${prMal ? ' mal' : ''}">${esc(prMensaje)}</div>` : ''}
+    </div>`
+    + (grupos.length ? grupos.map(([p, docs]) => `<details class="pr-grupo" data-proy="${esc(p)}"${prAbiertos.has(p) || grupos.length === 1 ? ' open' : ''}>
+        <summary><span class="n">📁 ${esc(p)}</span><span class="c">${docs.length} ${docs.length === 1 ? 'documento' : 'documentos'}</span></summary>
+        ${docs.map(htmlDocPr).join('')}</details>`).join('')
+      : '<div class="vacio">Todavía no hay documentos. Escribe el nombre del proyecto y sube los archivos.</div>');
+}
+const prAviso = (txt, mal) => { prMensaje = txt; prMal = !!mal; const z = $('prZona'); if (!z) return; let m = z.querySelector('.pr-msg'); if (!m) { m = document.createElement('div'); z.appendChild(m); } m.className = 'pr-msg' + (mal ? ' mal' : ''); m.textContent = txt; };
+const fallo = e => esRedFallo(e?.message) ? 'sin conexión, inténtalo otra vez' : (e?.message || 'error');
+async function subirPr(files) {
+  if (prSubiendo || !files?.length || DEMO) return;
+  const proyecto = ($('prProyecto')?.value || '').trim();
+  if (!proyecto) { prAviso('Escribe primero el nombre del proyecto.', true); $('prProyecto')?.focus(); return; }
+  const notas = ($('prNotas')?.value || '').trim() || null;
+  const fallos = files.filter(f => f.size > PR_MAX).map(f => `${f.name} (pasa de 50 MB)`);
+  const lista = files.filter(f => f.size <= PR_MAX);
+  prSubiendo = true; if ($('prElegir')) $('prElegir').disabled = true;
+  let ok = 0;
+  for (const [i, f] of lista.entries()) {
+    prAviso(`Subiendo ${i + 1} de ${lista.length}: ${f.name}…`);
+    const ruta = `${uid}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}-${nombreSeguro(f.name)}`;
+    const up = await sb.storage.from(PR_BUCKET).upload(ruta, f, { contentType: f.type || 'application/octet-stream', upsert: false });
+    if (up.error) { fallos.push(`${f.name}: ${fallo(up.error)}`); continue; }
+    const { data, error } = await sb.from('proyectos_docs').insert({ user_id: uid, proyecto, titulo: tituloDeArchivo(f.name).slice(0, 200), ruta, nombre_archivo: f.name, tipo: f.type || null, tamano: f.size, notas }).select().single();
+    if (error) { await sb.storage.from(PR_BUCKET).remove([ruta]); fallos.push(`${f.name}: ${fallo(error)}`); continue; }
+    prDocs.unshift(data); ok++;
+  }
+  prSubiendo = false;
+  if (ok) { prAbiertos.add(proyecto); guardaPrAbiertos(); if ($('prNotas')) $('prNotas').value = ''; }
+  prMensaje = fallos.length ? `Subidos ${ok}. No se pudo: ${fallos.join(' · ')}` : `✔ ${ok === 1 ? 'Subido' : `Subidos ${ok}`} a «${proyecto}».`;
+  prMal = fallos.length > 0;
+  render();
+}
+async function abrePr(d, descargar) {
+  const w = descargar ? null : window.open('', '_blank'); // ya: si se abre tras esperar, el móvil la bloquea
+  const { data, error } = await sb.storage.from(PR_BUCKET).createSignedUrl(d.ruta, 3600, descargar ? { download: d.nombre_archivo || true } : undefined);
+  if (error || !data?.signedUrl) { w?.close(); prAviso(`No se pudo abrir «${d.titulo}»: ${fallo(error)}`, true); return; }
+  if (w) { w.location.href = data.signedUrl; return; }
+  const a = document.createElement('a'); a.href = data.signedUrl; a.download = d.nombre_archivo || ''; document.body.appendChild(a); a.click(); a.remove();
+}
+async function borraPr(d) {
+  if (!confirm(`¿Borrar «${d.titulo}»? No se puede deshacer.`)) return;
+  if (!(await escribe('proyectos_docs', q => q.delete().eq('id', d.id), 'borrar'))) return;
+  await sb.storage.from(PR_BUCKET).remove([d.ruta]);
+  prDocs = prDocs.filter(x => x.id !== d.id);
+  prMensaje = `Borrado «${d.titulo}».`; prMal = false;
+  render();
+}
+$('contenido').addEventListener('submit', e => { if (e.target.id === 'capForm') { e.preventDefault(); anadeCap(); } });
+$('contenido').addEventListener('change', e => {
+  if (e.target.id !== 'prArchivo') return;
+  const fs = [...e.target.files]; e.target.value = '';
+  subirPr(fs);
+});
+$('contenido').addEventListener('toggle', e => {
+  const g = e.target.closest?.('details.pr-grupo');
+  if (!g) return;
+  if (g.open) prAbiertos.add(g.dataset.proy); else prAbiertos.delete(g.dataset.proy);
+  guardaPrAbiertos();
+}, true);
+for (const ev of ['dragenter', 'dragover']) $('contenido').addEventListener(ev, e => { const z = e.target.closest('#prZona'); if (z) { e.preventDefault(); z.classList.add('encima'); } });
+$('contenido').addEventListener('dragleave', e => { const z = e.target.closest('#prZona'); if (z && !z.contains(e.relatedTarget)) z.classList.remove('encima'); });
+$('contenido').addEventListener('drop', e => { const z = e.target.closest('#prZona'); if (!z) return; e.preventDefault(); z.classList.remove('encima'); subirPr([...(e.dataTransfer?.files || [])]); });
+
 function tituloVista() {
   if (vista === 'viajes') return 'Viajes';
   if (vista === 'vuelos') return 'Vuelos';
   if (vista === 'egs') return 'Tareas EGS';
+  if (vista === 'cap') return 'Pendientes CAP';
+  if (vista === 'proyectos') return 'Proyectos';
   if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (vista === 'semana' || (vista === 'casa' && casaModo === 'semana')) {
@@ -1619,7 +1862,7 @@ function render() {
   // La pestaña activa, a la vista aunque la fila se deslice (móvil).
   document.querySelector('#segVista button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
   $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
@@ -1634,8 +1877,13 @@ function render() {
   // El panel se repinta solo (cada 5 min y al volver a la app). Un audio empezado se conserva tal cual:
   // se quita y se vuelve a poner en el mismo paso, así sigue sonando por donde iba.
   const oyendo = [...c.querySelectorAll('audio')].filter(a => a.currentTime > 0 && !a.ended);
-  c.innerHTML = vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
+  // Lo que se esté escribiendo en Pendientes CAP o Proyectos no se pierde cuando el panel se repinta solo.
+  const escrito = ['capNombre', 'capTarea', 'capFecha', 'prProyecto', 'prNotas'].map(id => [id, $(id)?.value]).filter(([, v]) => v);
+  const foco = document.activeElement?.id;
+  c.innerHTML = vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
   for (const a of oyendo) [...c.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
+  for (const [id, v] of escrito) if ($(id)) $(id).value = v;
+  if (foco && ['capNombre', 'capTarea', 'capFecha', 'prProyecto', 'prNotas'].includes(foco)) $(foco)?.focus();
   pintaStats(); pintaParte(); pintaEstado();
 }
 
@@ -1915,9 +2163,12 @@ $('hoja').addEventListener('click', e => {
   if (c) return accionCasa(c.dataset.id, c.dataset.cacc);
   const g = e.target.closest('[data-gacc]');
   if (g) return borraGasto(g.dataset.id);
+  const cb2 = e.target.closest('[data-capborra]');
+  if (cb2) return borraCap(cb2.dataset.capborra);
   const s = e.target.closest('[data-guardar]');
   if (s) {
     const que = s.dataset.guardar;
+    if (que === 'cap') return guardaCap(s.dataset.id);
     return que === 'gasto' ? guardaGasto() : que === 'compra' ? guardaCompra() : que === 'tareafh' ? guardaTareaFH() : que === 'tareaegs' ? guardaTareaEGS() : que === 'tareacasa' ? guardaTareaCasa() : guardaRutina(s.dataset.id);
   }
 });
@@ -1950,6 +2201,15 @@ $('stats').addEventListener('click', e => {
 });
 $('contenido').addEventListener('click', e => {
   const t = e.target;
+  // Pendientes CAP: ✓ marca (o desmarca); tocar la fila abre la ficha para editarla.
+  const ck = t.closest('[data-capok]');
+  if (ck) return marcaCap(ck.dataset.capok);
+  const cf = t.closest('[data-cap]');
+  if (cf) return hojaCap(cf.dataset.cap);
+  // Proyectos
+  if (t.closest('#prElegir')) { $('prArchivo')?.click(); return; }
+  const pa = t.closest('[data-pracc]');
+  if (pa) { const d = prDocs.find(x => x.id === pa.closest('[data-prdoc]')?.dataset.prdoc); if (!d) return; const a = pa.dataset.pracc; return a === 'borrar' ? borraPr(d) : abrePr(d, a === 'bajar'); }
   const vs = t.closest('[data-vjsel]');
   if (vs) { viajeSel = vs.dataset.vjsel; localStorage.setItem('fh_tab_viaje', viajeSel); render(); return; }
   const vp = t.closest('[data-vjpend]');
@@ -2130,6 +2390,8 @@ function escuchaCambios(alCambiar) {
   canalCambios = sb.channel('fh-cambios-' + location.pathname)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, aviso)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, aviso)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cap_pendientes' }, aviso)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos_docs' }, aviso)
     .subscribe();
 }
 function aplicaSesion(session) {
@@ -2156,6 +2418,17 @@ sb.auth.onAuthStateChange((_ev, session) => {
 // ── Datos de ejemplo (?demo) ───────────────────────────────────────────────
 function datosDemo() {
   const d = n => ymd(masDias(HOY, n)), yo = UID_CARLOS;
+  const ts = n => masDias(HOY, n).toISOString();
+  capItems = [
+    { id: 'cap1', nombre: 'Persona de ejemplo', tarea: 'Revisar la analítica y llamar con el resultado', fecha: d(-1), hecho: false, hecho_at: null, created_at: ts(-3) },
+    { id: 'cap2', nombre: 'Otra persona', tarea: 'Pedir la interconsulta', fecha: d(0), hecho: false, hecho_at: null, created_at: ts(-1) },
+    { id: 'cap3', nombre: null, tarea: 'Renovar recetas de la semana', fecha: null, hecho: false, hecho_at: null, created_at: ts(0) },
+    { id: 'cap4', nombre: 'Ejemplo hecho', tarea: 'Enviar el informe', fecha: d(-2), hecho: true, hecho_at: ts(-1), created_at: ts(-5) },
+  ];
+  prDocs = [
+    { id: 'pr1', proyecto: 'Proyecto de ejemplo', titulo: 'Presentación de ejemplo', ruta: 'demo/a.pdf', nombre_archivo: 'Presentacion.pdf', tipo: 'application/pdf', tamano: 180000, notas: 'Faltan los datos del final.', created_at: ts(0) },
+    { id: 'pr2', proyecto: 'Proyecto de ejemplo', titulo: 'Hoja de cálculo', ruta: 'demo/b.xlsx', nombre_archivo: 'Hoja.xlsx', tipo: '', tamano: 2400000, notas: null, created_at: ts(-2) },
+  ];
   const it = (tipo, titulo, n, extra = {}) => ({ id: 'vi' + Math.random().toString(36).slice(2, 8), tipo, titulo, fecha: n === null ? null : d(n), fecha_fin: null, hora: null, lugar: null, importe: null, estado: 'confirmada', localizador: null, url: null, notas: null, hecho: false, ...extra });
   viajes = [{ id: 'vj1', user_id: yo, titulo: 'Escapada de ejemplo', emoji: '🏔️', fecha_inicio: d(2), fecha_fin: d(4), notas: 'Viaje de prueba del modo demo.', shared: true, viaje_items: [
     it('hotel', 'Hotel del centro', 2, { fecha_fin: d(4), lugar: 'Centro', importe: 180 }),
