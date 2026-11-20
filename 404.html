@@ -6,6 +6,8 @@
     // arditifilehub.com/musica… → GaleraMusic (aunque el enlace llegue con texto pegado detrás,
     // p. ej. «/musica%20Se%20abre…»). Va antes que nada para que nunca se vea FileHub.
     if (/^\/musica/i.test(location.pathname)) location.replace("https://nas-media.tail3a7cac.ts.net/musica/" + location.hash);
+    // arditifilehub.com/libros… → GaleraBooks (la biblioteca de libros de casa), igual que la música.
+    else if (/^\/libros/i.test(location.pathname)) location.replace("https://nas-media.tail3a7cac.ts.net/libros/" + location.hash);
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
   <title>FILEHUB - Inteligencia de Gestión</title>
