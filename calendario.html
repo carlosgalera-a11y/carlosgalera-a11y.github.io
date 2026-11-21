@@ -522,6 +522,7 @@
         <button data-v="vuelos">Vuelos</button>
         <button data-v="egs">Tareas EGS</button>
         <button data-v="podcast">Podcast</button>
+        <button data-v="agentes" id="segAgentes" hidden>Agentes</button>
       </div>
       <div class="nav">
         <button id="prev" class="btn icono" title="Anterior">‹</button>
@@ -987,14 +988,15 @@ const fmt = (d, o) => d.toLocaleDateString('es-ES', o);
 const MISMO_DOMINIO = new URL(document.baseURI).origin === location.origin;
 // Vistas que viven en tablet.html y aquí se incrustan: Resumen, Cuaderno (viajes) y Vuelos.
 // Pendientes CAP y Proyectos también: así se ven igual aquí, en la tablet y en el móvil.
-const INCRUSTADAS = { resumen: 'resumen', cuaderno: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos' };
+// «agentes» incrusta agentes.html (centro de agentes de Hermes, solo Carlos), no una vista de la tablet.
+const INCRUSTADAS = { resumen: 'resumen', cuaderno: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos', agentes: 'agentes' };
 const esIncrustada = () => Object.prototype.hasOwnProperty.call(INCRUSTADAS, modo);
 // La primera vez después de publicarla se abre en el Resumen; luego manda la última vista elegida.
 if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.setItem('fh_cal_resumen', '1'); modo = 'resumen'; }
 // El botón «← Resumen» del panel de casa vuelve aquí con ?vista=resumen, sea cual sea la última vista elegida.
 if (MISMO_DOMINIO && new URLSearchParams(location.search).get('vista') === 'resumen') modo = 'resumen';
-// Enlaces directos: calendario.html?vista=podcast, viajes, cap o proyectos
-if (['podcast', 'viajes', 'cap', 'proyectos'].includes(new URLSearchParams(location.search).get('vista'))) modo = new URLSearchParams(location.search).get('vista');
+// Enlaces directos: calendario.html?vista=podcast, viajes, cap, proyectos o agentes
+if (['podcast', 'viajes', 'cap', 'proyectos', 'agentes'].includes(new URLSearchParams(location.search).get('vista'))) modo = new URLSearchParams(location.search).get('vista');
 
 function rango() {
   if (modo === 'mes') {
@@ -1022,6 +1024,7 @@ function tituloRango() {
   if (modo === 'egs') return 'Tareas EGS';
   if (modo === 'cap') return 'Pendientes CAP';
   if (modo === 'proyectos') return 'Proyectos';
+  if (modo === 'agentes') return 'Agentes';
   if (modo === 'podcast') return 'Podcast';
   if (modo === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (modo === 'dia') return cap(fmt(cursor, { weekday: 'long', day: 'numeric', month: 'long' }));
@@ -1053,6 +1056,7 @@ document.fonts?.ready.then(traePestana); // al cargar la tipografía cambian los
 
 async function render() {
   pintaFiltro();
+  $('segAgentes').hidden = uid !== UID_CARLOS; // los encargos a los agentes son solo suyos
   document.querySelectorAll('#segVista button').forEach(b => b.classList.toggle('on', b.dataset.v === modo));
   traePestana();
   $('rangoTitulo').textContent = tituloRango();
@@ -1221,9 +1225,11 @@ function pintaResumen() {
     v.innerHTML = '<p class="aviso-resumen">El resumen se abre aparte: <a href="https://arditifilehub.com/calendario.html" target="_blank" rel="noopener">abrir en FileHub</a>.</p>';
     return;
   }
+  if (modo === 'agentes' && uid !== UID_CARLOS) { v.innerHTML = '<p class="aviso-resumen">Los agentes solo los dirige Carlos.</p>'; return; }
   const solo = INCRUSTADAS[modo] || 'resumen', f = $('resumenFrame');
   if (!f || f.dataset.solo !== solo) {
-    v.innerHTML = `<iframe id="resumenFrame" data-solo="${solo}" title="${tituloRango()}" src="/tablet.html?solo=${solo}" style="width:100%;border:0;display:block"></iframe>`;
+    const src = solo === 'agentes' ? '/agentes.html' : `/tablet.html?solo=${solo}`;
+    v.innerHTML = `<iframe id="resumenFrame" data-solo="${solo}" title="${tituloRango()}" src="${src}" style="width:100%;border:0;display:block"></iframe>`;
   }
   ajustaResumen();
 }
