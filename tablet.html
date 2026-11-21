@@ -562,6 +562,10 @@
   }
   /* En el móvil, Tareas EGS, Viajes y Vuelos ocupan su alto natural y se desplaza la página entera,
      sin una caja con su propio desplazamiento dentro. */
+  /* Agentes: agentes.html incrustado; llena la vista y se desplaza por dentro. */
+  #contenido.v-agentes { overflow: hidden; }
+  .ag-frame { display: block; width: 100%; height: 100%; border: 0; border-radius: 12px; background: transparent; }
+  @media (max-width: 980px), (orientation: portrait) { .vista:has(> #contenido.v-agentes) { height: 84dvh; } }
   @media (max-width: 700px) {
     .vista:has(> #contenido.v-egs), .vista:has(> #contenido.v-viajes), .vista:has(> #contenido.v-vuelos),
     .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos) { height: auto; }
@@ -585,7 +589,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="agentes" id="tabAgentes" hidden>Agentes</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -1061,7 +1065,9 @@ function htmlHoy() {
   const filaEnc = (e, txt) => `<div class="hoy-fila"><div>${esc(e.titulo)}<small>${esc(nombreAgente(e.agente))} · ${txt}</small></div></div>`;
   const verAg = [...esperan.slice(0, 4).map(t => filaAg(t, 'espera tu «sí»')), ...fallidos.slice(0, 2).map(e => filaEnc(e, 'no se pudo lanzar')),
     ...enCola.map(e => filaEnc(e, 'se lanza en unos minutos')), ...enMarcha.slice(0, 3).map(t => filaAg(t, 'en marcha'))].join('') || '<div class="vacio">Nada en marcha ni esperándote.</div>';
-  const botonEnc = (DEMO || uid === UID_CARLOS) ? '<button class="btn" id="encargarBtn" type="button">＋ Encargar</button>' : '';
+  const botonEnc = (DEMO || uid === UID_CARLOS) ? '<button class="btn" id="encargarBtn" type="button">＋ Encargar</button>'
+    + (SOLO_RESUMEN ? '<a class="btn" href="/calendario.html?vista=agentes" target="_top" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit">Abrir ›</a>'
+      : '<button class="btn" type="button" data-irvista="agentes">Abrir ›</button>') : '';
 
   const diaHorario = e => {
     const d = (e.start_date || '').slice(0, 10), ini = (e.start_date || '').slice(11, 13), fin = (e.end_date || '').slice(11, 13);
@@ -1764,12 +1770,21 @@ for (const ev of ['dragenter', 'dragover']) $('contenido').addEventListener(ev, 
 $('contenido').addEventListener('dragleave', e => { const z = e.target.closest('#prZona'); if (z && !z.contains(e.relatedTarget)) z.classList.remove('encima'); });
 $('contenido').addEventListener('drop', e => { const z = e.target.closest('#prZona'); if (!z) return; e.preventDefault(); z.classList.remove('encima'); subirPr([...(e.dataTransfer?.files || [])]); });
 
+// ── Agentes: el mismo centro de agentes que la pestaña «Agentes» de calendario.html (agentes.html). ──
+// Mismo origen, así que comparte la sesión; encarga tareas y enseña el tablero. Solo para Carlos.
+const puedeAgentes = () => DEMO || uid === UID_CARLOS;
+function htmlAgentes() {
+  if (!puedeAgentes()) return '<div class="vacio">Los agentes solo los dirige Carlos.</div>';
+  return `<iframe id="agentesFrame" class="ag-frame" src="/agentes.html${DEMO ? '?demo=1' : ''}" title="Centro de agentes"></iframe>`;
+}
+
 function tituloVista() {
   if (vista === 'viajes') return 'Viajes';
   if (vista === 'vuelos') return 'Vuelos';
   if (vista === 'egs') return 'Tareas EGS';
   if (vista === 'cap') return 'Pendientes CAP';
   if (vista === 'proyectos') return 'Proyectos';
+  if (vista === 'agentes') return 'Agentes';
   if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
   if (vista === 'semana' || (vista === 'casa' && casaModo === 'semana')) {
@@ -1862,7 +1877,7 @@ function render() {
   // La pestaña activa, a la vista aunque la fila se deslice (móvil).
   document.querySelector('#segVista button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || vista === 'agentes' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
   $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
@@ -1870,6 +1885,7 @@ function render() {
     b.classList.toggle('on', b.dataset.c === filtroCal);
     b.style.display = b.dataset.c === 'montse' && soyMontse() ? 'none' : '';
   });
+  $('tabAgentes').hidden = !puedeAgentes();
   $('titulo').textContent = tituloVista();
   $('turnoHoy').innerHTML = chipsTurno(HOY);
   const c = $('contenido');
@@ -1880,7 +1896,9 @@ function render() {
   // Lo que se esté escribiendo en Pendientes CAP o Proyectos no se pierde cuando el panel se repinta solo.
   const escrito = ['capNombre', 'capTarea', 'capFecha', 'prProyecto', 'prNotas'].map(id => [id, $(id)?.value]).filter(([, v]) => v);
   const foco = document.activeElement?.id;
-  c.innerHTML = vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
+  // El centro de agentes se carga una vez: repintarlo cada 5 min borraría lo que estés escribiendo en él.
+  if (vista === 'agentes') { if (!c.querySelector('#agentesFrame')) c.innerHTML = htmlAgentes(); }
+  else c.innerHTML = vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
   for (const a of oyendo) [...c.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
   for (const [id, v] of escrito) if ($(id)) $(id).value = v;
   if (foco && ['capNombre', 'capTarea', 'capFecha', 'prProyecto', 'prNotas'].includes(foco)) $(foco)?.focus();

@@ -17,6 +17,13 @@
     } else claro = localStorage.getItem('ws_tema') === 'claro';
     if (claro) document.documentElement.classList.add('claro');
   } catch(_){} })();
+  // Incrustada en la tablet o el calendario: si allí se cambia el tema, se cambia aquí también.
+  addEventListener('storage', function (e) {
+    if (e.key !== 'fh_cal_tema' || new URLSearchParams(location.search).get('tema')) return;
+    var pref = e.newValue || 'auto';
+    var claro = !(pref === 'dark' || (pref === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches));
+    document.documentElement.classList.toggle('claro', claro);
+  });
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
