@@ -140,6 +140,25 @@
   @keyframes late { 50% { transform: scale(1.22); } }
   @media (prefers-reduced-motion: reduce) { button.micro.oyendo svg { animation: none; } }
   .voz-texto { color: var(--suave); font-size: 12.5px; margin-top: 8px; min-height: 1.5em; overflow-wrap: anywhere; }
+  /* Pestañas internas («Encargos y tablero» · «Resultados agentes») y la lista de archivos entregados. */
+  .pestanas { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--borde); overflow-x: auto; scrollbar-width: none; }
+  .pestanas::-webkit-scrollbar { display: none; }
+  .pestanas button { border: 0; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; padding: 9px 12px; font-weight: 600;
+    white-space: nowrap; color: var(--suave); margin-bottom: -1px; flex: none; }
+  .pestanas button[aria-selected="true"] { color: var(--texto); border-bottom-color: var(--acento); }
+  .pestanas .cuenta { font: 600 11px Inter, sans-serif; color: var(--suave); margin-left: 4px; background: var(--gris-fondo);
+    border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+  .filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+  .filtros > div { flex: 1 1 200px; min-width: 0; }
+  .filtros label { margin-top: 0; }
+  .grupo { margin-top: 16px; }
+  .grupo:first-child { margin-top: 0; }
+  .grupo > h3 { overflow-wrap: anywhere; }
+  .grupo > .meta { margin-bottom: 8px; }
+  .archivo .fila-botones { margin-top: 8px; }
+  .archivo audio { display: block; width: 100%; margin-top: 8px; }
+  .archivo a { color: var(--acento-texto); font-size: 12.5px; }
+  .pie-res { margin-top: 14px; color: var(--tenue); font-size: 12px; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -150,6 +169,9 @@
  *  - Encargar: inserta en agente_encargos; el PC lo recoge cada 2 min (encargos-hermes.py) y lo lanza en el tablero de Hermes.
  *  - Tablero: lo que sube el PC a panel_tablet cada 2 min (panel-tablet.py), con el motivo de cada tarea bloqueada.
  *    Su hora dice si el PC sigue vivo.
+ *  - Resultados agentes (pestaña interna, enlace directo ?ver=resultados): los archivos que entregan los agentes. El PC los
+ *    sube al almacén privado «agente-resultados» y los apunta en la tabla agente_resultados; aquí se listan por tarea y se
+ *    abren, descargan o borran con la sesión del dueño (enlaces firmados de una hora).
  *  - Voz: el botón del micrófono dicta el encargo (o la respuesta a una tarea) con el reconocimiento de voz del navegador.
  *  - Contestar, aprobar, reintentar o cerrar una tarea bloqueada: otra fila de agente_encargos con origen
  *    «accion:<tipo>:<tarea>:<uuid>» y el texto en detalle. El mismo script del PC la aplica en el tablero.
@@ -182,6 +204,23 @@ const ESTADO_TAREA = { todo: ['en cola', ''], ready: ['lista', ''], triage: ['po
 const ESTADO_ENCARGO = { pendiente: ['esperando al PC', 'ambar'], lanzado: ['en el tablero', 'acento'], error: ['no se pudo lanzar', 'rojo'] };
 const TITULO_ACCION = { responder: 'Respuesta a', aprobar: 'Aprobación de', reintentar: 'Reintento de', cerrar: 'Cierre de' };
 const HECHO_ACCION = { responder: 'Tu respuesta', aprobar: 'Tu «sí»', reintentar: 'El reintento', cerrar: 'El cierre' };
+// Resultados de los agentes: tabla con lo entregado y almacén privado donde vive cada archivo (los llena el PC).
+const TABLA_RESULTADOS = 'agente_resultados';
+const ALMACEN = 'agente-resultados';
+// Clase de archivo: [clave, etiqueta, color de la etiqueta, por la extensión, por el tipo MIME]. Manda la extensión.
+const CLASES = [
+  ['pdf', 'PDF', 'rojo', /\.pdf$/i, /pdf/],
+  ['ppt', 'PowerPoint', 'ambar', /\.(pptx?|ppsx?|potx?|odp|key)$/i, /presentation|powerpoint/],
+  ['doc', 'Word', 'acento', /\.(docx?|dotx?|odt|rtf)$/i, /wordprocessing|msword|rtf|opendocument\.text/],
+  ['xls', 'Excel', 'verde', /\.(xlsx?|xlsm|ods|csv|tsv)$/i, /spreadsheet|excel|csv/],
+  ['audio', 'Audio', 'acento', /\.(mp3|wav|m4a|ogg|oga|opus|flac|aac|wma)$/i, /^audio\//],
+  ['video', 'Vídeo', 'acento', /\.(mp4|mov|webm|mkv|avi|m4v)$/i, /^video\//],
+  ['imagen', 'Imagen', 'verde', /\.(png|jpe?g|gif|webp|svg|bmp|heic|avif)$/i, /^image\//],
+  ['zip', 'Zip', '', /\.(zip|rar|7z|tar|gz|tgz|bz2)$/i, /zip|compressed|x-tar|x-7z|x-rar/],
+  ['texto', 'Texto', '', /\.(txt|md|json|html?|xml|ya?ml|log|py|js|ts|css|sql|sh|ps1|cmd|bat|ini|toml)$/i, /^text\/|json|xml/],
+];
+// Lo que el navegador sabe enseñar sin descargar: eso lleva «Abrir». Los audios llevan «Escuchar».
+const SE_ABRE = ['pdf', 'imagen', 'video', 'texto'];
 
 // Posibilidades con eve (propuestas del 21-nov-2026). Cada una rellena el formulario para el agente del proyecto.
 const BASE_EVE = 'Prototipo con el framework eve. El piloto está en C:\\Users\\carlos\\hermes\\eve-piloto y ya funciona con el modelo local. ' +
@@ -201,8 +240,14 @@ const IDEAS = [
 ];
 
 // acciones: lo que has decidido sobre tareas bloqueadas. borradores: respuestas a medio escribir, por tarea (repintar no las pierde).
+// ver: pestaña interna a la vista ('tablero' o 'resultados'). resultados: archivos entregados por los agentes; resFiltro los
+// acota; audio guarda el enlace de los que se están escuchando y enlace el de los que el navegador no dejó abrir solo.
 const estado = { tareas: [], tableroAt: null, encargos: [], acciones: [], filtro: null, aviso: null, enviando: false, cargando: true,
-  falloTablero: null, borradores: {}, confirma: null, accionando: null };
+  falloTablero: null, borradores: {}, confirma: null, accionando: null,
+  ver: new URLSearchParams(location.search).get('ver') === 'resultados' ? 'resultados' : 'tablero',
+  borrador: { agente: 'coordinador', titulo: '', detalle: '' },
+  resultados: [], falloResultados: null, resFiltro: { agente: '', texto: '', tarea: '' }, resConfirma: null, resOcupado: null,
+  audio: {}, enlace: {}, demoListo: false };
 const $raiz = document.getElementById('raiz');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sb = DEMO ? null : window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
@@ -248,6 +293,19 @@ function datosDemo() {
     { id: 'e4', agente: 'egstek', titulo: 'Barra superior en el móvil con «Panel del profesor»', estado: 'lanzado', kanban_id: 't_a4', created_at: t(900), lanzado_at: t(898) },
   ];
   estado.acciones = [];
+  const pptx = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  estado.resultados = [
+    { id: 'r1', tarea: 't_a5', tarea_titulo: 'Resumen de costes de plataformas médicas', agente: 'herramientas-formacion',
+      nombre: 'Resumen de costes de plataformas médicas.pptx', ruta: 'demo/r1', tipo: pptx, tamano: 1153433, origen: 'adjunto', created_at: t(40), updated_at: t(40) },
+    { id: 'r2', tarea: 't_a5', tarea_titulo: 'Resumen de costes de plataformas médicas', agente: 'herramientas-formacion',
+      nombre: 'resumen-costes.pdf', ruta: 'demo/r2', tipo: 'application/pdf', tamano: 187321, origen: 'adjunto', created_at: t(41), updated_at: t(41) },
+    { id: 'r3', tarea: 't_a5', tarea_titulo: 'Resumen de costes de plataformas médicas', agente: 'herramientas-formacion',
+      nombre: 'resumen-hablado.mp3', ruta: 'demo/r3', tipo: 'audio/mpeg', tamano: 3355443, origen: 'adjunto', created_at: t(42), updated_at: t(42) },
+    { id: 'r4', tarea: 't_a4', tarea_titulo: 'Barra superior en el móvil con «Panel del profesor»', agente: 'egstek',
+      nombre: 'capturas-barra-movil.zip', ruta: 'demo/r4', tipo: 'application/zip', tamano: 2516582, origen: 'adjunto', created_at: t(890), updated_at: t(890) },
+    { id: 'r5', tarea: 'presentacion-medikai', tarea_titulo: 'presentacion-medikai', agente: null,
+      nombre: 'Qué es MedikAI.pptx', ruta: 'demo/r5', tipo: null, tamano: 842000, origen: 'carpeta', created_at: t(2000), updated_at: t(2000) },
+  ];
 }
 
 // Lo que decides sobre una tarea bloqueada viaja como una fila más de agente_encargos (ver la cabecera). La más reciente
@@ -274,11 +332,20 @@ function guardaBorradores() {
 }
 
 async function cargar() {
-  if (DEMO) { datosDemo(); estado.cargando = false; return; }
-  const [tab, enc] = await Promise.all([
+  // Los datos de ejemplo se ponen una sola vez: así lo que pruebes (encargar, borrar un resultado) no se deshace al refrescar.
+  if (DEMO) { if (!estado.demoListo) { datosDemo(); estado.demoListo = true; } estado.cargando = false; return; }
+  const [tab, enc, res] = await Promise.all([
     sb.from('panel_tablet').select('contenido,generado_at,updated_at').eq('tipo', 'tablero').order('fecha', { ascending: false }).limit(1),
     sb.from('agente_encargos').select('id,agente,titulo,estado,kanban_id,error,origen,created_at,lanzado_at').order('created_at', { ascending: false }).limit(60),
+    sb.from(TABLA_RESULTADOS).select('id,tarea,tarea_titulo,agente,nombre,ruta,tipo,tamano,origen,created_at,updated_at').order('created_at', { ascending: false }).limit(400),
   ]);
+  // Si la tabla de resultados aún no existe o falla, lo dice su pestaña; el resto de la página sigue igual.
+  if (res.error) {
+    const falta = res.error.code === 'PGRST205' || res.error.code === '42P01' || /does not exist|schema cache/i.test(res.error.message || '');
+    estado.falloResultados = falta ? 'Los resultados todavía no están activados en la base de datos. En cuanto lo estén, aparecerán aquí.'
+      : 'No he podido leer los resultados: ' + res.error.message;
+    estado.resultados = [];
+  } else { estado.falloResultados = null; estado.resultados = res.data || []; }
   if (tab.error) estado.falloTablero = tab.error.message; else {
     estado.falloTablero = null;
     const fila = (tab.data || [])[0];
@@ -314,10 +381,15 @@ function pintaTablero() {
   if (!lista.length) return `<p class="nota">${estado.filtro ? 'Este agente no tiene tareas en el tablero.' : 'El tablero está vacío.'}</p>`;
   return `<ul class="lista">${lista.map(t => {
     const [txt, color] = chipTarea(t);
-    return `<li><div class="linea"><span class="titulo">${esc(t.titulo)}</span><span class="chip ${color}">${esc(txt)}</span></div>
+    return `<li><div class="linea"><span class="titulo">${esc(t.titulo)}</span><span class="chip ${color}">${esc(txt)}</span>${botonArchivos(t.id)}</div>
       <div class="meta">${esc(NOMBRE_AGENTE[t.agente] || t.agente || 'sin agente')} · ${esc(t.id)}</div>
       ${t.estado === 'blocked' ? pintaBloqueo(t) : ''}${pintaResultado(t)}</li>`;
   }).join('')}</ul>`;
+}
+// «2 archivos» junto a una tarea que ha entregado algo: al tocarlo salta a «Resultados agentes» con solo los suyos.
+function botonArchivos(tarea) {
+  const n = tarea ? estado.resultados.filter(r => r.tarea === tarea).length : 0;
+  return n ? `<button class="mini" data-act="res-tarea" data-id="${esc(tarea)}">${n === 1 ? '1 archivo' : n + ' archivos'}</button>` : '';
 }
 function pintaResultado(t) {
   return t && t.estado === 'done' && t.resultado ? `<details class="mas"><summary>Resultado</summary><div class="motivo">${esc(t.resultado)}</div></details>` : '';
@@ -356,7 +428,7 @@ function pintaEncargos() {
     const tarea = e.kanban_id && estado.tareas.find(t => t.id === e.kanban_id);
     if (tarea && ESTADO_TAREA[tarea.estado]) [txt, color] = chipTarea(tarea);
     return `<li><div class="linea"><span class="titulo">${esc(e.titulo)}</span><span class="chip ${color}">${esc(txt)}</span>
-      ${e.estado === 'pendiente' ? `<button class="mini" data-act="cancelar" data-id="${esc(e.id)}">Cancelar</button>` : ''}</div>
+      ${e.estado === 'pendiente' ? `<button class="mini" data-act="cancelar" data-id="${esc(e.id)}">Cancelar</button>` : ''}${botonArchivos(e.kanban_id)}</div>
       <div class="meta">${esc(NOMBRE_AGENTE[e.agente] || e.agente)} · ${esc(haceCuanto(e.created_at))}${e.kanban_id ? ' · ' + esc(e.kanban_id) : ''}${e.error ? ' · ' + esc(e.error) : ''}</div>
       ${pintaResultado(tarea)}</li>`;
   }).join('')}</ul>`;
@@ -366,6 +438,115 @@ function pintaIdeas() {
     `<div class="idea"><div><b>${esc(i.titulo)}</b>${i.primera ? ' <span class="chip acento">empezar por aquí</span>' : ''}<p>${esc(i.texto)}</p></div>
      <button class="mini" data-act="idea" data-id="${IDEAS.indexOf(i)}">Preparar encargo</button></div>`).join('')}</div>`;
   return grupo('egstek', 'EGS TeK') + grupo('medikai', 'MedikAI');
+}
+
+// ── Resultados agentes ────────────────────────────────────────────────────────────────────────────────────────────
+function claseArchivo(r) {
+  const nombre = String(r.nombre || ''), mime = String(r.tipo || '').toLowerCase();
+  return CLASES.find(c => c[3].test(nombre)) || (mime && CLASES.find(c => c[4].test(mime))) || ['otro', 'Otro', ''];
+}
+function tamanoLegible(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${Math.round(n / 1024)} KB`;
+  if (n < 1073741824) return `${(n / 1048576).toLocaleString('es-ES', { maximumFractionDigits: 1 })} MB`;
+  return `${(n / 1073741824).toLocaleString('es-ES', { maximumFractionDigits: 2 })} GB`;
+}
+const llano = s => String(s || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');  // sin mayúsculas ni acentos, para buscar
+function resultadosFiltrados() {
+  const f = estado.resFiltro, q = llano(f.texto).trim();
+  return estado.resultados.filter(r => (!f.tarea || r.tarea === f.tarea)
+    && (!f.agente || (f.agente === '-' ? !r.agente : r.agente === f.agente))
+    && (!q || llano(`${r.nombre} ${r.tarea_titulo || ''} ${r.tarea}`).includes(q)));
+}
+function tituloDeTarea(tarea, filas) {
+  const delTablero = estado.tareas.find(t => t.id === tarea);
+  return (filas && filas[0] && filas[0].tarea_titulo) || (delTablero && delTablero.titulo) || tarea;
+}
+function pintaArchivo(r) {
+  const [clave, etiqueta, color] = claseArchivo(r), id = esc(r.id), ocupado = estado.resOcupado === r.id ? 'disabled' : '';
+  const suena = estado.audio[r.id];
+  const primero = clave === 'audio'
+    ? `<button class="mini fuerte" data-act="res-oir" data-id="${id}" ${ocupado}>${suena ? 'Cerrar el audio' : 'Escuchar'}</button>`
+    : SE_ABRE.includes(clave) ? `<button class="mini fuerte" data-act="res-abrir" data-id="${id}" ${ocupado}>Abrir</button>` : '';
+  const borrar = estado.resConfirma === r.id
+    ? `<button class="mini peligro" data-act="res-borrar-si" data-id="${id}" ${ocupado}>Sí, borrarlo</button><button class="mini" data-act="res-borrar-no">No</button>`
+    : `<button class="mini" data-act="res-borrar" data-id="${id}" ${ocupado}>Borrar</button>`;
+  return `<li class="archivo"><div class="linea"><span class="chip ${color}">${etiqueta}</span><span class="titulo">${esc(r.nombre)}</span></div>
+    <div class="meta">${esc(tamanoLegible(r.tamano))} · ${esc(haceCuanto(r.created_at))}</div>
+    <div class="fila-botones">${primero}<button class="mini ${primero ? '' : 'fuerte'}" data-act="res-bajar" data-id="${id}" ${ocupado}>Descargar</button>${borrar}</div>
+    ${estado.enlace[r.id] ? `<p class="meta"><a href="${esc(estado.enlace[r.id])}" target="_blank" rel="noopener">El navegador no ha dejado abrirlo solo. Pulsa aquí para abrir «${esc(r.nombre)}».</a></p>` : ''}
+    ${suena ? `<audio controls data-res="${id}" src="${esc(suena)}"></audio>` : ''}</li>`;
+}
+function pintaListaResultados() {
+  if (estado.falloResultados) return `<p class="nota">${esc(estado.falloResultados)}</p>`;
+  if (!estado.resultados.length) return `<p class="nota">Aún no hay ningún resultado. Cuando un agente termina una tarea y entrega un archivo, el PC lo sube aquí en un par de minutos.</p>`;
+  const lista = resultadosFiltrados();
+  if (!lista.length) return `<p class="nota">Ningún archivo coincide con lo que buscas.</p>`;
+  const grupos = new Map();  // vienen de más reciente a más antiguo: la tarea con el archivo más nuevo queda arriba
+  for (const r of lista) { if (!grupos.has(r.tarea)) grupos.set(r.tarea, []); grupos.get(r.tarea).push(r); }
+  return [...grupos].map(([tarea, filas]) => {
+    const agente = filas[0].agente, delTablero = estado.tareas.find(t => t.id === tarea);
+    const donde = /^t_[0-9a-z]+$/i.test(tarea) ? tarea : `carpeta «${tarea}»`;
+    return `<div class="grupo"><h3>${esc(tituloDeTarea(tarea, filas))}</h3>
+      <div class="meta">${esc(NOMBRE_AGENTE[agente] || agente || 'Sin agente')} · ${esc(donde)} · ${filas.length === 1 ? '1 archivo' : filas.length + ' archivos'} · ${esc(haceCuanto(filas[0].created_at))}</div>
+      <ul class="lista">${filas.map(pintaArchivo).join('')}</ul>${pintaResultado(delTablero)}</div>`;
+  }).join('');
+}
+function pieResultados() {
+  if (estado.falloResultados || !estado.resultados.length) return '';
+  const total = estado.resultados.reduce((s, r) => s + (Number(r.tamano) || 0), 0), n = estado.resultados.length, vistos = resultadosFiltrados().length;
+  return `${n === 1 ? '1 archivo' : n + ' archivos'} · ${esc(tamanoLegible(total))} ocupados en total${vistos !== n ? ` · mostrando ${vistos}` : ''}`;
+}
+function pintaResultados() {
+  const f = estado.resFiltro;
+  const agentes = [...new Set(estado.resultados.map(r => r.agente || '-'))].sort((a, b) => (a === '-') - (b === '-') || a.localeCompare(b));
+  return `<section class="tarjeta" aria-labelledby="t-res">
+    <h2 id="t-res">Resultados agentes <span class="cuenta">lo que entregan tus agentes</span></h2>
+    ${estado.falloResultados || !estado.resultados.length ? '' : `<div class="filtros">
+      <div><label for="res-busca">Buscar por nombre</label>
+        <input id="res-busca" type="text" inputmode="search" enterkeyhint="search" autocomplete="off" placeholder="Por ejemplo: presentación" value="${esc(f.texto)}" /></div>
+      <div><label for="res-agente">Agente</label>
+        <select id="res-agente"><option value="">Todos</option>${agentes.map(a => `<option value="${esc(a)}" ${f.agente === a ? 'selected' : ''}>${esc(a === '-' ? 'Sin agente' : NOMBRE_AGENTE[a] || a)}</option>`).join('')}</select></div>
+    </div>`}
+    ${f.tarea ? `<p class="nota" style="margin-bottom:10px">Solo la tarea «${esc(tituloDeTarea(f.tarea, estado.resultados.filter(r => r.tarea === f.tarea)))}». <button class="mini" data-act="res-todas">Ver todos</button></p>` : ''}
+    <div id="res-lista">${pintaListaResultados()}</div>
+    <p class="pie-res" id="res-pie">${pieResultados()}</p>
+  </section>`;
+}
+// Repintar rehace los reproductores: se guarda por dónde iba cada audio y si sonaba, y se le devuelve después.
+function conAudio(repinta) {
+  const antes = [...document.querySelectorAll('audio[data-res]')].map(a => ({ id: a.dataset.res, t: a.currentTime, pausa: a.paused }));
+  repinta();
+  for (const x of antes) {
+    const a = [...document.querySelectorAll('audio[data-res]')].find(n => n.dataset.res === x.id);
+    if (!a) continue;
+    const sigue = () => { try { a.currentTime = x.t; } catch (_) {} if (!x.pausa) a.play().catch(() => {}); };
+    if (a.readyState >= 1) sigue(); else a.addEventListener('loadedmetadata', sigue, { once: true });
+  }
+}
+// Solo la lista y el pie: así el buscador no pierde el foco mientras escribes.
+function repintaLista() {
+  conAudio(() => {
+    const l = document.getElementById('res-lista'), p = document.getElementById('res-pie');
+    if (l) l.innerHTML = pintaListaResultados();
+    if (p) p.innerHTML = pieResultados();
+  });
+}
+// Un segundo de silencio en WAV, para que el reproductor de los datos de ejemplo tenga algo que cargar.
+function audioDeEjemplo() {
+  const frec = 8000, n = frec, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+  const pon = (o, s) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
+  pon(0, 'RIFF'); v.setUint32(4, 36 + n, true); pon(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, frec, true); v.setUint32(28, frec, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); pon(36, 'data'); v.setUint32(40, n, true);
+  b.fill(128, 44);
+  let bin = ''; for (let i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]);
+  return 'data:audio/wav;base64,' + btoa(bin);
+}
+// Enlace firmado de una hora al archivo del almacén privado; con «descargar», el navegador lo guarda con su nombre.
+async function enlaceFirmado(r, descargar) {
+  const { data, error } = await sb.storage.from(ALMACEN).createSignedUrl(r.ruta, 3600, descargar ? { download: r.nombre } : undefined);
+  return error ? { error: error.message } : { url: data.signedUrl };
 }
 // ── Voz ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 // El navegador transcribe (Web Speech API; en Chrome el audio pasa por el servicio de voz de Google) y el texto cae en
@@ -479,6 +660,9 @@ function finPulsacion() {
   if (s === 'parar' || Date.now() - voz.pulsadoEn >= 450) paraVoz();  // lo mantenías pulsado: al soltar, acaba. Un toque corto sigue escuchando
 }
 document.addEventListener('change', e => { if (e.target.id === 'agente') voz.agenteDicho = false; });
+// Filtros de «Resultados agentes»: el buscador y el agente acotan la lista sin repintar la página entera.
+document.addEventListener('input', e => { if (e.target.id === 'res-busca') { estado.resFiltro.texto = e.target.value; estado.resConfirma = null; repintaLista(); } });
+document.addEventListener('change', e => { if (e.target.id === 'res-agente') { estado.resFiltro.agente = e.target.value; estado.resConfirma = null; repintaLista(); } });
 document.addEventListener('pointerup', finPulsacion);
 document.addEventListener('pointercancel', finPulsacion);
 document.addEventListener('keydown', e => {  // con teclado: Intro o espacio empiezan y acaban
@@ -499,11 +683,17 @@ function avisoBloqueadas() {
   const lista = partes.length > 2 ? `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}` : partes.join(' y ');
   return `<div class="aviso info">${esc(lista)}. Se resuelven aquí mismo, en el tablero.</div>`;
 }
-function pinta() {
+function pinta() { conAudio(pintaTodo); }
+function pintaTodo() {
   guardaBorradores();
+  // El formulario solo existe en «Encargos y tablero»: lo escrito se guarda para no perderlo al pasar por «Resultados agentes».
   const f = document.getElementById('form');
-  const borrador = f ? { agente: f.agente.value, titulo: f.titulo.value, detalle: f.detalle.value } : { agente: 'coordinador', titulo: '', detalle: '' };
-  const [color, textoPC] = estadoPC();
+  if (f) estado.borrador = { agente: f.agente.value, titulo: f.titulo.value, detalle: f.detalle.value };
+  const borrador = estado.borrador;
+  const busca = document.getElementById('res-busca');
+  const cursor = busca && document.activeElement === busca ? [busca.selectionStart, busca.selectionEnd] : null;
+  const [color, textoPC] = estadoPC(), enResultados = estado.ver === 'resultados';
+  const pestana = (id, texto, cuenta) => `<button role="tab" id="pes-${id}" aria-selected="${estado.ver === id}" aria-controls="panel" data-act="ver" data-id="${id}">${texto}${cuenta ? `<span class="cuenta">${cuenta}</span>` : ''}</button>`;
   $raiz.innerHTML = `
     <div class="cab">
       <div><h1>Centro de agentes</h1><p class="sub">Encarga tareas y sigue lo que hacen tus agentes${DEMO ? ' · datos de ejemplo' : ''}</p></div>
@@ -511,7 +701,11 @@ function pinta() {
       <span class="estado-pc" role="status"><span class="punto ${color}"></span>${esc(textoPC)}</span>
       <button data-act="recargar">Actualizar</button>
     </div>
+    <div class="pestanas" role="tablist" aria-label="Secciones del centro de agentes">
+      ${pestana('tablero', 'Encargos y tablero', 0)}${pestana('resultados', 'Resultados agentes', estado.resultados.length)}
+    </div>
     ${estado.aviso ? `<div class="aviso ${estado.aviso[0]}" role="status">${esc(estado.aviso[1])}</div>` : ''}
+    <div id="panel" role="tabpanel" aria-labelledby="pes-${estado.ver}">${enResultados ? pintaResultados() : `
     ${avisoBloqueadas()}
     <div class="rejilla">
       <div class="col">
@@ -554,8 +748,9 @@ function pinta() {
           ${pintaIdeas()}
         </section>
       </div>
-    </div>`;
+    </div>`}</div>`;
   actualizaVoz();  // repintar rehace los botones del micrófono: si estabas dictando, que se siga viendo
+  if (cursor) { const b2 = document.getElementById('res-busca'); if (b2) { b2.focus(); try { b2.setSelectionRange(cursor[0], cursor[1]); } catch (_) {} } }
 }
 
 async function encargar(datos) {
@@ -612,6 +807,62 @@ document.addEventListener('click', async e => {
   }
   if (act === 'cerrar') { estado.confirma = id; pinta(); }
   if (act === 'cerrar-no') { estado.confirma = null; pinta(); }
+  // ── Pestañas internas y resultados ──
+  if (act === 'ver' || act === 'res-tarea') {
+    if (voz.quiere) return;  // a medio dictar no se cambia de pestaña: el dictado cae en el formulario de esta
+    estado.ver = act === 'res-tarea' ? 'resultados' : id;
+    estado.resConfirma = null;
+    if (act === 'res-tarea') estado.resFiltro = { agente: '', texto: '', tarea: id };
+    try {  // el enlace directo acompaña a la pestaña (recargar o compartirlo abre la misma)
+      const u = new URL(location.href);
+      if (estado.ver === 'resultados') u.searchParams.set('ver', 'resultados'); else u.searchParams.delete('ver');
+      history.replaceState(null, '', u);
+    } catch (_) {}
+    pinta();
+    if (act === 'res-tarea') window.scrollTo(0, 0);
+  }
+  if (act === 'res-todas') { estado.resFiltro.tarea = ''; pinta(); }
+  if (act === 'res-borrar') { estado.resConfirma = id; pinta(); }
+  if (act === 'res-borrar-no') { estado.resConfirma = null; pinta(); }
+  if (['res-abrir', 'res-bajar', 'res-oir', 'res-borrar-si'].includes(act)) {
+    const r = estado.resultados.find(x => String(x.id) === id);
+    if (!r) return;
+    if (act === 'res-oir' && estado.audio[r.id]) { delete estado.audio[r.id]; pinta(); return; }  // «Cerrar el audio»
+    if (DEMO) {
+      if (act === 'res-borrar-si') { estado.resultados = estado.resultados.filter(x => x !== r); delete estado.audio[r.id]; estado.resConfirma = null; estado.aviso = ['ok', `«${r.nombre}» borrado.`]; }
+      else if (act === 'res-oir') { estado.audio[r.id] = audioDeEjemplo(); estado.aviso = null; }
+      else estado.aviso = ['info', 'En los datos de ejemplo no hay archivos de verdad que abrir ni descargar.'];
+      pinta(); return;
+    }
+    // La ventana se pide ya, dentro del mismo toque: si se abre después de esperar el enlace, el navegador la bloquea.
+    const ventana = act === 'res-abrir' ? window.open('about:blank', '_blank') : null;
+    estado.resOcupado = r.id; estado.aviso = null; pinta();
+    let fallo = null;
+    if (act === 'res-borrar-si') {
+      const quita = await sb.storage.from(ALMACEN).remove([r.ruta]);
+      fallo = quita.error ? quita.error.message : null;
+      if (!fallo) { const fila = await sb.from(TABLA_RESULTADOS).delete().eq('id', r.id); fallo = fila.error ? fila.error.message : null; }
+      if (!fallo) { delete estado.audio[r.id]; delete estado.enlace[r.id]; estado.aviso = ['ok', `«${r.nombre}» borrado.`]; }
+      estado.resConfirma = null;
+    } else {
+      const e2 = await enlaceFirmado(r, act === 'res-bajar');
+      fallo = e2.error || null;
+      if (fallo) { if (ventana) ventana.close(); }
+      else if (act === 'res-oir') estado.audio[r.id] = e2.url;
+      else if (act === 'res-abrir') {
+        if (ventana) { try { ventana.opener = null; } catch (_) {} ventana.location.replace(e2.url); delete estado.enlace[r.id]; }
+        else estado.enlace[r.id] = e2.url;  // ventana bloqueada: queda el enlace a la vista para abrirlo a mano
+      } else {
+        const a = document.createElement('a'); a.href = e2.url; a.rel = 'noopener'; a.download = r.nombre;
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+    }
+    estado.resOcupado = null;
+    if (fallo) estado.aviso = ['mal', (act === 'res-borrar-si' ? 'No se ha podido borrar: ' : 'No se ha podido preparar el archivo: ') + fallo];
+    if (act === 'res-borrar-si' && !fallo) await cargar();
+    pinta();
+    if (act === 'res-oir' && !fallo) { const au = [...document.querySelectorAll('audio[data-res]')].find(n => n.dataset.res === String(r.id)); if (au) au.play().catch(() => {}); }
+  }
   if (act === 'recargar') { b.disabled = true; await cargar(); estado.aviso = null; pinta(); }
   if (act === 'filtro') { estado.filtro = (id && estado.filtro !== id) ? id : null; pinta(); }
   if (act === 'idea') {
@@ -645,10 +896,13 @@ document.addEventListener('click', async e => {
       if (session.user.id !== OWNER_UID && (session.user.email || '').toLowerCase() !== OWNER_EMAIL) { $raiz.innerHTML = `<div class="centro"><p>Esta página es solo para Carlos.</p></div>`; return; }
     }
     await cargar(); pinta();
-    // Refresco cada minuto, salvo si la pestaña está oculta o estás escribiendo un encargo o una respuesta (repintar quita el foco).
+    // Refresco cada minuto, salvo si la pestaña está oculta, estás escribiendo un encargo, una respuesta o una búsqueda
+    // (repintar quita el foco), hay un archivo a medio preparar o suena un audio.
     setInterval(async () => {
       const a = document.activeElement;
-      if (document.hidden || estado.enviando || estado.accionando || voz.quiere || (a && a.closest && a.closest('#form, textarea[data-resp]'))) return;
+      const suena = [...document.querySelectorAll('audio[data-res]')].some(x => !x.paused);
+      if (document.hidden || estado.enviando || estado.accionando || estado.resOcupado || estado.resConfirma || suena || voz.quiere
+        || (a && a.closest && a.closest('#form, textarea[data-resp], #res-busca'))) return;
       await cargar(); pinta();
     }, 60000);
   } catch (e) {

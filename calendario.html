@@ -997,6 +997,8 @@ if (MISMO_DOMINIO && !localStorage.getItem('fh_cal_resumen')) { localStorage.set
 if (MISMO_DOMINIO && new URLSearchParams(location.search).get('vista') === 'resumen') modo = 'resumen';
 // Enlaces directos: calendario.html?vista=podcast, viajes, cap, proyectos o agentes
 if (['podcast', 'viajes', 'cap', 'proyectos', 'agentes'].includes(new URLSearchParams(location.search).get('vista'))) modo = new URLSearchParams(location.search).get('vista');
+// calendario.html?vista=agentes&ver=resultados abre la vista Agentes en su pestaña interna «Resultados agentes».
+const VER_AGENTES = new URLSearchParams(location.search).get('ver') === 'resultados' ? '?ver=resultados' : '';
 
 function rango() {
   if (modo === 'mes') {
@@ -1228,7 +1230,7 @@ function pintaResumen() {
   if (modo === 'agentes' && uid !== UID_CARLOS) { v.innerHTML = '<p class="aviso-resumen">Los agentes solo los dirige Carlos.</p>'; return; }
   const solo = INCRUSTADAS[modo] || 'resumen', f = $('resumenFrame');
   if (!f || f.dataset.solo !== solo) {
-    const src = solo === 'agentes' ? '/agentes.html' : `/tablet.html?solo=${solo}`;
+    const src = solo === 'agentes' ? '/agentes.html' + VER_AGENTES : `/tablet.html?solo=${solo}`;
     v.innerHTML = `<iframe id="resumenFrame" data-solo="${solo}" title="${tituloRango()}" src="${src}" style="width:100%;border:0;display:block"></iframe>`;
   }
   ajustaResumen();
