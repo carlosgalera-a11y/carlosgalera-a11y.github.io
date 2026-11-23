@@ -23,7 +23,7 @@
     document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
     // ?solo=resumen | viajes | vuelos → una sola vista, sin cabecera ni lateral (incrustada en calendario.html).
     var solo = new URLSearchParams(location.search).get('solo');
-    if (['resumen', 'viajes', 'vuelos', 'egs', 'cap', 'proyectos'].includes(solo)) document.documentElement.classList.add('solo');
+    if (['resumen', 'viajes', 'vuelos', 'egs', 'cap', 'proyectos', 'contactos'].includes(solo)) document.documentElement.classList.add('solo');
   })();
 </script>
 <style>
@@ -338,6 +338,23 @@
   .cap-hechas summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--muted); padding: 6px 2px; }
   .cap-hechas .cap-fila { margin-top: 6px; }
   @media (max-width: 700px) { .cap-nueva { grid-template-columns: minmax(0, 1fr) auto; } .cap-nueva input[name=tarea] { grid-column: 1 / -1; grid-row: 2; } .cap-nueva input[name=nombre] { grid-column: 1 / -1; } }
+  /* Contactos: personas que Carlos va apuntando (él, Claude o Hermes), tabla contactos */
+  .ct-barra { display: flex; gap: 8px; margin-bottom: 10px; }
+  .ct-barra input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 16px; font-family: inherit; }
+  .ct-barra input:focus-visible { outline: 2px solid var(--indigo); outline-offset: 1px; }
+  .ct-barra .btn { height: auto; min-height: 44px; font-weight: 800; white-space: nowrap; }
+  .ct-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 10px; align-items: start; }
+  .ct-fila { display: grid; gap: 5px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--indigo); border-radius: 10px; padding: 10px 12px; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+  .ct-fila h4 { margin: 0; font-family: 'Hanken Grotesk', sans-serif; font-size: 16px; line-height: 1.25; }
+  .ct-fila .rol { font-size: 13px; color: var(--muted); line-height: 1.35; }
+  .ct-fila .pq { font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .ct-fila .sig { font-size: 13px; font-weight: 700; line-height: 1.35; }
+  .ct-fila .sig.rojo { color: var(--atr-fecha); }
+  .ct-fila .vias { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+  .ct-fila .vias a { font-size: 12.5px; font-weight: 700; text-decoration: none; color: var(--indigo); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ct-fila .m { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 11.5px; color: var(--muted); }
+  .ct-fila .etq { font-weight: 700; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+  .form textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 16px; font-family: inherit; line-height: 1.4; resize: vertical; }
   /* Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado «proyectos») */
   .pr-subir { border: 1.5px dashed var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; margin-bottom: 12px; }
   .pr-subir.encima { border-color: var(--indigo); background: var(--indigo-soft); }
@@ -568,8 +585,8 @@
   @media (max-width: 980px), (orientation: portrait) { .vista:has(> #contenido.v-agentes) { height: 84dvh; } }
   @media (max-width: 700px) {
     .vista:has(> #contenido.v-egs), .vista:has(> #contenido.v-viajes), .vista:has(> #contenido.v-vuelos),
-    .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos) { height: auto; }
-    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos, #contenido.v-cap, #contenido.v-proyectos { overflow: visible; }
+    .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos), .vista:has(> #contenido.v-contactos) { height: auto; }
+    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos, #contenido.v-cap, #contenido.v-proyectos, #contenido.v-contactos { overflow: visible; }
   }
   @media (max-width: 700px) {
     .kanban { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
@@ -589,7 +606,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="agentes" id="tabAgentes" hidden>Agentes</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="contactos">Contactos</button><button data-v="agentes" id="tabAgentes" hidden>Agentes</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -713,10 +730,20 @@ function turnoApuntado(d, lista) {
   if (ini >= 12) return /murg|urgenc/i.test(ev.title || '') ? T.URG_T : T.AG_T;
   return /^\W*\s*(urgencias|murg)/i.test(ev.title || '') ? T.URG_M : T.AG_M;
 }
+// Un día con un evento «FESTIVO» tampoco lleva turno, aunque nadie haya apuntado un «horario_…»: los festivos
+// llegan así desde la agenda del trabajo. Es la regla que ya usan el parte de hoy y `parte-agenda`.
+// Un «horario_…» manda también sobre esto (una guardia en festivo). Lo apuntado en el calendario de Montse
+// no cuenta: el turno es de Carlos.
+const ES_FESTIVO = /\bfestivo\b/i;
+function esFestivo(d, lista) {
+  const f = ymd(d);
+  return (lista || []).some(e => (e.start_date || '').slice(0, 10) === f && e.para !== 'montse' && ES_FESTIVO.test(e.title || ''));
+}
 function turnoDe(d) {
   if (!DEMO && uid && uid !== UID_CARLOS) return null;
   const a = turnoApuntado(d, horario.concat(eventos));
   if (a !== undefined) return a;
+  if (esFestivo(d, eventos)) return null;
   const dow = d.getDay();
   if (dow === 1) return T.URG_T;
   if (dow === 2 || dow === 4) return T.AG_M;
@@ -739,7 +766,7 @@ function chipsTurno(d) {
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
 const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
-const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
+const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos', contactos: 'contactos' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
 let vista = SOLO_RESUMEN ? SOLO_VISTA : !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
 if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
@@ -757,6 +784,8 @@ let hechasEGS = [];
 // Pendientes CAP (cap_pendientes: abiertas y hechas en 30 días) y documentos de Proyectos (proyectos_docs).
 // Si falta la tabla (migración sin aplicar), solo esas pestañas lo dicen; el resto del panel sigue igual.
 let capItems = [], capFalta = false, prDocs = [], prFalta = false;
+// Contactos (tabla contactos): los apunta Carlos aquí, Claude o el coordinador de Hermes. Si falta la tabla, lo dice su pestaña.
+let contactos = [], ctFalta = false, ctBusca = '';
 // Resumen: planes del agente de ocio y empleo (los sube el PC), proyectos del Workspace y encargos a agentes.
 let planes = [], empleo = null, proyectos = [], tareasProy = [], encargos = [], horario = [];
 // Horario de la consulta, apuntado como eventos con id «horario_AAAA-MM-DD». Se enseña la semana en curso;
@@ -837,7 +866,7 @@ async function cargar() {
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage,para';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
       const hace30 = ymd(masDias(HOY, -30));
-      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh, cp, pd] = await Promise.all([
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh, cp, pd, ct] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -866,6 +895,8 @@ async function cargar() {
           .or(`hecho.eq.false,hecho_at.gte.${masDias(HOY, -30).toISOString()}`).order('created_at').limit(500)),
         conReintento(() => sb.from('proyectos_docs').select('id,proyecto,titulo,ruta,nombre_archivo,tipo,tamano,notas,created_at')
           .eq('user_id', uid).order('created_at', { ascending: false }).limit(500)),
+        conReintento(() => sb.from('contactos').select('id,nombre,cargo,organizacion,email,telefono,enlace,por_que,siguiente,siguiente_fecha,etiqueta,notas,origen,created_at,updated_at')
+          .eq('user_id', uid).order('nombre').limit(1000)),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -876,6 +907,7 @@ async function cargar() {
       hechasEGS = (eh.data || []).filter(esEGS);
       capFalta = !!cp.error && !esRedFallo(cp.error.message); if (!cp.error) capItems = cp.data || [];
       prFalta = !!pd.error && !esRedFallo(pd.error.message); if (!pd.error) prDocs = pd.data || [];
+      ctFalta = !!ct.error && !esRedFallo(ct.error.message); if (!ct.error) contactos = ct.data || [];
       // Si la tabla aún no existe (migración panel_tablet sin aplicar), el resto del panel funciona igual.
       panelFalta = !!pt.error;
       const filas = pt.data || [];
@@ -1663,6 +1695,101 @@ async function borraCap(id) {
   cierraHoja(); render();
 }
 
+// ── Contactos: personas que Carlos va apuntando (tabla contactos, supabase/contactos.sql) ────
+// Quién es, por qué importa, cómo llegar y cuál es el siguiente paso. Las apunta él aquí, Claude cuando
+// se lo dice, o el coordinador de Hermes con la llave del PC (función contactos_apuntar).
+// Un contacto por nombre: si se repite, se completa el que ya había.
+const CT_ORIGEN = { manual: 'a mano', claude: 'por Claude', hermes: 'por Hermes' };
+const ctUrl = s => /^https?:\/\//i.test(s || '') ? s : '';
+function ctVisibles() {
+  const q = ctBusca.trim().toLowerCase();
+  const lista = !q ? contactos : contactos.filter(c => [c.nombre, c.cargo, c.organizacion, c.etiqueta, c.por_que, c.siguiente, c.email].some(x => (x || '').toLowerCase().includes(q)));
+  // Primero los que tienen fecha en el siguiente paso, por fecha; después, los tocados más recientemente.
+  return [...lista].sort((a, b) => (a.siguiente_fecha || '9999').localeCompare(b.siguiente_fecha || '9999') || (b.updated_at || '').localeCompare(a.updated_at || ''));
+}
+function filaContacto(c) {
+  const venc = c.siguiente_fecha && c.siguiente_fecha < HOY_S;
+  const cuando = !c.siguiente_fecha ? '' : c.siguiente_fecha === HOY_S ? 'hoy' : fechaCorta(c.siguiente_fecha);
+  const rol = [c.cargo, c.organizacion].filter(Boolean).join(' · ');
+  const alta = cap(fmt(new Date(c.created_at), { day: 'numeric', month: 'short' })).replace('.', '');
+  const vias = [
+    c.email && `<a href="mailto:${esc(c.email)}" title="${esc(c.email)}">✉️ ${esc(c.email)}</a>`,
+    c.telefono && `<a href="tel:${esc(c.telefono.replace(/[^\d+]/g, ''))}">📞 ${esc(c.telefono)}</a>`,
+    ctUrl(c.enlace) && `<a href="${esc(c.enlace)}" target="_blank" rel="noopener noreferrer" title="${esc(c.enlace)}">🔗 ${esc(c.enlace.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, ''))}</a>`,
+  ].filter(Boolean).join('');
+  return `<div class="ct-fila" data-ct="${esc(c.id)}">
+    <h4>${esc(c.nombre)}</h4>
+    ${rol ? `<div class="rol">${esc(rol)}</div>` : ''}
+    ${c.por_que ? `<div class="pq">${esc(c.por_que)}</div>` : ''}
+    ${c.siguiente || cuando ? `<div class="sig${venc ? ' rojo' : ''}">➜ ${esc(c.siguiente || 'Siguiente paso')}${cuando ? ` · ${esc(cuando)}` : ''}</div>` : ''}
+    ${vias ? `<div class="vias">${vias}</div>` : ''}
+    <div class="m">${c.etiqueta ? `<span class="etq">${esc(c.etiqueta)}</span>` : ''}<span>apuntado ${esc(CT_ORIGEN[c.origen] || 'a mano')} · ${esc(alta)}</span></div>
+  </div>`;
+}
+function htmlListaContactos() {
+  if (!contactos.length) return '<div class="vacio">Aún no hay contactos. Añade uno aquí, o díselo a Claude o al coordinador de Hermes.</div>';
+  const v = ctVisibles();
+  return v.length ? v.map(filaContacto).join('') : '<div class="vacio">Ningún contacto coincide con la búsqueda.</div>';
+}
+function htmlContactos() {
+  if (ctFalta) return '<div class="vacio">Falta crear la tabla de Contactos en Supabase.</div>';
+  const conPaso = contactos.filter(c => c.siguiente || c.siguiente_fecha).length;
+  return `<div class="ct-barra">
+      <input id="ctBusca" type="search" maxlength="80" placeholder="Buscar por nombre, organización o etiqueta" aria-label="Buscar contactos" value="${esc(ctBusca)}" autocomplete="off" enterkeyhint="search">
+      <button class="btn prim" type="button" id="ctNuevo">＋ Nuevo</button>
+    </div>
+    <div class="cap-kpis"><span><b>${contactos.length}</b> ${contactos.length === 1 ? 'contacto' : 'contactos'}</span>${conPaso ? `<span><b>${conPaso}</b> con siguiente paso</span>` : ''}<span class="priv">🔒 Solo lo ves tú</span></div>
+    <div class="ct-lista" id="ctLista">${htmlListaContactos()}</div>`;
+}
+function hojaContacto(id) {
+  const c = id ? contactos.find(x => x.id === id) : {};
+  if (!c) return;
+  const v = k => esc(c[k] || '');
+  abreHoja(`<span class="fuente" style="--c:var(--indigo)">Contactos</span><h3>${id ? 'Editar contacto' : 'Nuevo contacto'}</h3>
+    <div class="form">
+      <label>Nombre<input name="nombre" maxlength="160" value="${v('nombre')}"></label>
+      <div class="fila"><label>Cargo<input name="cargo" maxlength="300" value="${v('cargo')}"></label><label>Organización<input name="organizacion" maxlength="200" value="${v('organizacion')}"></label></div>
+      <label>Por qué importa<textarea name="por_que" rows="3" maxlength="2000">${v('por_que')}</textarea></label>
+      <div class="fila"><label>Siguiente paso<input name="siguiente" maxlength="500" value="${v('siguiente')}"></label><label>Para cuándo<input name="siguiente_fecha" type="date" value="${v('siguiente_fecha')}"></label></div>
+      <div class="fila"><label>Correo<input name="email" type="email" maxlength="200" value="${v('email')}"></label><label>Teléfono<input name="telefono" type="tel" maxlength="60" value="${v('telefono')}"></label></div>
+      <div class="fila"><label>Enlace (LinkedIn o web)<input name="enlace" type="url" maxlength="500" placeholder="https://…" value="${v('enlace')}"></label><label>Etiqueta<input name="etiqueta" maxlength="60" placeholder="Proyecto o tema" value="${v('etiqueta')}"></label></div>
+      <label>Notas<textarea name="notas" rows="4" maxlength="8000">${v('notas')}</textarea></label>
+    </div>
+    <div class="acc"><button class="btn prim" data-guardar="contacto" data-id="${esc(id || '')}">Guardar</button>
+      ${id ? `<button class="btn peligro" data-ctborra="${esc(id)}">🗑 Borrar</button>` : ''}<button class="btn" data-cerrar>Cancelar</button></div>`);
+}
+async function guardaContacto(id) {
+  const t = k => campo(k) || null;
+  const datos = { nombre: campo('nombre'), cargo: t('cargo'), organizacion: t('organizacion'), por_que: t('por_que'), siguiente: t('siguiente'),
+    siguiente_fecha: fechaValida(campo('siguiente_fecha')), email: t('email'), telefono: t('telefono'), enlace: t('enlace'), etiqueta: t('etiqueta'), notas: t('notas') };
+  if (!datos.nombre) { alert('Escribe el nombre.'); return; }
+  if (datos.enlace && !ctUrl(datos.enlace)) { alert('El enlace tiene que empezar por https://'); return; }
+  const repetido = contactos.find(x => x.id !== id && x.nombre.trim().toLowerCase() === datos.nombre.toLowerCase());
+  if (repetido) { alert(`Ya tienes apuntado a «${repetido.nombre}». Ábrelo para completarlo.`); return; }
+  const ahora = new Date().toISOString();
+  if (id) {
+    const c = contactos.find(x => x.id === id);
+    if (!c) return;
+    const cambio = { ...datos, updated_at: ahora };
+    if (!(await escribe('contactos', q => q.update(cambio).eq('id', id), 'guardar'))) return;
+    Object.assign(c, cambio);
+  } else if (DEMO) {
+    contactos.push({ ...datos, id: 'demo' + Date.now(), origen: 'manual', created_at: ahora, updated_at: ahora });
+  } else {
+    const { data, error } = await conReintento(() => sb.from('contactos').insert({ ...datos, user_id: uid, origen: 'manual' }).select().single());
+    if (error) return avisaFallo(error, 'apuntar');
+    contactos.push(data);
+  }
+  cierraHoja(); render();
+}
+async function borraContacto(id) {
+  const c = contactos.find(x => x.id === id);
+  if (!c || !confirm(`¿Borrar el contacto «${c.nombre}»?`)) return;
+  if (!(await escribe('contactos', q => q.delete().eq('id', id), 'borrar'))) return;
+  contactos = contactos.filter(x => x.id !== id);
+  cierraHoja(); render();
+}
+
 // ── Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado) ──
 // Cada archivo va en proyectos/<uid>/… y solo su dueño lo ve. Se abre con un enlace firmado de una hora.
 const PR_BUCKET = 'proyectos', PR_MAX = 50 * 1024 * 1024;
@@ -1755,6 +1882,8 @@ async function borraPr(d) {
   render();
 }
 $('contenido').addEventListener('submit', e => { if (e.target.id === 'capForm') { e.preventDefault(); anadeCap(); } });
+// Buscar en Contactos: solo se repinta la lista, así el cursor no se mueve de la caja.
+$('contenido').addEventListener('input', e => { if (e.target.id === 'ctBusca') { ctBusca = e.target.value; if ($('ctLista')) $('ctLista').innerHTML = htmlListaContactos(); } });
 $('contenido').addEventListener('change', e => {
   if (e.target.id !== 'prArchivo') return;
   const fs = [...e.target.files]; e.target.value = '';
@@ -1784,6 +1913,7 @@ function tituloVista() {
   if (vista === 'egs') return 'Tareas EGS';
   if (vista === 'cap') return 'Pendientes CAP';
   if (vista === 'proyectos') return 'Proyectos';
+  if (vista === 'contactos') return 'Contactos';
   if (vista === 'agentes') return 'Agentes';
   if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
@@ -1877,7 +2007,7 @@ function render() {
   // La pestaña activa, a la vista aunque la fila se deslice (móvil).
   document.querySelector('#segVista button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || vista === 'agentes' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || vista === 'contactos' || vista === 'agentes' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
   $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
@@ -1898,10 +2028,12 @@ function render() {
   const foco = document.activeElement?.id;
   // El centro de agentes se carga una vez: repintarlo cada 5 min borraría lo que estés escribiendo en él.
   if (vista === 'agentes') { if (!c.querySelector('#agentesFrame')) c.innerHTML = htmlAgentes(); }
-  else c.innerHTML = vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
+  else c.innerHTML = vista === 'contactos' ? htmlContactos() : vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
   for (const a of oyendo) [...c.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
   for (const [id, v] of escrito) if ($(id)) $(id).value = v;
   if (foco && ['capNombre', 'capTarea', 'capFecha', 'prProyecto', 'prNotas'].includes(foco)) $(foco)?.focus();
+  // La caja de buscar de Contactos se vuelve a crear: recupera el foco con el cursor al final.
+  if (foco === 'ctBusca' && $('ctBusca')) { const b = $('ctBusca'); b.focus(); try { b.setSelectionRange(b.value.length, b.value.length); } catch {} }
   pintaStats(); pintaParte(); pintaEstado();
 }
 
@@ -2183,10 +2315,13 @@ $('hoja').addEventListener('click', e => {
   if (g) return borraGasto(g.dataset.id);
   const cb2 = e.target.closest('[data-capborra]');
   if (cb2) return borraCap(cb2.dataset.capborra);
+  const cb3 = e.target.closest('[data-ctborra]');
+  if (cb3) return borraContacto(cb3.dataset.ctborra);
   const s = e.target.closest('[data-guardar]');
   if (s) {
     const que = s.dataset.guardar;
     if (que === 'cap') return guardaCap(s.dataset.id);
+    if (que === 'contacto') return guardaContacto(s.dataset.id || null);
     return que === 'gasto' ? guardaGasto() : que === 'compra' ? guardaCompra() : que === 'tareafh' ? guardaTareaFH() : que === 'tareaegs' ? guardaTareaEGS() : que === 'tareacasa' ? guardaTareaCasa() : guardaRutina(s.dataset.id);
   }
 });
@@ -2224,6 +2359,11 @@ $('contenido').addEventListener('click', e => {
   if (ck) return marcaCap(ck.dataset.capok);
   const cf = t.closest('[data-cap]');
   if (cf) return hojaCap(cf.dataset.cap);
+  // Contactos: el correo, el teléfono y el enlace se abren tal cual; tocar la ficha la abre para editarla.
+  if (t.closest('.ct-fila .vias a')) return;
+  if (t.closest('#ctNuevo')) return hojaContacto(null);
+  const cn = t.closest('[data-ct]');
+  if (cn) return hojaContacto(cn.dataset.ct);
   // Proyectos
   if (t.closest('#prElegir')) { $('prArchivo')?.click(); return; }
   const pa = t.closest('[data-pracc]');
@@ -2410,6 +2550,7 @@ function escuchaCambios(alCambiar) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, aviso)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cap_pendientes' }, aviso)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos_docs' }, aviso)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'contactos' }, aviso)
     .subscribe();
 }
 function aplicaSesion(session) {
@@ -2442,6 +2583,12 @@ function datosDemo() {
     { id: 'cap2', nombre: 'Otra persona', tarea: 'Pedir la interconsulta', fecha: d(0), hecho: false, hecho_at: null, created_at: ts(-1) },
     { id: 'cap3', nombre: null, tarea: 'Renovar recetas de la semana', fecha: null, hecho: false, hecho_at: null, created_at: ts(0) },
     { id: 'cap4', nombre: 'Ejemplo hecho', tarea: 'Enviar el informe', fecha: d(-2), hecho: true, hecho_at: ts(-1), created_at: ts(-5) },
+  ];
+  // Contactos de mentira: ninguna persona real.
+  contactos = [
+    { id: 'ct1', nombre: 'Persona de ejemplo', cargo: 'Responsable de innovación', organizacion: 'Hospital de ejemplo', email: 'persona@ejemplo.test', telefono: null, enlace: 'https://ejemplo.test/perfil', por_que: 'Lleva el programa de proyectos piloto y puede orientar sobre cómo presentar el tuyo.', siguiente: 'Videollamada de 30 minutos', siguiente_fecha: d(3), etiqueta: 'Proyecto de ejemplo', notas: 'Contestó al primer mensaje y pasó su agenda.', origen: 'hermes', created_at: ts(-1), updated_at: ts(0) },
+    { id: 'ct2', nombre: 'Otra persona', cargo: 'Fundadora', organizacion: 'Empresa de ejemplo', email: null, telefono: '+34 600 000 000', enlace: null, por_que: 'Conoce a quien decide en su sector.', siguiente: 'Escribirle esta semana', siguiente_fecha: d(-1), etiqueta: 'Proyecto de ejemplo', notas: null, origen: 'claude', created_at: ts(-4), updated_at: ts(-2) },
+    { id: 'ct3', nombre: 'Contacto sin más datos', cargo: null, organizacion: null, email: null, telefono: null, enlace: null, por_que: null, siguiente: null, siguiente_fecha: null, etiqueta: null, notas: null, origen: 'manual', created_at: ts(-6), updated_at: ts(-6) },
   ];
   prDocs = [
     { id: 'pr1', proyecto: 'Proyecto de ejemplo', titulo: 'Presentación de ejemplo', ruta: 'demo/a.pdf', nombre_archivo: 'Presentacion.pdf', tipo: 'application/pdf', tamano: 180000, notas: 'Faltan los datos del final.', created_at: ts(0) },
