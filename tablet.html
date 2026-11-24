@@ -23,7 +23,7 @@
     document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
     // ?solo=resumen | viajes | vuelos → una sola vista, sin cabecera ni lateral (incrustada en calendario.html).
     var solo = new URLSearchParams(location.search).get('solo');
-    if (['resumen', 'viajes', 'vuelos', 'egs', 'cap', 'proyectos', 'contactos'].includes(solo)) document.documentElement.classList.add('solo');
+    if (['resumen', 'viajes', 'vuelos', 'egs', 'cap', 'proyectos', 'contactos', 'anotaciones'].includes(solo)) document.documentElement.classList.add('solo');
   })();
 </script>
 <style>
@@ -355,6 +355,38 @@
   .ct-fila .m { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 11.5px; color: var(--muted); }
   .ct-fila .etq { font-weight: 700; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
   .form textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 16px; font-family: inherit; line-height: 1.4; resize: vertical; }
+  /* Anotaciones: documentos de la carpeta «Anotaciones» del PC, por temas, con miniatura, visor y descarga */
+  .an-temas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .an-temas button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .an-temas button.on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+  .an-temas button:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
+  .an-temas small { font-weight: 600; opacity: .7; margin-left: 2px; }
+  .an-grupo { margin-bottom: 18px; }
+  .an-grupo h3 { font-family: 'Hanken Grotesk', sans-serif; font-size: 16px; margin: 0 2px 8px; display: flex; align-items: baseline; gap: 8px; }
+  .an-grupo h3 small { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .an-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 12px; align-items: start; }
+  .an-doc { display: grid; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+  .an-mini { all: unset; display: block; box-sizing: border-box; width: 100%; aspect-ratio: 4 / 5; position: relative; overflow: hidden; background: var(--bg); border-bottom: 1px solid var(--line); cursor: pointer; }
+  .an-mini img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+  .an-mini:focus-visible { outline: 2px solid var(--indigo); outline-offset: -2px; }
+  .an-ico { position: absolute; inset: 0; display: grid; place-items: center; font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 22px; letter-spacing: .06em; color: var(--muted); }
+  .an-tx { display: grid; gap: 6px; padding: 10px 12px 12px; min-width: 0; }
+  .an-tx h4 { margin: 0; font-size: 14.5px; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .an-meta { font-size: 11.5px; color: var(--muted); }
+  .an-acc { display: flex; gap: 6px; flex-wrap: wrap; }
+  .an-acc .btn { flex: 1; height: auto; min-height: 38px; padding: 0 8px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .an-visor { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; background: var(--bg); }
+  .an-visor[hidden] { display: none; }
+  .an-barra { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; background: var(--card); border-bottom: 1px solid var(--line); }
+  .an-barra b { flex: 1; min-width: 120px; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .an-barra span { font-size: 12px; color: var(--muted); }
+  .an-barra .btn { height: 38px; font-size: 13px; font-weight: 700; }
+  .an-hojas { flex: 1; overflow: auto; scrollbar-gutter: stable; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; justify-items: center; align-content: start; padding: 12px 8px 24px; }
+  .an-hoja { max-width: 100%; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, .25); }
+  .an-hoja canvas { display: block; width: 100%; height: auto; }
+  .an-espera { display: grid; gap: 12px; justify-items: center; padding: 40px 16px; color: var(--muted); font-size: 14px; text-align: center; }
+  html.an-abierto, html.an-abierto body { overflow: hidden; }
+  @media (max-width: 700px) { .an-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .an-tx { padding: 8px 9px 10px; } .an-tx h4 { font-size: 13.5px; } .an-barra span { display: none; } }
   /* Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado «proyectos») */
   .pr-subir { border: 1.5px dashed var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; margin-bottom: 12px; }
   .pr-subir.encima { border-color: var(--indigo); background: var(--indigo-soft); }
@@ -585,8 +617,8 @@
   @media (max-width: 980px), (orientation: portrait) { .vista:has(> #contenido.v-agentes) { height: 84dvh; } }
   @media (max-width: 700px) {
     .vista:has(> #contenido.v-egs), .vista:has(> #contenido.v-viajes), .vista:has(> #contenido.v-vuelos),
-    .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos), .vista:has(> #contenido.v-contactos) { height: auto; }
-    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos, #contenido.v-cap, #contenido.v-proyectos, #contenido.v-contactos { overflow: visible; }
+    .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos), .vista:has(> #contenido.v-contactos), .vista:has(> #contenido.v-anotaciones) { height: auto; }
+    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos, #contenido.v-cap, #contenido.v-proyectos, #contenido.v-contactos, #contenido.v-anotaciones { overflow: visible; }
   }
   @media (max-width: 700px) {
     .kanban { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
@@ -606,7 +638,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="contactos">Contactos</button><button data-v="agentes" id="tabAgentes" hidden>Agentes</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="contactos">Contactos</button><button data-v="anotaciones">Anotaciones</button><button data-v="agentes" id="tabAgentes" hidden>Agentes</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -766,7 +798,7 @@ function chipsTurno(d) {
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
 const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
-const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos', contactos: 'contactos' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
+const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos', contactos: 'contactos', anotaciones: 'anotaciones' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
 let vista = SOLO_RESUMEN ? SOLO_VISTA : !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
 if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
@@ -786,6 +818,15 @@ let hechasEGS = [];
 let capItems = [], capFalta = false, prDocs = [], prFalta = false;
 // Contactos (tabla contactos): los apunta Carlos aquí, Claude o el coordinador de Hermes. Si falta la tabla, lo dice su pestaña.
 let contactos = [], ctFalta = false, ctBusca = '';
+// Anotaciones: los archivos de la carpeta «Anotaciones» del PC (hermes\entregables\Anotaciones\<tema>\…), que el PC
+// sube solo al almacén privado agente-resultados y apunta en agente_resultados con la tarea «Anotaciones».
+const AN_TAREA = 'Anotaciones', AN_ALMACEN = 'agente-resultados';
+// pdf.js, en su variante para navegadores antiguos (la tablet). Se carga solo al pintar una miniatura o abrir el visor.
+const AN_PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/';
+let anotaciones = [], anFalta = false, anFiltro = '';
+// Miniatura y páginas de cada PDF (también en localStorage), bytes ya bajados y PDF que no se dejaron leer.
+const anMinis = new Map(), anBytes = new Map(), anFallidas = new Set();
+let anPdfjs = null, anCola = Promise.resolve(), anVigia = null, anVigiaHojas = null, anDoc = null, anTurno = 0;
 // Resumen: planes del agente de ocio y empleo (los sube el PC), proyectos del Workspace y encargos a agentes.
 let planes = [], empleo = null, proyectos = [], tareasProy = [], encargos = [], horario = [];
 // Horario de la consulta, apuntado como eventos con id «horario_AAAA-MM-DD». Se enseña la semana en curso;
@@ -866,7 +907,7 @@ async function cargar() {
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage,para';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
       const hace30 = ymd(masDias(HOY, -30));
-      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh, cp, pd, ct] = await Promise.all([
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh, cp, pd, ct, an] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -897,6 +938,8 @@ async function cargar() {
           .eq('user_id', uid).order('created_at', { ascending: false }).limit(500)),
         conReintento(() => sb.from('contactos').select('id,nombre,cargo,organizacion,email,telefono,enlace,por_que,siguiente,siguiente_fecha,etiqueta,notas,origen,created_at,updated_at')
           .eq('user_id', uid).order('nombre').limit(1000)),
+        conReintento(() => sb.from('agente_resultados').select('id,nombre,ruta,tipo,tamano,created_at,updated_at')
+          .eq('user_id', uid).eq('tarea', AN_TAREA).order('updated_at', { ascending: false }).limit(500)),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -908,6 +951,7 @@ async function cargar() {
       capFalta = !!cp.error && !esRedFallo(cp.error.message); if (!cp.error) capItems = cp.data || [];
       prFalta = !!pd.error && !esRedFallo(pd.error.message); if (!pd.error) prDocs = pd.data || [];
       ctFalta = !!ct.error && !esRedFallo(ct.error.message); if (!ct.error) contactos = ct.data || [];
+      anFalta = !!an.error && !esRedFallo(an.error.message); if (!an.error) { anotaciones = an.data || []; anLimpiaMinis(); }
       // Si la tabla aún no existe (migración panel_tablet sin aplicar), el resto del panel funciona igual.
       panelFalta = !!pt.error;
       const filas = pt.data || [];
@@ -1790,6 +1834,208 @@ async function borraContacto(id) {
   cierraHoja(); render();
 }
 
+// ── Anotaciones: documentos para leer y descargar (carpeta «Anotaciones» del PC) ─────────────
+// Se ven por temas (la subcarpeta), con la primera página de miniatura, un visor dentro de la página y el
+// botón de descargar. No se sube desde aquí: lo que se guarda en la carpeta del PC aparece solo.
+// Si pdf.js no carga (sin red, CDN bloqueado), no hay miniatura y «Ver» ofrece abrir el PDF en otra pestaña.
+function anClave(a) { return `${a.ruta}|${a.updated_at || ''}`; }
+function anEsPdf(a) { return /\.pdf$/i.test(a.nombre) || a.tipo === 'application/pdf'; }
+function anTema(a) { return a.nombre.includes('/') ? a.nombre.split('/')[0] : 'General'; }
+function anArchivo(a) { return a.nombre.split('/').pop(); }
+function anTitulo(a) { return anArchivo(a).replace(/\.[a-z0-9]{2,5}$/i, '').replace(/_/g, ' '); }
+function anPaginas(n) { return n ? `${n} ${n === 1 ? 'página' : 'páginas'}` : ''; }
+function anMiniGuardada(a) {
+  const k = anClave(a);
+  if (anMinis.has(k)) return anMinis.get(k);
+  try { const v = JSON.parse(localStorage.getItem('fh_an_mini:' + k) || 'null'); if (v?.img) { anMinis.set(k, v); return v; } } catch {}
+  return null;
+}
+// Las miniaturas guardadas de documentos que ya no están se borran, para no llenar el navegador.
+function anLimpiaMinis() {
+  const vivas = new Set(anotaciones.map(a => 'fh_an_mini:' + anClave(a)));
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith('fh_an_mini:') && !vivas.has(k)) localStorage.removeItem(k); } catch {}
+}
+async function anDescarga(a) {
+  const k = anClave(a);
+  if (anBytes.has(k)) return anBytes.get(k).slice(0); // pdf.js se queda con el búfer que recibe: se le da una copia
+  let buf;
+  if (a.demo_url) {
+    const r = await fetch(a.demo_url);
+    if (!r.ok) throw new Error('no está');
+    buf = await r.arrayBuffer();
+  } else {
+    const { data, error } = await sb.storage.from(AN_ALMACEN).download(a.ruta);
+    if (error) throw error;
+    buf = await data.arrayBuffer();
+  }
+  if (buf.byteLength > 12 * 1024 * 1024) return buf; // los grandes no se guardan en memoria
+  anBytes.set(k, buf);
+  if (anBytes.size > 6) anBytes.delete(anBytes.keys().next().value);
+  return buf.slice(0);
+}
+function anCargaPdfjs() {
+  if (!anPdfjs) {
+    anPdfjs = import(AN_PDFJS + 'legacy/build/pdf.min.mjs').then(m => {
+      m.GlobalWorkerOptions.workerSrc = AN_PDFJS + 'legacy/build/pdf.worker.min.mjs';
+      return m;
+    }).catch(e => { anPdfjs = null; throw e; });
+  }
+  return anPdfjs;
+}
+async function anAbrePdf(a) {
+  const pdfjs = await anCargaPdfjs();
+  return pdfjs.getDocument({ data: new Uint8Array(await anDescarga(a)), cMapUrl: AN_PDFJS + 'cmaps/', cMapPacked: true, standardFontDataUrl: AN_PDFJS + 'standard_fonts/' }).promise;
+}
+async function anHazMini(a) {
+  const doc = await anAbrePdf(a);
+  try {
+    const pag = await doc.getPage(1), base = pag.getViewport({ scale: 1 }), vp = pag.getViewport({ scale: 440 / base.width });
+    const c = document.createElement('canvas');
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    await pag.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    const v = { img: c.toDataURL('image/jpeg', 0.8), paginas: doc.numPages };
+    anMinis.set(anClave(a), v);
+    try { localStorage.setItem('fh_an_mini:' + anClave(a), JSON.stringify(v)); } catch {}
+    return v;
+  } finally { doc.destroy(); }
+}
+function anPintaMini(a, v) {
+  const h = document.querySelector(`#contenido .an-mini[data-pend="${CSS.escape(a.id)}"]`);
+  if (!h) return;
+  h.removeAttribute('data-pend');
+  if (!v?.img) return;
+  h.innerHTML = `<img src="${v.img}" alt="">`;
+  const p = h.closest('.an-doc')?.querySelector('[data-anpag]');
+  if (p && v.paginas) p.textContent = anPaginas(v.paginas) + ' · ';
+}
+// Las miniaturas que faltan se hacen de una en una y solo cuando su ficha está a la vista.
+function anotMiniaturas() {
+  anVigia?.disconnect();
+  const huecos = [...document.querySelectorAll('#contenido .an-mini[data-pend]')];
+  if (!huecos.length || !('IntersectionObserver' in window)) return;
+  anVigia = new IntersectionObserver(entradas => {
+    for (const e of entradas) {
+      if (!e.isIntersecting) continue;
+      anVigia.unobserve(e.target);
+      const a = anotaciones.find(x => x.id === e.target.dataset.pend);
+      if (!a) continue;
+      anCola = anCola.then(() => anMiniGuardada(a) || anHazMini(a)).then(v => anPintaMini(a, v)).catch(() => { anFallidas.add(anClave(a)); anPintaMini(a, null); });
+    }
+  }, { rootMargin: '300px' });
+  huecos.forEach(h => anVigia.observe(h));
+}
+function htmlDocAnot(a) {
+  const pdf = anEsPdf(a), m = pdf ? anMiniGuardada(a) : null, tit = anTitulo(a);
+  const fecha = cap(fmt(new Date(a.updated_at || a.created_at), { day: 'numeric', month: 'short' })).replace('.', '');
+  const pend = pdf && !m && !anFallidas.has(anClave(a));
+  const ext = pdf ? 'PDF' : (anArchivo(a).includes('.') ? anArchivo(a).split('.').pop() : '').toUpperCase().slice(0, 4);
+  return `<article class="an-doc">
+    <button class="an-mini" type="button" data-anver="${esc(a.id)}"${pend ? ` data-pend="${esc(a.id)}"` : ''} aria-label="${pdf ? 'Ver' : 'Abrir'} «${esc(tit)}»">${m?.img ? `<img src="${m.img}" alt="">` : `<span class="an-ico">${esc(ext || '···')}</span>`}</button>
+    <div class="an-tx"><h4>${esc(tit)}</h4>
+      <div class="an-meta"><span data-anpag>${m?.paginas ? anPaginas(m.paginas) + ' · ' : ''}</span>${esc(tamanoLegible(a.tamano))}${a.tamano ? ' · ' : ''}${esc(fecha)}</div>
+      <div class="an-acc"><button class="btn prim" type="button" data-anver="${esc(a.id)}">${pdf ? '👁 Ver' : '↗ Abrir'}</button><button class="btn" type="button" data-anbajar="${esc(a.id)}">⬇ Descargar</button></div></div>
+  </article>`;
+}
+function htmlAnotaciones() {
+  if (anFalta) return '<div class="vacio">No se han podido leer las anotaciones.</div>';
+  if (!anotaciones.length) return '<div class="vacio">Aún no hay anotaciones. Lo que se guarde en la carpeta «Anotaciones» del PC (hermes › entregables › Anotaciones) aparece aquí solo, en un par de minutos.</div>';
+  const temas = new Map();
+  for (const a of anotaciones) { const t = anTema(a); if (!temas.has(t)) temas.set(t, []); temas.get(t).push(a); }
+  const ultima = l => l.reduce((m, a) => ((a.updated_at || '') > m ? a.updated_at : m), '');
+  // Dentro de cada tema, lo más reciente primero; y arriba, el tema que se tocó por última vez.
+  const orden = [...temas.entries()]
+    .map(([t, l]) => [t, l.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '') || anTitulo(a).localeCompare(anTitulo(b), 'es'))])
+    .sort((a, b) => ultima(b[1]).localeCompare(ultima(a[1])) || a[0].localeCompare(b[0], 'es'));
+  if (anFiltro && !temas.has(anFiltro)) anFiltro = '';
+  const chips = orden.length < 2 ? '' : `<div class="an-temas">${[['', 'Todos', anotaciones.length], ...orden.map(([t, l]) => [t, t, l.length])]
+    .map(([v, t, n]) => `<button type="button" data-antema="${esc(v)}" class="${anFiltro === v ? 'on' : ''}" aria-pressed="${anFiltro === v}">${esc(t)} <small>${n}</small></button>`).join('')}</div>`;
+  return `${chips}<div class="cap-kpis"><span><b>${anotaciones.length}</b> ${anotaciones.length === 1 ? 'documento' : 'documentos'}</span><span><b>${orden.length}</b> ${orden.length === 1 ? 'tema' : 'temas'}</span><span class="priv">🔒 Solo lo ves tú</span></div>
+    ${orden.filter(([t]) => !anFiltro || t === anFiltro).map(([t, l]) => `<section class="an-grupo"><h3>${esc(t)} <small>${l.length}</small></h3><div class="an-lista">${l.map(htmlDocAnot).join('')}</div></section>`).join('')}`;
+}
+// Abre el archivo en otra pestaña o lo descarga, con un enlace firmado de una hora.
+async function anEnlace(a, descargar) {
+  if (DEMO && !a.demo_url) { alert('En los datos de ejemplo este archivo no existe.'); return; }
+  const w = descargar ? null : window.open('', '_blank'); // ya: si se abre tras esperar, el móvil la bloquea
+  let url = a.demo_url || '';
+  if (!url) {
+    const { data, error } = await sb.storage.from(AN_ALMACEN).createSignedUrl(a.ruta, 3600, descargar ? { download: anArchivo(a) } : undefined);
+    if (error || !data?.signedUrl) { w?.close(); return avisaFallo(error, descargar ? 'descargar' : 'abrir'); }
+    url = data.signedUrl;
+  }
+  if (w) { w.location.href = url; return; }
+  const e = document.createElement('a');
+  e.href = url; e.download = anArchivo(a); document.body.appendChild(e); e.click(); e.remove();
+}
+// El visor vive fuera de #contenido: así no se cierra cuando el panel se repinta solo.
+function anVisor() {
+  let v = $('anVisor');
+  if (v) return v;
+  v = document.createElement('div');
+  v.id = 'anVisor'; v.className = 'an-visor'; v.hidden = true;
+  v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true'); v.setAttribute('aria-labelledby', 'anVisorTit');
+  v.innerHTML = `<div class="an-barra"><b id="anVisorTit"></b><span id="anVisorPag"></span>
+      <button class="btn" type="button" data-anv="bajar">⬇ Descargar</button><button class="btn" type="button" data-anv="aparte">↗ Abrir aparte</button><button class="btn" type="button" data-anv="cerrar">✕ Cerrar</button></div>
+    <div class="an-hojas" id="anHojas" tabindex="0"></div>`;
+  document.body.appendChild(v);
+  v.addEventListener('click', e => {
+    const b = e.target.closest('[data-anv]');
+    if (!b) return;
+    if (b.dataset.anv === 'cerrar') return anCierra();
+    const a = anotaciones.find(x => x.id === v.dataset.id);
+    if (a) anEnlace(a, b.dataset.anv === 'bajar');
+  });
+  return v;
+}
+async function anPintaHoja(doc, hueco, ancho, dpr, turno) {
+  try {
+    const pag = await doc.getPage(Number(hueco.dataset.n));
+    if (turno !== anTurno) return;
+    const base = pag.getViewport({ scale: 1 }), vp = pag.getViewport({ scale: ancho * dpr / base.width });
+    const c = document.createElement('canvas');
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    hueco.style.aspectRatio = `${base.width} / ${base.height}`;
+    await pag.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    if (turno === anTurno) hueco.replaceChildren(c);
+  } catch {}
+}
+async function anVer(a) {
+  if (!anEsPdf(a)) return anEnlace(a, false);
+  const v = anVisor(), hojas = $('anHojas'), turno = ++anTurno;
+  anVigiaHojas?.disconnect(); anDoc?.destroy(); anDoc = null;
+  v.dataset.id = a.id; v.hidden = false;
+  document.documentElement.classList.add('an-abierto');
+  $('anVisorTit').textContent = anTitulo(a); $('anVisorPag').textContent = '';
+  hojas.innerHTML = '<div class="an-espera">Abriendo el PDF…</div>';
+  try {
+    const doc = await anAbrePdf(a);
+    if (turno !== anTurno) { doc.destroy(); return; }
+    anDoc = doc;
+    const ancho = Math.max(240, Math.min(hojas.clientWidth - 16, 980)), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const b1 = (await doc.getPage(1)).getViewport({ scale: 1 });
+    if (turno !== anTurno) return;
+    hojas.innerHTML = Array.from({ length: doc.numPages }, (_, i) => `<div class="an-hoja" data-n="${i + 1}" style="width:${ancho}px;aspect-ratio:${b1.width} / ${b1.height}"></div>`).join('');
+    hojas.scrollTop = 0;
+    $('anVisorPag').textContent = anPaginas(doc.numPages);
+    // Cada página se dibuja al acercarse a la vista: un PDF largo no se pinta entero de golpe.
+    anVigiaHojas = new IntersectionObserver(ents => {
+      for (const e of ents) if (e.isIntersecting) { anVigiaHojas.unobserve(e.target); anPintaHoja(doc, e.target, ancho, dpr, turno); }
+    }, { root: hojas, rootMargin: '600px 0px' });
+    hojas.querySelectorAll('.an-hoja').forEach(h => anVigiaHojas.observe(h));
+    hojas.focus({ preventScroll: true });
+  } catch {
+    if (turno !== anTurno) return;
+    hojas.innerHTML = '<div class="an-espera">No se ha podido abrir aquí.<button class="btn prim" type="button" data-anv="aparte">Abrir en otra pestaña</button></div>';
+  }
+}
+function anCierra() {
+  anTurno++;
+  anVigiaHojas?.disconnect(); anDoc?.destroy(); anDoc = null;
+  const v = $('anVisor');
+  if (v) { v.hidden = true; $('anHojas').innerHTML = ''; }
+  document.documentElement.classList.remove('an-abierto');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('anVisor') && !$('anVisor').hidden) anCierra(); });
+
 // ── Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado) ──
 // Cada archivo va en proyectos/<uid>/… y solo su dueño lo ve. Se abre con un enlace firmado de una hora.
 const PR_BUCKET = 'proyectos', PR_MAX = 50 * 1024 * 1024;
@@ -1914,6 +2160,7 @@ function tituloVista() {
   if (vista === 'cap') return 'Pendientes CAP';
   if (vista === 'proyectos') return 'Proyectos';
   if (vista === 'contactos') return 'Contactos';
+  if (vista === 'anotaciones') return 'Anotaciones';
   if (vista === 'agentes') return 'Agentes';
   if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
@@ -2007,7 +2254,7 @@ function render() {
   // La pestaña activa, a la vista aunque la fila se deslice (móvil).
   document.querySelector('#segVista button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || vista === 'contactos' || vista === 'agentes' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || vista === 'contactos' || vista === 'anotaciones' || vista === 'agentes' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
   $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
@@ -2028,12 +2275,13 @@ function render() {
   const foco = document.activeElement?.id;
   // El centro de agentes se carga una vez: repintarlo cada 5 min borraría lo que estés escribiendo en él.
   if (vista === 'agentes') { if (!c.querySelector('#agentesFrame')) c.innerHTML = htmlAgentes(); }
-  else c.innerHTML = vista === 'contactos' ? htmlContactos() : vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
+  else c.innerHTML = vista === 'anotaciones' ? htmlAnotaciones() : vista === 'contactos' ? htmlContactos() : vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
   for (const a of oyendo) [...c.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
   for (const [id, v] of escrito) if ($(id)) $(id).value = v;
   if (foco && ['capNombre', 'capTarea', 'capFecha', 'prProyecto', 'prNotas'].includes(foco)) $(foco)?.focus();
   // La caja de buscar de Contactos se vuelve a crear: recupera el foco con el cursor al final.
   if (foco === 'ctBusca' && $('ctBusca')) { const b = $('ctBusca'); b.focus(); try { b.setSelectionRange(b.value.length, b.value.length); } catch {} }
+  if (vista === 'anotaciones') anotMiniaturas();
   pintaStats(); pintaParte(); pintaEstado();
 }
 
@@ -2359,6 +2607,11 @@ $('contenido').addEventListener('click', e => {
   if (ck) return marcaCap(ck.dataset.capok);
   const cf = t.closest('[data-cap]');
   if (cf) return hojaCap(cf.dataset.cap);
+  // Anotaciones: elegir tema, ver un documento (la miniatura también lo abre) o descargarlo.
+  const at = t.closest('[data-antema]');
+  if (at) { anFiltro = at.dataset.antema; render(); return; }
+  const av = t.closest('[data-anver], [data-anbajar]');
+  if (av) { const a = anotaciones.find(x => x.id === (av.dataset.anver || av.dataset.anbajar)); if (a) { if (av.dataset.anbajar) anEnlace(a, true); else anVer(a); } return; }
   // Contactos: el correo, el teléfono y el enlace se abren tal cual; tocar la ficha la abre para editarla.
   if (t.closest('.ct-fila .vias a')) return;
   if (t.closest('#ctNuevo')) return hojaContacto(null);
@@ -2583,6 +2836,14 @@ function datosDemo() {
     { id: 'cap2', nombre: 'Otra persona', tarea: 'Pedir la interconsulta', fecha: d(0), hecho: false, hecho_at: null, created_at: ts(-1) },
     { id: 'cap3', nombre: null, tarea: 'Renovar recetas de la semana', fecha: null, hecho: false, hecho_at: null, created_at: ts(0) },
     { id: 'cap4', nombre: 'Ejemplo hecho', tarea: 'Enviar el informe', fecha: d(-2), hecho: true, hecho_at: ts(-1), created_at: ts(-5) },
+  ];
+  // Anotaciones de ejemplo: todas abren el mismo PDF de muestra (public/demo/anotacion-ejemplo.pdf).
+  const muestra = '/demo/anotacion-ejemplo.pdf';
+  anotaciones = [
+    { id: 'an1', nombre: 'Tema de ejemplo/Guía de ejemplo.pdf', ruta: 'demo/an1.pdf', tipo: 'application/pdf', tamano: 4775, created_at: ts(-1), updated_at: ts(-1), demo_url: muestra },
+    { id: 'an2', nombre: 'Tema de ejemplo/Resumen de una sesión.pdf', ruta: 'demo/an2.pdf', tipo: 'application/pdf', tamano: 4775, created_at: ts(-2), updated_at: ts(-2), demo_url: muestra },
+    { id: 'an3', nombre: 'Otro tema/Informe de ejemplo.pdf', ruta: 'demo/an3.pdf', tipo: 'application/pdf', tamano: 4775, created_at: ts(-4), updated_at: ts(-4), demo_url: muestra },
+    { id: 'an4', nombre: 'Otro tema/Hoja de datos.xlsx', ruta: 'demo/an4.xlsx', tipo: '', tamano: 2400000, created_at: ts(-5), updated_at: ts(-5) },
   ];
   // Contactos de mentira: ninguna persona real.
   contactos = [
