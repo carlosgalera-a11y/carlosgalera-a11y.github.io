@@ -23,7 +23,7 @@
     document.documentElement.dataset.tema = oscuro ? 'dark' : 'light';
     // ?solo=resumen | viajes | vuelos → una sola vista, sin cabecera ni lateral (incrustada en calendario.html).
     var solo = new URLSearchParams(location.search).get('solo');
-    if (['resumen', 'viajes', 'vuelos', 'egs', 'cap', 'proyectos', 'contactos', 'anotaciones'].includes(solo)) document.documentElement.classList.add('solo');
+    if (['resumen', 'viajes', 'vuelos', 'egs', 'cap', 'proyectos', 'contactos', 'anotaciones', 'enlaces'].includes(solo)) document.documentElement.classList.add('solo');
   })();
 </script>
 <style>
@@ -355,6 +355,22 @@
   .ct-fila .m { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 11.5px; color: var(--muted); }
   .ct-fila .etq { font-weight: 700; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
   .form textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 16px; font-family: inherit; line-height: 1.4; resize: vertical; }
+  /* Enlaces: las aplicaciones y webs de Carlos, a un toque (tabla enlaces), agrupadas */
+  .el-grupo { margin-bottom: 14px; }
+  .el-grupo > h4 { margin: 0 0 7px; font-family: 'Hanken Grotesk', sans-serif; font-size: 15px; display: flex; align-items: baseline; gap: 7px; }
+  .el-grupo > h4 small { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .el-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; align-items: stretch; }
+  .el-tarjeta { display: flex; align-items: stretch; background: var(--card); border: 1px solid var(--line); border-radius: 12px; min-width: 0; overflow: hidden; }
+  .el-tarjeta:hover, .el-tarjeta:focus-within { border-color: var(--indigo); }
+  .el-tarjeta > a { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 10px 4px 10px 12px; min-height: 60px; color: var(--ink); text-decoration: none; }
+  .el-tarjeta > a:focus-visible { outline: 2px solid var(--indigo); outline-offset: -2px; border-radius: 12px; }
+  .el-tarjeta .ico { flex: none; width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 20px; font-weight: 800; background: var(--indigo-soft); color: var(--indigo); }
+  .el-tarjeta .txt { min-width: 0; display: grid; gap: 1px; }
+  .el-tarjeta .txt b { font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
+  .el-tarjeta .txt small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .el-tarjeta .txt em { font-style: normal; font-size: 12.5px; line-height: 1.3; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .el-tarjeta .el-edit { flex: none; width: 44px; border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+  .el-tarjeta .el-edit:hover, .el-tarjeta .el-edit:focus-visible { background: var(--indigo-soft); color: var(--ink); outline: none; }
   /* Anotaciones: documentos de la carpeta «Anotaciones» del PC, por temas, con miniatura, visor y descarga */
   .an-temas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
   .an-temas button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
@@ -617,8 +633,8 @@
   @media (max-width: 980px), (orientation: portrait) { .vista:has(> #contenido.v-agentes) { height: 84dvh; } }
   @media (max-width: 700px) {
     .vista:has(> #contenido.v-egs), .vista:has(> #contenido.v-viajes), .vista:has(> #contenido.v-vuelos),
-    .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos), .vista:has(> #contenido.v-contactos), .vista:has(> #contenido.v-anotaciones) { height: auto; }
-    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos, #contenido.v-cap, #contenido.v-proyectos, #contenido.v-contactos, #contenido.v-anotaciones { overflow: visible; }
+    .vista:has(> #contenido.v-cap), .vista:has(> #contenido.v-proyectos), .vista:has(> #contenido.v-contactos), .vista:has(> #contenido.v-anotaciones), .vista:has(> #contenido.v-enlaces) { height: auto; }
+    #contenido.v-egs, #contenido.v-viajes, #contenido.v-vuelos, #contenido.v-cap, #contenido.v-proyectos, #contenido.v-contactos, #contenido.v-anotaciones, #contenido.v-enlaces { overflow: visible; }
   }
   @media (max-width: 700px) {
     .kanban { grid-template-columns: repeat(4, minmax(220px, 1fr)); }
@@ -638,7 +654,7 @@
     <div class="turnos-hoy" id="turnoHoy"></div>
     <div class="der">
       <nav class="seg" id="segVista">
-        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="contactos">Contactos</button><button data-v="anotaciones">Anotaciones</button><button data-v="agentes" id="tabAgentes" hidden>Agentes</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
+        <button data-v="hoy">Resumen</button><button data-v="mes">Mes</button><button data-v="semana">Semana</button><button data-v="dia">Día</button><button data-v="cap">Pendientes CAP</button><button data-v="proyectos">Proyectos</button><button data-v="contactos">Contactos</button><button data-v="anotaciones">Anotaciones</button><button data-v="enlaces">Enlaces</button><button data-v="agentes" id="tabAgentes" hidden>Agentes</button><button data-v="kanban">Kanban</button><button data-v="casa">Casa</button><button data-v="gastos">Gastos</button><button data-v="compras">Compras</button><button data-v="finde">Fin de semana</button><button data-v="viajes">Viajes</button><button data-v="vuelos">Vuelos</button><button data-v="egs">Tareas EGS</button>
       </nav>
       <div class="nav" id="navFechas">
         <button class="btn" id="atras" aria-label="Anterior">‹</button>
@@ -798,7 +814,7 @@ function chipsTurno(d) {
 // ── Estado ─────────────────────────────────────────────────────────────────
 let uid = null, emailSesion = '';
 const SOLO_RESUMEN = document.documentElement.classList.contains('solo');
-const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos', contactos: 'contactos', anotaciones: 'anotaciones' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
+const SOLO_VISTA = { resumen: 'hoy', viajes: 'viajes', vuelos: 'vuelos', egs: 'egs', cap: 'cap', proyectos: 'proyectos', contactos: 'contactos', anotaciones: 'anotaciones', enlaces: 'enlaces' }[new URLSearchParams(location.search).get('solo')] || 'hoy';
 let vista = SOLO_RESUMEN ? SOLO_VISTA : !localStorage.getItem('fh_tab_resumen') ? 'hoy' : (localStorage.getItem('fh_tab_vista') || 'hoy');
 if (!SOLO_RESUMEN) localStorage.setItem('fh_tab_resumen', '1');
 let fuente = localStorage.getItem('fh_tab_fuente') || 'todo';
@@ -818,6 +834,8 @@ let hechasEGS = [];
 let capItems = [], capFalta = false, prDocs = [], prFalta = false;
 // Contactos (tabla contactos): los apunta Carlos aquí, Claude o el coordinador de Hermes. Si falta la tabla, lo dice su pestaña.
 let contactos = [], ctFalta = false, ctBusca = '';
+// Enlaces (tabla enlaces): las aplicaciones y webs de Carlos, agrupadas. La lista está en la base de datos, no en el código.
+let enlaces = [], elFalta = false, elBusca = '';
 // Anotaciones: los archivos de la carpeta «Anotaciones» del PC (hermes\entregables\Anotaciones\<tema>\…), que el PC
 // sube solo al almacén privado agente-resultados y apunta en agente_resultados con la tarea «Anotaciones».
 const AN_TAREA = 'Anotaciones', AN_ALMACEN = 'agente-resultados';
@@ -907,7 +925,7 @@ async function cargar() {
       const cols = 'id,title,completed,category,priority,due_date,user_id,shared,stage,para';
       const miasOComunes = `user_id.eq.${uid},shared.eq.true`;
       const hace30 = ymd(masDias(HOY, -30));
-      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh, cp, pd, ct, an] = await Promise.all([
+      const [ev, ta, pe, he, pt, ga, ca, wp, wt, en, ho, vj, vu, eh, cp, pd, ct, an, el] = await Promise.all([
         conReintento(() => sb.from('calendar_events').select('id,title,start_date,end_date,type,user_id,shared,para')
           .gte('start_date', desde).lt('start_date', hasta).order('start_date')),
         conReintento(() => sb.from('tasks').select(cols).or(miasOComunes)
@@ -940,6 +958,8 @@ async function cargar() {
           .eq('user_id', uid).order('nombre').limit(1000)),
         conReintento(() => sb.from('agente_resultados').select('id,nombre,ruta,tipo,tamano,created_at,updated_at')
           .eq('user_id', uid).eq('tarea', AN_TAREA).order('updated_at', { ascending: false }).limit(500)),
+        conReintento(() => sb.from('enlaces').select('id,nombre,url,grupo,descripcion,icono,orden,created_at,updated_at')
+          .eq('user_id', uid).order('orden').order('nombre').limit(500)),
       ]);
       const err = ev.error || ta.error || pe.error || he.error;
       if (err) throw err;
@@ -952,6 +972,7 @@ async function cargar() {
       prFalta = !!pd.error && !esRedFallo(pd.error.message); if (!pd.error) prDocs = pd.data || [];
       ctFalta = !!ct.error && !esRedFallo(ct.error.message); if (!ct.error) contactos = ct.data || [];
       anFalta = !!an.error && !esRedFallo(an.error.message); if (!an.error) { anotaciones = an.data || []; anLimpiaMinis(); }
+      elFalta = !!el.error && !esRedFallo(el.error.message); if (!el.error) enlaces = el.data || [];
       // Si la tabla aún no existe (migración panel_tablet sin aplicar), el resto del panel funciona igual.
       panelFalta = !!pt.error;
       const filas = pt.data || [];
@@ -2036,6 +2057,103 @@ function anCierra() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('anVisor') && !$('anVisor').hidden) anCierra(); });
 
+// ── Enlaces: las aplicaciones y webs de Carlos, a un toque (tabla enlaces, supabase/enlaces.sql) ────
+// Nombre, dirección, grupo, icono y una línea de descripción. La lista vive en la base de datos y no aquí:
+// este código se publica y las direcciones son de cada uno. Se apuntan aquí o se las pide Carlos a Claude.
+const EL_SIN_GRUPO = 'Otros';
+// Una dirección vale si es http(s), no lleva espacios y el navegador la entiende.
+const elUrl = s => { try { return /^https?:\/\/\S+$/i.test(s || '') && new URL(s).hostname ? s : ''; } catch { return ''; } };
+const elCorta = u => (u || '').replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '');
+function elVisibles() {
+  const q = elBusca.trim().toLowerCase();
+  return !q ? enlaces : enlaces.filter(x => [x.nombre, x.url, x.grupo, x.descripcion].some(v => (v || '').toLowerCase().includes(q)));
+}
+function tarjetaEnlace(x) {
+  const u = elUrl(x.url);
+  // Sin icono, la inicial del nombre.
+  const ico = (x.icono || '').trim() || (x.nombre || '?').trim().charAt(0).toUpperCase();
+  return `<div class="el-tarjeta">
+    <a ${u ? `href="${esc(u)}" target="_blank" rel="noopener noreferrer"` : ''} title="${esc(x.url)}">
+      <span class="ico" aria-hidden="true">${esc(ico)}</span>
+      <span class="txt"><b>${esc(x.nombre)}</b><small>${esc(elCorta(x.url))}</small>${x.descripcion ? `<em>${esc(x.descripcion)}</em>` : ''}</span>
+    </a>
+    <button class="el-edit" type="button" data-eledit="${esc(x.id)}" aria-label="Cambiar ${esc(x.nombre)}" title="Cambiar">✏️</button>
+  </div>`;
+}
+function htmlListaEnlaces() {
+  if (!enlaces.length) return '<div class="vacio">Aún no hay enlaces. Añade uno con «＋ Nuevo» o pídeselo a Claude.</div>';
+  const v = elVisibles();
+  if (!v.length) return '<div class="vacio">Ningún enlace coincide con la búsqueda.</div>';
+  const grupos = new Map();
+  for (const x of v) { const g = (x.grupo || '').trim() || EL_SIN_GRUPO; if (!grupos.has(g)) grupos.set(g, []); grupos.get(g).push(x); }
+  const porOrden = (a, b) => (a.orden || 0) - (b.orden || 0) || a.nombre.localeCompare(b.nombre, 'es');
+  // Cada grupo va donde lo pone su enlace de menor orden; los que no tienen grupo, al final.
+  const orden = [...grupos].map(([g, l]) => [g, l.sort(porOrden)])
+    .sort((a, b) => (a[0] === EL_SIN_GRUPO) - (b[0] === EL_SIN_GRUPO) || (a[1][0].orden || 0) - (b[1][0].orden || 0) || a[0].localeCompare(b[0], 'es'));
+  return orden.map(([g, l]) => `<section class="el-grupo"><h4>${esc(g)} <small>${l.length}</small></h4><div class="el-lista">${l.map(tarjetaEnlace).join('')}</div></section>`).join('');
+}
+function htmlEnlaces() {
+  if (elFalta) return '<div class="vacio">Falta crear la tabla de Enlaces en Supabase.</div>';
+  const grupos = new Set(enlaces.map(x => (x.grupo || '').trim() || EL_SIN_GRUPO)).size;
+  return `<div class="ct-barra">
+      <input id="elBusca" type="search" maxlength="80" placeholder="Buscar por nombre, grupo o dirección" aria-label="Buscar enlaces" value="${esc(elBusca)}" autocomplete="off" enterkeyhint="search">
+      <button class="btn prim" type="button" id="elNuevo">＋ Nuevo</button>
+    </div>
+    <div class="cap-kpis"><span><b>${enlaces.length}</b> ${enlaces.length === 1 ? 'enlace' : 'enlaces'}</span>${grupos > 1 ? `<span><b>${grupos}</b> grupos</span>` : ''}<span class="priv">🔒 Solo lo ves tú</span></div>
+    <div id="elLista">${htmlListaEnlaces()}</div>`;
+}
+function hojaEnlace(id) {
+  const x = id ? enlaces.find(e => e.id === id) : {};
+  if (!x) return;
+  const v = k => esc(x[k] ?? '');
+  const grupos = [...new Set(enlaces.map(e => (e.grupo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  abreHoja(`<span class="fuente" style="--c:var(--indigo)">Enlaces</span><h3>${id ? 'Cambiar enlace' : 'Nuevo enlace'}</h3>
+    <div class="form">
+      <label>Nombre<input name="nombre" maxlength="120" value="${v('nombre')}"></label>
+      <label>Dirección<input name="url" type="url" inputmode="url" maxlength="500" placeholder="https://…" value="${v('url')}" autocapitalize="off" autocomplete="off" spellcheck="false"></label>
+      <div class="fila"><label>Grupo<input name="grupo" maxlength="60" list="elGrupos" placeholder="Para juntarlo con otros" value="${v('grupo')}"></label><label>Icono (un emoji)<input name="icono" maxlength="16" placeholder="Opcional" value="${v('icono')}"></label></div>
+      <datalist id="elGrupos">${grupos.map(g => `<option value="${esc(g)}">`).join('')}</datalist>
+      <label>Para qué sirve<input name="descripcion" maxlength="300" placeholder="Una línea" value="${v('descripcion')}"></label>
+      <label>Orden<input name="orden" type="number" inputmode="numeric" step="1" min="0" max="9999" placeholder="Los números bajos van primero" value="${id ? esc(x.orden ?? 0) : ''}"></label>
+    </div>
+    <div class="acc"><button class="btn prim" data-guardar="enlace" data-id="${esc(id || '')}">Guardar</button>
+      ${id ? `<button class="btn peligro" data-elborra="${esc(id)}">🗑 Borrar</button>` : ''}<button class="btn" data-cerrar>Cancelar</button></div>`);
+}
+async function guardaEnlace(id) {
+  const t = k => campo(k) || null;
+  let url = campo('url') || '';
+  // Una dirección escrita sin «https://» se completa sola.
+  if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = 'https://' + url;
+  const orden = Math.min(9999, Math.max(0, parseInt(campo('orden'), 10) || 0));
+  const datos = { nombre: campo('nombre'), url, grupo: t('grupo'), icono: t('icono'), descripcion: t('descripcion'), orden };
+  if (!datos.nombre) { alert('Escribe el nombre.'); return; }
+  if (!elUrl(url)) { alert('Esa dirección no vale. Tiene que ser una dirección web, como https://ejemplo.com'); return; }
+  const repetido = enlaces.find(e => e.id !== id && (e.url || '').toLowerCase() === url.toLowerCase());
+  if (repetido) { alert(`Esa dirección ya está apuntada como «${repetido.nombre}».`); return; }
+  const ahora = new Date().toISOString();
+  if (id) {
+    const x = enlaces.find(e => e.id === id);
+    if (!x) return;
+    const cambio = { ...datos, updated_at: ahora };
+    if (!(await escribe('enlaces', q => q.update(cambio).eq('id', id), 'guardar'))) return;
+    Object.assign(x, cambio);
+  } else if (DEMO) {
+    enlaces.push({ ...datos, id: 'demo' + Date.now(), created_at: ahora, updated_at: ahora });
+  } else {
+    const { data, error } = await conReintento(() => sb.from('enlaces').insert({ ...datos, user_id: uid }).select().single());
+    if (error) return avisaFallo(error, 'apuntar');
+    enlaces.push(data);
+  }
+  cierraHoja(); render();
+}
+async function borraEnlace(id) {
+  const x = enlaces.find(e => e.id === id);
+  if (!x || !confirm(`¿Borrar el enlace «${x.nombre}»? La aplicación no se toca: solo desaparece de esta lista.`)) return;
+  if (!(await escribe('enlaces', q => q.delete().eq('id', id), 'borrar'))) return;
+  enlaces = enlaces.filter(e => e.id !== id);
+  cierraHoja(); render();
+}
+
 // ── Proyectos: documentos propios agrupados por proyecto (tabla proyectos_docs + bucket privado) ──
 // Cada archivo va en proyectos/<uid>/… y solo su dueño lo ve. Se abre con un enlace firmado de una hora.
 const PR_BUCKET = 'proyectos', PR_MAX = 50 * 1024 * 1024;
@@ -2130,6 +2248,7 @@ async function borraPr(d) {
 $('contenido').addEventListener('submit', e => { if (e.target.id === 'capForm') { e.preventDefault(); anadeCap(); } });
 // Buscar en Contactos: solo se repinta la lista, así el cursor no se mueve de la caja.
 $('contenido').addEventListener('input', e => { if (e.target.id === 'ctBusca') { ctBusca = e.target.value; if ($('ctLista')) $('ctLista').innerHTML = htmlListaContactos(); } });
+$('contenido').addEventListener('input', e => { if (e.target.id === 'elBusca') { elBusca = e.target.value; if ($('elLista')) $('elLista').innerHTML = htmlListaEnlaces(); } });
 $('contenido').addEventListener('change', e => {
   if (e.target.id !== 'prArchivo') return;
   const fs = [...e.target.files]; e.target.value = '';
@@ -2161,6 +2280,7 @@ function tituloVista() {
   if (vista === 'proyectos') return 'Proyectos';
   if (vista === 'contactos') return 'Contactos';
   if (vista === 'anotaciones') return 'Anotaciones';
+  if (vista === 'enlaces') return 'Enlaces';
   if (vista === 'agentes') return 'Agentes';
   if (vista === 'hoy') return 'Resumen de hoy';
   if (vista === 'mes') return cap(fmt(cursor, { month: 'long', year: 'numeric' }));
@@ -2254,7 +2374,7 @@ function render() {
   // La pestaña activa, a la vista aunque la fila se deslice (móvil).
   document.querySelector('#segVista button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   document.querySelectorAll('#filtroFuente button').forEach(b => b.classList.toggle('on', b.dataset.f === fuente));
-  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || vista === 'contactos' || vista === 'anotaciones' || vista === 'agentes' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
+  $('navFechas').style.visibility = vista === 'hoy' || vista === 'kanban' || vista === 'compras' || vista === 'viajes' || vista === 'vuelos' || vista === 'egs' || vista === 'cap' || vista === 'proyectos' || vista === 'contactos' || vista === 'anotaciones' || vista === 'enlaces' || vista === 'agentes' || (vista === 'casa' && casaModo !== 'semana') ? 'hidden' : '';
   $('filtroFuente').style.display = vista === 'kanban' ? '' : 'none';
   if (soyMontse() && filtroCal === 'montse') filtroCal = 'mio'; // para Montse, «Mío» ya es su calendario
   $('filtroCal').style.display = VISTAS_CAL.includes(vista) ? '' : 'none';
@@ -2275,12 +2395,12 @@ function render() {
   const foco = document.activeElement?.id;
   // El centro de agentes se carga una vez: repintarlo cada 5 min borraría lo que estés escribiendo en él.
   if (vista === 'agentes') { if (!c.querySelector('#agentesFrame')) c.innerHTML = htmlAgentes(); }
-  else c.innerHTML = vista === 'anotaciones' ? htmlAnotaciones() : vista === 'contactos' ? htmlContactos() : vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
+  else c.innerHTML = vista === 'enlaces' ? htmlEnlaces() : vista === 'anotaciones' ? htmlAnotaciones() : vista === 'contactos' ? htmlContactos() : vista === 'cap' ? htmlCap() : vista === 'proyectos' ? htmlProyectos() : vista === 'hoy' ? htmlHoy() : vista === 'mes' ? htmlMes() : vista === 'semana' ? htmlSemana() : vista === 'dia' ? htmlDia() : vista === 'casa' ? htmlCasa() : vista === 'gastos' ? htmlGastos() : vista === 'compras' ? htmlCompras() : vista === 'finde' ? htmlFinde() : vista === 'viajes' ? htmlViajes() : vista === 'vuelos' ? htmlVuelos() : vista === 'egs' ? htmlEgs() : htmlKanban();
   for (const a of oyendo) [...c.querySelectorAll('audio')].find(n => n.getAttribute('src') === a.getAttribute('src'))?.replaceWith(a);
   for (const [id, v] of escrito) if ($(id)) $(id).value = v;
   if (foco && ['capNombre', 'capTarea', 'capFecha', 'prProyecto', 'prNotas'].includes(foco)) $(foco)?.focus();
-  // La caja de buscar de Contactos se vuelve a crear: recupera el foco con el cursor al final.
-  if (foco === 'ctBusca' && $('ctBusca')) { const b = $('ctBusca'); b.focus(); try { b.setSelectionRange(b.value.length, b.value.length); } catch {} }
+  // La caja de buscar de Contactos o de Enlaces se vuelve a crear: recupera el foco con el cursor al final.
+  if ((foco === 'ctBusca' || foco === 'elBusca') && $(foco)) { const b = $(foco); b.focus(); try { b.setSelectionRange(b.value.length, b.value.length); } catch {} }
   if (vista === 'anotaciones') anotMiniaturas();
   pintaStats(); pintaParte(); pintaEstado();
 }
@@ -2565,11 +2685,14 @@ $('hoja').addEventListener('click', e => {
   if (cb2) return borraCap(cb2.dataset.capborra);
   const cb3 = e.target.closest('[data-ctborra]');
   if (cb3) return borraContacto(cb3.dataset.ctborra);
+  const cb4 = e.target.closest('[data-elborra]');
+  if (cb4) return borraEnlace(cb4.dataset.elborra);
   const s = e.target.closest('[data-guardar]');
   if (s) {
     const que = s.dataset.guardar;
     if (que === 'cap') return guardaCap(s.dataset.id);
     if (que === 'contacto') return guardaContacto(s.dataset.id || null);
+    if (que === 'enlace') return guardaEnlace(s.dataset.id || null);
     return que === 'gasto' ? guardaGasto() : que === 'compra' ? guardaCompra() : que === 'tareafh' ? guardaTareaFH() : que === 'tareaegs' ? guardaTareaEGS() : que === 'tareacasa' ? guardaTareaCasa() : guardaRutina(s.dataset.id);
   }
 });
@@ -2612,6 +2735,11 @@ $('contenido').addEventListener('click', e => {
   if (at) { anFiltro = at.dataset.antema; render(); return; }
   const av = t.closest('[data-anver], [data-anbajar]');
   if (av) { const a = anotaciones.find(x => x.id === (av.dataset.anver || av.dataset.anbajar)); if (a) { if (av.dataset.anbajar) anEnlace(a, true); else anVer(a); } return; }
+  // Enlaces: la tarjeta es un enlace normal (se abre en otra pestaña); el lápiz abre la ficha para cambiarla.
+  if (t.closest('#elNuevo')) return hojaEnlace(null);
+  const ee = t.closest('[data-eledit]');
+  if (ee) return hojaEnlace(ee.dataset.eledit);
+  if (t.closest('.el-tarjeta > a')) return;
   // Contactos: el correo, el teléfono y el enlace se abren tal cual; tocar la ficha la abre para editarla.
   if (t.closest('.ct-fila .vias a')) return;
   if (t.closest('#ctNuevo')) return hojaContacto(null);
@@ -2804,6 +2932,7 @@ function escuchaCambios(alCambiar) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cap_pendientes' }, aviso)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos_docs' }, aviso)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'contactos' }, aviso)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'enlaces' }, aviso)
     .subscribe();
 }
 function aplicaSesion(session) {
@@ -2844,6 +2973,13 @@ function datosDemo() {
     { id: 'an2', nombre: 'Tema de ejemplo/Resumen de una sesión.pdf', ruta: 'demo/an2.pdf', tipo: 'application/pdf', tamano: 4775, created_at: ts(-2), updated_at: ts(-2), demo_url: muestra },
     { id: 'an3', nombre: 'Otro tema/Informe de ejemplo.pdf', ruta: 'demo/an3.pdf', tipo: 'application/pdf', tamano: 4775, created_at: ts(-4), updated_at: ts(-4), demo_url: muestra },
     { id: 'an4', nombre: 'Otro tema/Hoja de datos.xlsx', ruta: 'demo/an4.xlsx', tipo: '', tamano: 2400000, created_at: ts(-5), updated_at: ts(-5) },
+  ];
+  // Enlaces de ejemplo: direcciones que no existen.
+  enlaces = [
+    { id: 'el1', nombre: 'Aplicación de ejemplo', url: 'https://ejemplo.test/', grupo: 'Grupo de ejemplo', descripcion: 'Lo que haces con ella, en una línea.', icono: '🗂️', orden: 10, created_at: ts(-3), updated_at: ts(-3) },
+    { id: 'el2', nombre: 'Otra aplicación', url: 'https://otra.ejemplo.test/panel', grupo: 'Grupo de ejemplo', descripcion: null, icono: null, orden: 20, created_at: ts(-3), updated_at: ts(-3) },
+    { id: 'el3', nombre: 'Web del proyecto', url: 'https://proyecto.ejemplo.test/', grupo: 'Otro grupo', descripcion: 'Una descripción algo más larga, para ver cómo se corta cuando no cabe en dos líneas de la tarjeta.', icono: '🩺', orden: 30, created_at: ts(-2), updated_at: ts(-2) },
+    { id: 'el4', nombre: 'Enlace suelto', url: 'https://suelto.ejemplo.test/', grupo: null, descripcion: null, icono: null, orden: 0, created_at: ts(-1), updated_at: ts(-1) },
   ];
   // Contactos de mentira: ninguna persona real.
   contactos = [
